@@ -606,4 +606,9 @@ def parsing_form(text: str) -> str:
 
 
 def collapse_whitespace(text: str) -> str:
-    return re.sub(r"[ \t]+", " ", text).strip()
+    """flatten any run of whitespace, newlines included.
+
+    a citation that wrapped over four lines has to become one string before it
+    can be matched, so this deliberately crosses line boundaries.
+    """
+    return re.sub(r"\s+", " ", text).strip()

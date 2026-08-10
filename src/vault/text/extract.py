@@ -40,6 +40,10 @@ class ExtractedPage:
     column_count: int = 1
     had_text_layer: bool = True
     edits: list[normalize.Edit] = field(default_factory=list)
+    # text of each block in reading order. block boundaries survive because
+    # "is this line the start of a block" is the cheapest reliable signal for
+    # telling a heading from a wrapped line of prose.
+    block_texts: list[str] = field(default_factory=list)
 
     @property
     def is_tabular(self) -> bool:
@@ -143,6 +147,10 @@ def extract_document(
             normalize.clean_page_text(b.text, aggressive_spacing=aggressive_spacing).text
             for b in notes_blocks
         ]
+        block_texts = [
+            normalize.clean_page_text(b.text, aggressive_spacing=aggressive_spacing).text
+            for b in body.blocks
+        ]
         pages.append(
             ExtractedPage(
                 number=page.number,
@@ -153,6 +161,7 @@ def extract_document(
                 column_count=ordered.column_count,
                 had_text_layer=page.number not in scanned or ocr_used,
                 edits=cleaned.edits,
+                block_texts=block_texts,
             )
         )
 
