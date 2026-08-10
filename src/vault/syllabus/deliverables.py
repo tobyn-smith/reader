@@ -247,14 +247,19 @@ def _select_top_level(candidates: list[_Candidate]) -> list[Deliverable]:
         return []
 
     # collapse repeat descriptions before grouping, otherwise a level that
-    # really does add up to 100 looks like it adds up to 135
+    # really does add up to 100 looks like it adds up to 135. the grading
+    # summary line names an assignment first and the detailed paragraph
+    # describes it properly later, so duplicates are merged rather than
+    # dropped, or the due dates and page limits would be lost with them.
     unique: list[_Candidate] = []
-    keys: set[str] = set()
+    by_key: dict[str, _Candidate] = {}
     for candidate in candidates:
         key = merge_key(candidate.item.title)
-        if key and key in keys:
+        kept = by_key.get(key)
+        if key and kept is not None:
+            _fill_missing(kept.item, candidate.item)
             continue
-        keys.add(key)
+        by_key[key] = candidate
         unique.append(candidate)
     candidates = unique
 
@@ -285,7 +290,10 @@ def _build(
         title=title,
         kind=classify_kind(title, body),
         weight_percent=weight,
-        requirements_text=collapse_whitespace(full)[:2000],
+        # the verbatim prose for this assignment alone. storing the whole
+        # paragraph looks harmless but a page that extracts as one block would
+        # attach the entire page to every assignment on it.
+        requirements_text=collapse_whitespace(f"{title}: {body}" if body else full)[:2000],
         source_zone=zone_kind,
         page_number=page,
     )
@@ -363,6 +371,20 @@ def merge_key(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", bare)[:40]
 
 
+def _fill_missing(target: Deliverable, source: Deliverable) -> None:
+    for attribute in (
+        "due_date", "due_time", "recurrence", "weight_percent",
+        "page_limit", "word_limit", "format_notes",
+    ):
+        if getattr(target, attribute) is None:
+            setattr(target, attribute, getattr(source, attribute))
+    if len(source.requirements_text) > len(target.requirements_text):
+        target.requirements_text = source.requirements_text
+    if source.kind != "other" and target.kind == "other":
+        target.kind = source.kind
+    target.confidence = max(target.confidence, source.confidence)
+
+
 def _merge(seen: dict[str, Deliverable], item: Deliverable) -> None:
     """same assignment described twice keeps the more complete description."""
     key = merge_key(item.title)
@@ -372,15 +394,7 @@ def _merge(seen: dict[str, Deliverable], item: Deliverable) -> None:
     if existing is None:
         seen[key] = item
         return
-    for attribute in (
-        "due_date", "due_time", "recurrence", "weight_percent",
-        "page_limit", "word_limit", "format_notes",
-    ):
-        if getattr(existing, attribute) is None:
-            setattr(existing, attribute, getattr(item, attribute))
-    if len(item.requirements_text) > len(existing.requirements_text):
-        existing.requirements_text = item.requirements_text
-    existing.confidence = max(existing.confidence, item.confidence)
+    _fill_missing(existing, item)
 
 
 def _drop_recurrence_bleed(seen: dict[str, Deliverable]) -> None:

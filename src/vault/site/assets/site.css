@@ -1,0 +1,101 @@
+/* three colours carry meaning. nothing else is coloured. */
+:root {
+  --ink: #111;
+  --quiet: #666;
+  --rule: #ccc;
+  --link: #1a4fa0;
+  --missing: #a11;
+  --review: #7a5200;
+  --paper: #fff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 1rem 1.25rem 4rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+main { max-width: 68rem; }
+p, li { max-width: 62ch; }
+
+nav {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: .4rem;
+  margin-bottom: 1.1rem;
+}
+nav a { margin-right: .9rem; }
+
+h1, h2, h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 1.5rem 0 .5rem;
+}
+h1 { font-size: 1.15rem; margin-top: 0; }
+h2 { border-bottom: 1px solid var(--rule); padding-bottom: .2rem; }
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: .5rem 0 1.2rem;
+  font-size: 14px;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: .3rem .6rem .3rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+th {
+  font-weight: 700;
+  border-bottom: 1px solid var(--ink);
+  white-space: nowrap;
+}
+table.schedule td:nth-child(1),
+table.schedule td:nth-child(2),
+table.schedule td:nth-child(3) { white-space: nowrap; }
+table.schedule td:nth-child(5) { width: 60%; }
+
+.meta, .quiet, .empty, .tags { color: var(--quiet); }
+.tags { font-size: 13px; }
+.missing { color: var(--missing); font-weight: 700; }
+.warn { color: var(--review); }
+.flag {
+  color: var(--review);
+  border-left: 3px solid var(--review);
+  padding-left: .6rem;
+}
+.policy { color: var(--quiet); }
+.private { color: var(--missing); font-weight: 700; }
+
+ol.bib { padding-left: 1.4rem; }
+ol.bib li { margin-bottom: .45rem; }
+
+.passage { border-left: 1px solid var(--rule); padding-left: .7rem; }
+.passage .page { color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+pre.brief {
+  white-space: pre-wrap;
+  border-left: 3px solid var(--review);
+  padding-left: .7rem;
+  font: inherit;
+  max-width: 62ch;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8e8e8;
+    --quiet: #9a9a9a;
+    --rule: #444;
+    --paper: #121212;
+    --link: #7aa6e8;
+    --missing: #e2716b;
+    --review: #d8b062;
+  }
+}

@@ -1,0 +1,62 @@
+/* print is a different medium. serif body, no colour, room for a staple. */
+
+@page {
+  size: letter;
+  margin: 22mm 18mm 20mm 24mm;
+  @top-left { content: string(course-code); font-size: 8pt; color: #000; }
+  @top-right { content: string(doc-section); font-size: 8pt; }
+  @bottom-left { content: "Generated " string(generated-on); font-size: 8pt; }
+  @bottom-right { content: counter(page) " of " counter(pages); font-size: 8pt; }
+}
+
+body {
+  font: 11pt/1.5 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  color: #000;
+  background: #fff;
+  margin: 0;
+}
+
+h1 {
+  string-set: course-code content();
+  font-size: 13pt;
+  margin: 0 0 .6rem;
+}
+h2 {
+  string-set: doc-section content();
+  font-size: 11pt;
+  border-bottom: .5pt solid #000;
+  padding-bottom: 2pt;
+  margin: 14pt 0 6pt;
+  break-after: avoid;
+}
+h3 { font-size: 11pt; margin: 10pt 0 4pt; break-after: avoid; }
+
+.generated { string-set: generated-on content(); display: none; }
+
+table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+th, td { text-align: left; vertical-align: top; padding: 3pt 6pt 3pt 0; }
+th { border-bottom: .75pt solid #000; }
+td { border-bottom: .25pt solid #999; }
+
+/* a citation must never split across a page */
+tr, li.reading, .entry { break-inside: avoid; }
+
+/* no colour on paper. weight and rules carry the meaning instead. */
+.missing { font-weight: 700; }
+.missing::after { content: " (missing)"; font-weight: 400; }
+.warn { font-style: italic; }
+.warn::before { content: "Content warning: "; font-weight: 700; font-style: normal; }
+.flag { border-left: 2pt solid #000; padding-left: 6pt; }
+
+/* a blue underlined word is useless on paper, so the url is printed */
+a { color: #000; text-decoration: none; }
+a[href^="http"]::after {
+  content: " " attr(href);
+  font-size: 8pt;
+  word-break: break-all;
+}
+
+nav, .pagefind-ui, #search, .screen-only { display: none; }
+
+ol.bib { padding-left: 1.2rem; }
+ol.bib li { margin-bottom: 5pt; break-inside: avoid; }
