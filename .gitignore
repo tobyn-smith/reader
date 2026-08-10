@@ -1,0 +1,21 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+.env.local
+
+# on-disk caches and scratch output
+.cache/
+out/
+*.parse.json
+
+# next.js
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel
