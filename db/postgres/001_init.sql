@@ -22,6 +22,10 @@ create table course (
     location          text,
     site_url          text,
     citation_style    text,                       -- per-course override, e.g. apsr
+    -- opt in per course before model output reaches any published build
+    publish_briefs    boolean not null default false,
+    -- set by hand when a course's policies make publishing unwise
+    sensitive         boolean not null default false,
     source_file_hash  text not null unique,       -- sha256 of the syllabus pdf
     source_filename   text,
     parsed_at         timestamptz not null default now()
@@ -236,6 +240,8 @@ create table note (
     chunk_id    bigint references chunk (id) on delete set null,
     page_number int,
     body        text not null,
+    -- default deny. a note reaches a public build only when this is set.
+    shareable   boolean not null default false,
     created_at  timestamptz not null default now()
 );
 
