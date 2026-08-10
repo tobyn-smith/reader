@@ -206,6 +206,7 @@ def _deadlines(courses: list[dict]) -> str:
     ]
     body = [
         "<h1>Deadlines</h1>",
+        '<p><a href="pdf/deadlines.pdf">Print PDF</a></p>',
         table(["Due", "Time", "Course", "Item", "Weight"], rows),
     ]
     return page("Deadlines", "\n".join(body), depth=0, nav=nav(courses, 0))
@@ -240,9 +241,12 @@ def _course(course: dict, courses: list[dict]) -> str:
         body.append(f'<p class="meta">{" &middot; ".join(meta)}</p>')
 
     body.append(stance_note(course.get("ai_stance")))
+    code = slug(course["code"])
     body.append(
         f'<p><a href="bibliography.html">Bibliography</a> '
-        f'&middot; <a href="../../deadlines.html">Deadlines</a></p>'
+        f'&middot; <a href="../../deadlines.html">Deadlines</a> '
+        f'&middot; <a href="../../pdf/{code}-semester-plan.pdf">Semester plan PDF</a> '
+        f'&middot; <a href="../../pdf/{code}-bibliography.pdf">Bibliography PDF</a></p>'
     )
 
     body.append("<h2>Schedule</h2>")
@@ -293,6 +297,8 @@ def _week(course: dict, courses: list[dict], number: int) -> str:
     sessions = [s for s in course.get("sessions", []) if s.get("week_number") == number]
     body = [f"<h1>{esc(course['code'])} Week {number}</h1>"]
     body.append(stance_note(course.get("ai_stance")))
+    code = slug(course["code"])
+    body.append(f'<p><a href="../../pdf/{code}-week-{number:02d}.pdf">Week sheet PDF</a></p>')
 
     for session in sessions:
         head = []

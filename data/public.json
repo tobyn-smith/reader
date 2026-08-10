@@ -1,0 +1,1005 @@
+{
+  "schema": 1,
+  "courses": [
+    {
+      "id": 2,
+      "code": "ARTS 2210",
+      "title": "Survey of Invented Art: Movements and Meanings",
+      "term": "fall",
+      "year": 2031,
+      "instructor_name": "Priya Raman",
+      "meeting_time": "T/TR 11:10-12:25",
+      "site_url": "https://example.org/painted-door-of-the-old-capital/",
+      "citation_style": null,
+      "ai_stance": "unstated",
+      "policies": [
+        {
+          "policy_type": "ai_use",
+          "ai_stance": "unstated",
+          "heading": null,
+          "body": "",
+          "page_number": 0
+        },
+        {
+          "policy_type": "other",
+          "ai_stance": null,
+          "heading": "COURSE REQUIREMENTS & GRADES",
+          "body": "Weekly Assessments 40% Exams (3) 40% Activities 20% optional extra credit assignment +3%",
+          "page_number": 1
+        }
+      ],
+      "deliverables": [
+        {
+          "id": 9,
+          "title": "Weekly Assessment 1",
+          "kind": "weekly_assessment",
+          "due_date": "2031-08-24",
+          "due_time": "23:59:00",
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 11,
+          "title": "Weekly Assessment 2",
+          "kind": "weekly_assessment",
+          "due_date": "2031-08-31",
+          "due_time": "23:59:00",
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 7,
+          "title": "Activities",
+          "kind": "other",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 20.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 10,
+          "title": "EXAM 1 IN CLASS",
+          "kind": "exam",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 6,
+          "title": "Exams (3)",
+          "kind": "other",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 40.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 5,
+          "title": "Weekly Assessments",
+          "kind": "other",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": "weekly",
+          "weight_percent": 40.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 8,
+          "title": "optional extra credit assignment",
+          "kind": "other",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": "weekly",
+          "weight_percent": 3.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        }
+      ],
+      "sessions": [
+        {
+          "id": 6,
+          "week_number": 1,
+          "meeting_date": "2031-08-14",
+          "sub_session_label": "THURSDAY",
+          "topic": "Introduction to Invented Art",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 0,
+          "readings": [
+            {
+              "work_id": 9,
+              "requirement_level": "required",
+              "page_range": "1-4",
+              "access_note": "Pdf of required pages on eLC",
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "week_number": 2,
+          "meeting_date": "2031-08-19",
+          "sub_session_label": "T",
+          "topic": "Early Invented Period",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 1,
+          "readings": [
+            {
+              "work_id": 10,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "week_number": 2,
+          "meeting_date": "2031-08-21",
+          "sub_session_label": "TR",
+          "topic": "Early Invented Period",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 2,
+          "readings": [
+            {
+              "work_id": 11,
+              "requirement_level": "required",
+              "page_range": "29-37",
+              "access_note": "PDF on eLC",
+              "content_warning": "discussion of political violence",
+              "ordinal": 0,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "week_number": 3,
+          "meeting_date": "2031-08-26",
+          "sub_session_label": "T",
+          "topic": "High Invented Period",
+          "section_heading": null,
+          "session_type": "exam",
+          "ordinal": 3,
+          "readings": []
+        },
+        {
+          "id": 10,
+          "week_number": 3,
+          "meeting_date": "2031-08-28",
+          "sub_session_label": "TR",
+          "topic": "High Invented Period",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 4,
+          "readings": [
+            {
+              "work_id": 12,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "week_number": null,
+          "meeting_date": "2031-12-04",
+          "sub_session_label": null,
+          "topic": "Final Exam",
+          "section_heading": null,
+          "session_type": "exam",
+          "ordinal": 5,
+          "readings": []
+        }
+      ],
+      "works": [
+        {
+          "id": 9,
+          "authors": [],
+          "title": null,
+          "container": null,
+          "year": null,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "unknown",
+          "rendered_citation": null,
+          "pages": null
+        },
+        {
+          "id": 10,
+          "authors": [
+            {
+              "surname": "Ruiz",
+              "given": "Ana"
+            },
+            {
+              "surname": "Weber",
+              "given": "Sam"
+            }
+          ],
+          "title": "The Painted Door of the Old Capital",
+          "container": "Artsurvey",
+          "year": null,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": "https://example.org/painted-door-of-the-old-capital/",
+          "report_number": null,
+          "work_type": "web_page",
+          "rendered_citation": null,
+          "pages": null
+        },
+        {
+          "id": 11,
+          "authors": [],
+          "title": null,
+          "container": "The Illustrated Companion to Invented Art",
+          "year": null,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "book_chapter",
+          "rendered_citation": null,
+          "pages": "29-37"
+        },
+        {
+          "id": 12,
+          "authors": [
+            {
+              "literal": "Department of Invented Art"
+            }
+          ],
+          "title": "Quiet Rooms",
+          "container": "Timeline of Invented Art",
+          "year": 2000,
+          "year_end": null,
+          "year_is_open": 1,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": "http://www.example.org/toah/hd/quiet/quiet.htm",
+          "report_number": null,
+          "work_type": "web_page",
+          "rendered_citation": null,
+          "pages": null
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": 1,
+      "code": "POLS 6510",
+      "title": "Seminar in Invented World Politics",
+      "term": "fall",
+      "year": 2031,
+      "instructor_name": "Dana Okafor",
+      "meeting_time": "Thurs 3:55-6:45",
+      "site_url": null,
+      "citation_style": "apsr",
+      "ai_stance": "prohibited",
+      "policies": [
+        {
+          "policy_type": "ai_use",
+          "ai_stance": "prohibited",
+          "heading": "2. University Policies",
+          "body": "Academic honesty: students are bound by the campus honor code. In addition, unless explicitly stated, artificial intelligence-based technologies, such as Chat GPT, must not be used to generate responses for student assignments. The use of such programs for any course assignments, including your exams, reports, and essays, is not allowed in this course and could result in failing this class. Late Work Policy: I only accept late work that is submitted within 24 hours after the deadline with a 10% grade deduction.",
+          "page_number": 2
+        }
+      ],
+      "deliverables": [
+        {
+          "id": 3,
+          "title": "Mid-term Essay",
+          "kind": "essay",
+          "due_date": "2031-10-09",
+          "due_time": "15:55:00",
+          "recurrence": null,
+          "weight_percent": 20.0,
+          "page_limit": 12,
+          "word_limit": null,
+          "format_notes": "- Every assignment should be written in Times New Roman, 12 point, with APSR citation style."
+        },
+        {
+          "id": 4,
+          "title": "Research Design",
+          "kind": "other",
+          "due_date": "2031-12-04",
+          "due_time": "23:59:00",
+          "recurrence": null,
+          "weight_percent": 35.0,
+          "page_limit": 20,
+          "word_limit": null,
+          "format_notes": "- Every assignment should be written in Times New Roman, 12 point, with APSR citation style."
+        },
+        {
+          "id": 2,
+          "title": "Field Survey",
+          "kind": "other",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 15.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": "- Every assignment should be written in Times New Roman, 12 point, with APSR citation style."
+        },
+        {
+          "id": 1,
+          "title": "Reading Memo & Participation",
+          "kind": "essay",
+          "due_date": null,
+          "due_time": "09:00:00",
+          "recurrence": "weekly on thursday",
+          "weight_percent": 30.0,
+          "page_limit": 5,
+          "word_limit": null,
+          "format_notes": "- Every assignment should be written in Times New Roman, 12 point, with APSR citation style."
+        }
+      ],
+      "sessions": [
+        {
+          "id": 1,
+          "week_number": 1,
+          "meeting_date": "2031-08-14",
+          "sub_session_label": null,
+          "topic": "Introduction",
+          "section_heading": null,
+          "session_type": "no_reading",
+          "ordinal": 0,
+          "readings": []
+        },
+        {
+          "id": 2,
+          "week_number": 2,
+          "meeting_date": "2031-08-21",
+          "sub_session_label": null,
+          "topic": "Contending Approaches",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 1,
+          "readings": [
+            {
+              "work_id": 1,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            },
+            {
+              "work_id": 2,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 1,
+              "has_document": false
+            },
+            {
+              "work_id": 3,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 2,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "week_number": 3,
+          "meeting_date": "2031-08-28",
+          "sub_session_label": null,
+          "topic": "Analytical Tools",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 2,
+          "readings": [
+            {
+              "work_id": 4,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            },
+            {
+              "work_id": 5,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 1,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "week_number": 4,
+          "meeting_date": "2031-09-04",
+          "sub_session_label": null,
+          "topic": "Assignment week: the instructor at a conference",
+          "section_heading": null,
+          "session_type": "assignment",
+          "ordinal": 3,
+          "readings": []
+        },
+        {
+          "id": 5,
+          "week_number": 5,
+          "meeting_date": "2031-09-11",
+          "sub_session_label": null,
+          "topic": "Interstate Bargaining",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 4,
+          "readings": [
+            {
+              "work_id": 6,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            },
+            {
+              "work_id": 7,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 1,
+              "has_document": false
+            },
+            {
+              "work_id": 8,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 2,
+              "has_document": false
+            }
+          ]
+        }
+      ],
+      "works": [
+        {
+          "id": 1,
+          "authors": [
+            {
+              "surname": "Vantree",
+              "given": "Nils A"
+            }
+          ],
+          "title": "One Field, Many Maps",
+          "container": "Journal of Invented Politics",
+          "year": 2018,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "44",
+          "issue": "Spring",
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "12-39"
+        },
+        {
+          "id": 2,
+          "authors": [
+            {
+              "surname": "Halloran",
+              "given": "Maeve"
+            }
+          ],
+          "title": "Structures of Order",
+          "container": "Theory of Invented Politics",
+          "year": 1979,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "book_chapter",
+          "rendered_citation": null,
+          "pages": "Chapters 5-6"
+        },
+        {
+          "id": 3,
+          "authors": [
+            {
+              "surname": "Búzás",
+              "given": "Zoltán I"
+            }
+          ],
+          "title": "Naming Practices in Invented Orders",
+          "container": "Invented Organization",
+          "year": 2021,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "75",
+          "issue": "2",
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "440-463"
+        },
+        {
+          "id": 4,
+          "authors": [
+            {
+              "surname": "Reyes",
+              "given": "Camila"
+            },
+            {
+              "surname": "Nowak",
+              "given": "Piotr"
+            }
+          ],
+          "title": "Cooperation under Invented Anarchy: Strategies and Institutions",
+          "container": "World Fictions",
+          "year": 1985,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "38",
+          "issue": "1",
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "226-54"
+        },
+        {
+          "id": 5,
+          "authors": [
+            {
+              "surname": "Müller-Crepon",
+              "given": "Sven"
+            }
+          ],
+          "title": "Drawing Borders on Invented Maps",
+          "container": "American Journal of Invented Science",
+          "year": 2025,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "69",
+          "issue": "1",
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "132-147"
+        },
+        {
+          "id": 6,
+          "authors": [
+            {
+              "surname": "Okonkwo",
+              "given": "Adaeze N"
+            }
+          ],
+          "title": "Rationalist Accounts of Bargaining Failure",
+          "container": "Invented Organization",
+          "year": 1995,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "49",
+          "issue": "3",
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "379-414"
+        },
+        {
+          "id": 7,
+          "authors": [
+            {
+              "surname": "Lindqvist",
+              "given": "Karin"
+            }
+          ],
+          "title": "War as an Invented Commitment Problem",
+          "container": "Invented Organization",
+          "year": 2006,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "60",
+          "issue": "1",
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "169-203"
+        },
+        {
+          "id": 8,
+          "authors": [
+            {
+              "surname": "Osei",
+              "given": "Kwame"
+            },
+            {
+              "surname": "Morrow",
+              "given": "James"
+            },
+            {
+              "surname": "Silver",
+              "given": "Randi"
+            },
+            {
+              "surname": "Finch",
+              "given": "Alastair"
+            }
+          ],
+          "title": "An Institutional Account of the Invented Peace",
+          "container": "American Invented Science Review",
+          "year": 1999,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "93",
+          "issue": "4",
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "791-807"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": 3,
+      "code": "TRDE 8330",
+      "title": "The Politics of Invented Commerce",
+      "term": "spring",
+      "year": 2031,
+      "instructor_name": "Rowan Ashe",
+      "meeting_time": "Monday 12:40 - 3:50",
+      "site_url": "https://www.example.com/articles/blacklists-invented-policy-goals",
+      "citation_style": null,
+      "ai_stance": "unstated",
+      "policies": [
+        {
+          "policy_type": "ai_use",
+          "ai_stance": "unstated",
+          "heading": null,
+          "body": "",
+          "page_number": 0
+        }
+      ],
+      "deliverables": [
+        {
+          "id": 14,
+          "title": "Agency Reports",
+          "kind": "report",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 25.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 18,
+          "title": "Case Studies 1 - 5",
+          "kind": "presentation",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 17,
+          "title": "Case Study Paper and Presentation",
+          "kind": "presentation",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 16,
+          "title": "Case Study Presentation and Report #1",
+          "kind": "signup",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 13,
+          "title": "Case Study Report",
+          "kind": "case_study",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 20.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 15,
+          "title": "Final Issues Report",
+          "kind": "exam",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 35.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 12,
+          "title": "Professionalism",
+          "kind": "other",
+          "due_date": null,
+          "due_time": null,
+          "recurrence": "weekly",
+          "weight_percent": 20.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        }
+      ],
+      "sessions": [
+        {
+          "id": 12,
+          "week_number": 1,
+          "meeting_date": "2031-01-12",
+          "sub_session_label": null,
+          "topic": null,
+          "section_heading": null,
+          "session_type": "no_reading",
+          "ordinal": 0,
+          "readings": []
+        },
+        {
+          "id": 13,
+          "week_number": null,
+          "meeting_date": "2031-01-19",
+          "sub_session_label": null,
+          "topic": "January 19th NO CLASS",
+          "section_heading": null,
+          "session_type": "holiday",
+          "ordinal": 1,
+          "readings": []
+        },
+        {
+          "id": 14,
+          "week_number": 2,
+          "meeting_date": "2031-01-26",
+          "sub_session_label": null,
+          "topic": "Why Invented Controls?",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 2,
+          "readings": [
+            {
+              "work_id": 13,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            },
+            {
+              "work_id": 14,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 1,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "week_number": 3,
+          "meeting_date": "2031-02-02",
+          "sub_session_label": null,
+          "topic": "Multilateral Invented Regimes",
+          "section_heading": null,
+          "session_type": "reading",
+          "ordinal": 3,
+          "readings": [
+            {
+              "work_id": 15,
+              "requirement_level": "required",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 0,
+              "has_document": false
+            },
+            {
+              "work_id": 16,
+              "requirement_level": "inspectional",
+              "page_range": null,
+              "access_note": null,
+              "content_warning": null,
+              "ordinal": 1,
+              "has_document": false
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "week_number": 4,
+          "meeting_date": "2031-02-09",
+          "sub_session_label": null,
+          "topic": "Regulators and Regulations",
+          "section_heading": null,
+          "session_type": "no_reading",
+          "ordinal": 4,
+          "readings": []
+        }
+      ],
+      "works": [
+        {
+          "id": 13,
+          "authors": [
+            {
+              "surname": "Darrow",
+              "given": "Jonah L."
+            },
+            {
+              "surname": "Vantree",
+              "given": "Nils K."
+            }
+          ],
+          "title": "Careers in Invented Trade Control",
+          "container": "Invented Trade Review",
+          "year": 2019,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": "5",
+          "issue": null,
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "journal_article",
+          "rendered_citation": null,
+          "pages": "8"
+        },
+        {
+          "id": 14,
+          "authors": [
+            {
+              "surname": "Ferreira",
+              "given": "Ian F."
+            },
+            {
+              "surname": "Osei",
+              "given": "Paul K."
+            }
+          ],
+          "title": "The Invented Control System and Reform Initiative",
+          "container": "Invented Research Service",
+          "year": 2020,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": null,
+          "report_number": "R99123",
+          "work_type": "government_document",
+          "rendered_citation": null,
+          "pages": null
+        },
+        {
+          "id": 15,
+          "authors": [
+            {
+              "surname": "Sun",
+              "given": "Mira"
+            }
+          ],
+          "title": "Blacklists Used for Invented Policy Goals",
+          "container": "The Daily Example",
+          "year": 2020,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": "https://www.example.com/articles/blacklists-invented-policy-goals",
+          "report_number": null,
+          "work_type": "news_article",
+          "rendered_citation": null,
+          "pages": null
+        },
+        {
+          "id": 16,
+          "authors": [],
+          "title": null,
+          "container": null,
+          "year": null,
+          "year_end": null,
+          "year_is_open": 0,
+          "volume": null,
+          "issue": null,
+          "doi": null,
+          "url": null,
+          "report_number": null,
+          "work_type": "unknown",
+          "rendered_citation": null,
+          "pages": null
+        }
+      ],
+      "notes": []
+    }
+  ]
+}

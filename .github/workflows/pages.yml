@@ -1,0 +1,67 @@
+# builds the public site from data/public.json and publishes it to github
+# pages. the database and the reading pdfs never reach ci, so this job cannot
+# leak them: it can only publish what a reviewed `vault export --public`
+# already put in the repository.
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/public.json"
+      - "src/**"
+      - ".github/workflows/pages.yml"
+  schedule:
+    - cron: "0 10 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: install
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -qy libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+          pip install -q -e . weasyprint
+
+      - name: install pagefind
+        run: |
+          curl -sL https://github.com/CloudCannon/pagefind/releases/download/v1.3.0/pagefind-v1.3.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+          sudo mv pagefind /usr/local/bin/
+
+      - name: build public site and pdfs
+        run: |
+          test -f data/public.json || { echo "no data/public.json, nothing to publish"; exit 1; }
+          vault build --public --pdf
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site_public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

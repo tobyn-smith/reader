@@ -1,0 +1,36 @@
+#!/bin/sh
+# refuse commits that would put reading files or the database into history.
+# the repo carries code, templates and data/public.json. everything else lives
+# outside the working tree, but one tired `git add -A` is all it takes, so this
+# is checked mechanically rather than remembered.
+#
+# enable with: git config core.hooksPath .githooks
+
+limit_bytes=5242880
+status=0
+
+files=$(git diff --cached --name-only --diff-filter=AM)
+[ -z "$files" ] && exit 0
+
+for f in $files; do
+    case "$f" in
+        tests/fixtures/*)
+            # committed test fixtures are the one sanctioned use of pdfs
+            ;;
+        *.pdf|*.PDF|*.sqlite|*.sqlite3|*.db)
+            echo "pre-commit: refusing to commit $f" >&2
+            echo "  reading files and databases stay outside the repository." >&2
+            status=1
+            ;;
+    esac
+
+    if git cat-file -e ":$f" 2>/dev/null; then
+        size=$(git cat-file -s ":$f")
+        if [ "$size" -gt "$limit_bytes" ]; then
+            echo "pre-commit: $f is $size bytes, over the 5 MB limit" >&2
+            status=1
+        fi
+    fi
+done
+
+exit $status

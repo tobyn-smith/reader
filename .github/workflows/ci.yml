@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: install
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -qy libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+          pip install -q -e ".[dev]" weasyprint
+
+      - name: tests
+        run: pytest -q
+
+      - name: export allowlist check
+        if: hashFiles('data/public.json') != ''
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from vault.publish import check_export_file
+          problems = check_export_file(Path("data/public.json"))
+          if problems:
+              raise SystemExit("fields outside the allowlist: " + ", ".join(problems))
+          print("data/public.json holds only allowlisted fields")
+          PY
