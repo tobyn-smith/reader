@@ -5,7 +5,7 @@
   margin: 22mm 18mm 20mm 24mm;
   @top-left { content: string(course-code); font-size: 8pt; color: #000; }
   @top-right { content: string(doc-section); font-size: 8pt; }
-  @bottom-left { content: "Generated " string(generated-on); font-size: 8pt; }
+  /* bottom-left carries the generation date, injected at build time */
   @bottom-right { content: counter(page) " of " counter(pages); font-size: 8pt; }
 }
 

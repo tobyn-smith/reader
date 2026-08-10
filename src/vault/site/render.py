@@ -69,6 +69,19 @@ def authors_label(authors: list[dict]) -> str:
     return "; ".join(names)
 
 
+def join_citation_bits(bits: list) -> str:
+    """join with periods without doubling the one a quoted title carries."""
+    out = ""
+    for bit in (str(b).strip() for b in bits if b):
+        if not out:
+            out = bit
+        elif out.endswith((".", ".”", '."', "?", "?”", "-")):
+            out += f" {bit}"
+        else:
+            out += f". {bit}"
+    return out
+
+
 def citation_line(work: dict) -> str:
     if work.get("rendered_citation"):
         return work["rendered_citation"]
@@ -97,7 +110,7 @@ def citation_line(work: dict) -> str:
         bits.append(str(work["pages"]))
     if work.get("report_number"):
         bits.append(work["report_number"])
-    return ". ".join(str(b) for b in bits if b)
+    return join_citation_bits(bits)
 
 
 def short_date(value: str | None) -> str:

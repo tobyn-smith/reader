@@ -52,12 +52,17 @@ def build_pdfs(payload: dict, target: Path, *, generated_on: dt.date | None = No
 
     generated = (generated_on or dt.date.today()).isoformat()
     css = weasyprint.CSS(filename=str(PRINT_CSS))
+    # the generation date goes into the running footer here rather than via
+    # string-set, which never fires for hidden elements
+    stamp = weasyprint.CSS(
+        string='@page { @bottom-left { content: "Generated %s"; font-size: 8pt; } }' % generated
+    )
     target.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
     def emit(name: str, html: str) -> None:
         path = target / name
-        weasyprint.HTML(string=html).write_pdf(str(path), stylesheets=[css])
+        weasyprint.HTML(string=html).write_pdf(str(path), stylesheets=[css, stamp])
         written.append(path)
 
     courses = payload.get("courses", [])
@@ -78,7 +83,7 @@ def _shell(title: str, body: str, generated: str) -> str:
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         f"<title>{esc(title)}</title></head><body>"
-        f"<span class='generated'>{esc(generated)}</span>{body}</body></html>"
+        f"{body}</body></html>"
     )
 
 
