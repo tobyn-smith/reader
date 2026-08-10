@@ -23,15 +23,6 @@ class PdfReport:
     skipped_reason: str | None = None
 
 
-def _engine():
-    try:
-        import weasyprint
-
-        return weasyprint
-    except Exception as error:
-        return None if isinstance(error, ImportError) else None
-
-
 def _available() -> tuple[bool, str]:
     try:
         import weasyprint  # noqa: F401
