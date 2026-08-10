@@ -1,0 +1,55 @@
+{
+  "structure": "bulleted",
+  "course": {
+    "code": "POLS 6510",
+    "title": "Seminar in Invented World Politics",
+    "term": "fall",
+    "year": 2031,
+    "instructor_name": "Dana Okafor"
+  },
+  "ai_stance": "prohibited",
+  "session_count": 5,
+  "reading_counts": {"1": 0, "2": 3, "3": 2, "4": 0, "5": 3},
+  "session_types": {"1": "no_reading", "4": "assignment"},
+  "weight_total": 100.0,
+  "citations": {
+    "2": [
+      {
+        "authors": ["Vantree"],
+        "title": "One Field, Many Maps",
+        "container": "Journal of Invented Politics",
+        "year": 2018,
+        "pages": "12-39",
+        "work_type": "journal_article"
+      },
+      {
+        "authors": ["Halloran"],
+        "title": "Structures of Order",
+        "container": "Theory of Invented Politics",
+        "year": 1979,
+        "work_type": "book_chapter"
+      },
+      {
+        "authors": ["Búzás"],
+        "title": "Naming Practices in Invented Orders",
+        "container": "Invented Organization",
+        "year": 2021,
+        "work_type": "journal_article"
+      }
+    ],
+    "3": [
+      {
+        "authors": ["Reyes", "Nowak"],
+        "title": "Cooperation under Invented Anarchy: Strategies and Institutions",
+        "year": 1985,
+        "work_type": "journal_article"
+      },
+      {
+        "authors": ["Müller-Crepon"],
+        "title": "Drawing Borders on Invented Maps",
+        "year": 2025,
+        "work_type": "journal_article"
+      }
+    ]
+  }
+}

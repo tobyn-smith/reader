@@ -1,0 +1,35 @@
+{
+  "structure": "table",
+  "course": {
+    "code": "ARTS 2210",
+    "title": "Survey of Invented Art: Movements and Meanings",
+    "term": "fall",
+    "year": 2031,
+    "instructor_name": "Priya Raman"
+  },
+  "ai_stance": "unstated",
+  "session_count": 6,
+  "reading_counts": {"1": 1, "2": 2, "3": 1},
+  "weight_total": 103.0,
+  "sub_sessions": {
+    "2": ["T", "TR"],
+    "3": ["T", "TR"]
+  },
+  "content_warning_week": 2,
+  "exam_weeks": [3],
+  "citations": {
+    "2": [
+      {
+        "authors": ["Ruiz", "Weber"],
+        "title": "The Painted Door of the Old Capital",
+        "container": "Artsurvey",
+        "work_type": "web_page"
+      },
+      {
+        "pages_only": "29-37",
+        "container": "The Illustrated Companion to Invented Art",
+        "work_type": "book_chapter"
+      }
+    ]
+  }
+}

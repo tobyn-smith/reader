@@ -1,0 +1,38 @@
+{
+  "structure": "labelled",
+  "course": {
+    "code": "TRDE 8330",
+    "title": "The Politics of Invented Commerce",
+    "term": "spring",
+    "year": 2031,
+    "instructor_name": "Rowan Ashe"
+  },
+  "ai_stance": "unstated",
+  "session_count": 5,
+  "reading_counts": {"1": 0, "2": 2, "3": 2, "4": 0},
+  "holiday_dates": ["2031-01-19"],
+  "weight_total": 100.0,
+  "important_dates": {
+    "count": 5,
+    "spring_break_start": "2031-03-07",
+    "spring_break_end": "2031-03-11"
+  },
+  "requirement_levels": {"3": ["required", "inspectional"]},
+  "citations": {
+    "2": [
+      {
+        "authors": ["Darrow", "Vantree"],
+        "title": "Careers in Invented Trade Control",
+        "year": 2019,
+        "work_type": "journal_article"
+      },
+      {
+        "authors": ["Ferreira", "Osei"],
+        "title": "The Invented Control System and Reform Initiative",
+        "year": 2020,
+        "report_number": "R99123",
+        "work_type": "government_document"
+      }
+    ]
+  }
+}

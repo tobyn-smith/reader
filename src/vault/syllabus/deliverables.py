@@ -341,6 +341,9 @@ def _from_hint(hint: str, term: Term | None) -> Deliverable | None:
     # or "assessment due at 11:59 pm" becomes an assignment called "59 pm".
     m = re.match(r"^\s*(?P<label>[A-Za-z][\w\s-]{1,24}?)\s*:\s*(?P<rest>\S.*)$", text)
     title = collapse_whitespace(m.group("rest") if m else text).strip(" .,-")
+    # the date tail is data, not name: "Assessment 4 due 9/21 at 11:59 pm" is
+    # the assignment "Assessment 4"
+    title = re.split(r"\s+due\s+", title, maxsplit=1, flags=re.IGNORECASE)[0].strip(" .,-")
     if not title:
         return None
 

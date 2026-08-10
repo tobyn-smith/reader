@@ -276,9 +276,10 @@ def _build_reading(raw: str, ordinal: int) -> ReadingEntry | None:
     if cit.looks_like_placeholder(text):
         return None
     # an instruction is not a reading. "syllabus review, no reading" under a
-    # week heading means the week has none, and inventing one from that line
-    # would make the status view lie about what is outstanding.
-    if NO_READING_RE.search(text) or NO_MEETING_RE.search(text):
+    # week heading means the week has none, and an exam announcement is an
+    # event. inventing a reading from either would make the status view lie
+    # about what is outstanding.
+    if NO_READING_RE.search(text) or NO_MEETING_RE.search(text) or EXAM_RE.search(text):
         if not cit.parse_citation(text).parsed or len(text) < 60:
             return None
 

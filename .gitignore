@@ -19,3 +19,8 @@ web/node_modules/
 web/.next/
 web/out/
 web/.vercel
+
+# built sites are outputs, never source. the private one holds full text.
+_site_public/
+_site_private/
+data/private*

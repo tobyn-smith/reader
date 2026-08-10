@@ -125,8 +125,15 @@ def _labelled_values(lines: list[str]) -> dict[str, str]:
     return found
 
 
+_CONTINUES = re.compile(r"(?:\b(?:to|of|and|in|on|for|the|a|an)|[:,&-])$", re.IGNORECASE)
+
+
 def _find_title(lines: list[str], code: str | None) -> str | None:
-    """the course title is the most title-like line near the code."""
+    """the most title-like line near the code, joined across wraps.
+
+    a long title wraps in the header block, and each fragment alone looks
+    incomplete, so a line that ends mid phrase pulls the following line in.
+    """
     if code:
         bare = code.replace(" ", "")
         for index, line in enumerate(lines):
@@ -134,14 +141,27 @@ def _find_title(lines: list[str], code: str | None) -> str | None:
                 same_line = re.sub(re.escape(code), "", line, flags=re.IGNORECASE)
                 same_line = same_line.strip(" :-–—")
                 if len(same_line) > 6 and not _is_label(same_line):
-                    return same_line
-                for candidate in lines[index + 1: index + 4]:
+                    return _join_wrapped(same_line, lines[index + 1:])
+                for offset, candidate in enumerate(lines[index + 1: index + 4]):
                     if len(candidate) > 6 and not _is_label(candidate):
-                        return candidate.strip(" :-–—")
+                        return _join_wrapped(
+                            candidate.strip(" :-–—"), lines[index + offset + 2:]
+                        )
     for line in lines[:6]:
         if len(line) > 10 and not _is_label(line) and not CODE_RE.search(line):
             return line
     return None
+
+
+def _join_wrapped(title: str, rest: list[str]) -> str:
+    for line in rest:
+        if len(title) > 90 or not _CONTINUES.search(title):
+            break
+        candidate = line.strip(" :-–—")
+        if not candidate or _is_label(candidate):
+            break
+        title = f"{title} {candidate}"
+    return title.strip()
 
 
 def _is_label(line: str) -> bool:

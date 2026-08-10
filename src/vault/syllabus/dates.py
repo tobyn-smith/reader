@@ -204,12 +204,18 @@ def parse_important_dates(lines: list[str], term: Term | None) -> list[DatedEntr
             continue
 
         found = list(iter_dates(date_part, term))
-        entries.append(
-            DatedEntry(
-                label=label,
-                start=found[0] if found else None,
-                end=found[1] if len(found) > 1 else None,
-                raw=line,
+        end = found[1] if len(found) > 1 else None
+        if end is None and found:
+            # "March 7th - 11th" leaves the month off the second day
+            m_range = re.search(
+                r"[-–—]\s*(?:[A-Za-z]+\s+)?(\d{1,2})\s*(?:st|nd|rd|th)?\s*$", date_part
             )
+            if m_range:
+                day = int(m_range.group(1))
+                if day != found[0].day:
+                    end = _safe_date(found[0].year, found[0].month, day)
+
+        entries.append(
+            DatedEntry(label=label, start=found[0] if found else None, end=end, raw=line)
         )
     return entries

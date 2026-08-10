@@ -548,11 +548,27 @@ def _statistical_split(piece: str, lex: Lexicon, min_length: int) -> list[str]:
     return candidate
 
 
+# the only one and two letter pieces allowed inside an accepted split. the
+# frequency list knows plenty of junk two letter "words" ("al", "ed", "un"),
+# and any of them slipping through turns a rare real word into two fragments.
+_SHORT_WORDS = {
+    "a", "i", "an", "as", "at", "be", "by", "do", "go", "he", "if", "in",
+    "is", "it", "my", "no", "of", "on", "or", "so", "to", "up", "us", "we",
+}
+
+
 def _split_is_confident(pieces: list[str], lex: Lexicon) -> bool:
     """accept a statistical split only when every piece is a real word."""
     if not lex.available:
         return False
-    return all(len(p) >= 2 and lex.knows(p) for p in pieces)
+    for piece in pieces:
+        lowered = piece.lower()
+        if len(piece) <= 2:
+            if lowered not in _SHORT_WORDS:
+                return False
+        elif not lex.knows(piece):
+            return False
+    return True
 
 
 # leading markers
@@ -561,7 +577,7 @@ def _split_is_confident(pieces: list[str], lex: Lexicon) -> bool:
 # strips it when what follows is clearly a heading or list item, so real words
 # are never eaten.
 _MARKER_RE = re.compile(
-    r"^[ \t]*(?:\(cid:\d+\)|[•▪●◦‣⁃⧫◆◇∗*–—−-]|(?<![A-Za-z])[a-zA-Z](?=\s))\s+"
+    r"^[ \t]*(?:\(cid:\d+\)|[•▪●◦‣⁃⧫◆◇∗*?–—−-]|(?<![A-Za-z])[a-zA-Z](?=\s))\s+"
 )
 
 
