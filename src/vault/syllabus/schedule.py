@@ -115,6 +115,14 @@ LABEL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# a label line that lost its colon in extraction, e.g. "Review (Inspectional
+# Reading)" on its own line. without this it turns into a phantom reading.
+BARE_LABEL_RE = re.compile(
+    r"^\s*(?P<label>readings?|review(?:\s*\([^)]*\))?|terms and key concepts|"
+    r"presentations?)\s*$",
+    re.IGNORECASE,
+)
+
 # a line that cancels or replaces a meeting
 NO_MEETING_RE = re.compile(
     r"\b(no class|no meeting|holiday|break|recess|cancelled|canceled)\b", re.IGNORECASE
@@ -537,11 +545,11 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
         if session.section_heading is None:
             session.section_heading = section_heading
 
-        m = LABEL_RE.match(text)
+        m = LABEL_RE.match(text) or BARE_LABEL_RE.match(text)
         if m:
             flush_entry()
             label = m.group("label").strip().lower()
-            rest = m.group("rest").strip()
+            rest = (m.group("rest") or "").strip() if "rest" in m.groupdict() else ""
             if label == "topic":
                 session.topic = collapse_whitespace(rest) or session.topic
                 continue
@@ -555,6 +563,16 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
 
         if label in {"due", "sign-up", "sign up", "signup", "presentation", "presentations"}:
             session.deliverable_hints.append(f"{label}: {text}")
+            continue
+
+        # a terms list is a glossary: one line, one term. accumulating lines
+        # the way citations need makes the count depend on where the page
+        # breaks happened to fall, which is how the two extraction paths came
+        # to disagree about the same syllabus.
+        if label.startswith("terms"):
+            flush_entry()
+            current.append(text)
+            flush_entry()
             continue
 
         if _starts_new_entry(text, current):

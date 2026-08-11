@@ -34,7 +34,7 @@ It has two halves that share one database:
 week-by-week schedule, each reading as a proper citation, each graded
 assignment with its due date, and the policies you will need to look up later,
 including the course's AI policy. It shows you the whole parse before saving
-anything, so a bad guess never sticks.
+anything.
 
 **Reading pipeline.** Drop your PDFs in a folder and run one command. Text is
 extracted with page numbers kept all the way through. Two-column layouts are
@@ -50,14 +50,13 @@ can print a checklist:
     due
       POLS 6510  Reading Memo & Participation  weekly on thursday 09:00
 
-Months later, when you half-remember a passage, `vault search` finds it and
-gives you the citation and the page number, ready for a footnote.
+`vault search` runs full text search over everything ingested and returns the
+citation and page number with each hit.
 
 Everything runs on your machine, offline, with no accounts and no keys. The
 optional model layer writes reading briefs and does nothing else. Without it
 the tool still does everything above. If a course bans AI use, briefs are
-turned off for that course, and the tool never writes anything you could hand
-in.
+turned off for that course. Nothing in the tool generates submittable text.
 
 ## Install
 

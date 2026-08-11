@@ -1,279 +1,214 @@
 # Architecture
 
-This file is written for the person who opens the repo in three months with no
-memory of it. Read this before touching anything.
+Working notes for this repo. Read before changing the parsers.
 
 ## What this is
 
-A pipeline for coursework reading management, in two halves.
+Two halves, one database.
 
-Half A takes a syllabus PDF and extracts the course, the week-by-week schedule,
-every assigned reading as a structured citation, every graded deliverable, and
-the policies that matter during the term. Nothing is written until the parse
-has been reviewed and confirmed.
+Half A: syllabus PDF in, structured parse out. Course info, weekly schedule,
+readings as citations, graded work with dates, policies. Nothing is saved
+until the parse is reviewed.
 
-Half B takes the actual reading PDFs, extracts clean text with page numbers
-preserved, links each file to the syllabus entry it satisfies, and stores
-everything in a searchable local database. `vault status` reports what this
-week assigns, what has been ingested, what is missing, and what is due.
+Half B: reading PDFs in. Text extracted with page numbers kept, each file
+matched to its syllabus entry. `vault status` prints what is assigned, what is
+ingested, what is missing, what is due.
 
-The output is a static site built in two variants from the same templates: a
-public one safe for GitHub Pages and a private one that never leaves the
-machine.
+Output is a static site in two builds from the same templates. Public build
+goes to GitHub Pages. Private build stays on the machine.
+
+There is also a browser app (`app/`) that runs the same parser client side.
+Files dropped there never leave the browser.
 
 ## Layout
 
     src/vault/
       text/           pdf -> clean pages
-        model.py        the extracted document, with no pdf library attached
-        extract.py      pymupdf and pdfplumber. command line only
-        runs.py         positioned text runs -> the same document. browser only
-        normalize.py    the extraction artifact repairs
+        model.py        extracted document, no pdf library imports
+        extract.py      pymupdf + pdfplumber, cli only
+        runs.py         positioned text runs -> same document, browser path
+        normalize.py    extraction artifact repairs
         layout.py       columns, running headers, footnotes
         chunk.py        page aligned segments
-      syllabus/       clean pages -> structured parse. zones, schedule, citations,
+      syllabus/       clean pages -> parse. zones, schedule, citations,
                       deliverables, policies, dates, pipeline
-      site/           parse + database -> static html and print pdfs
-      llm/            the one module allowed to import a model sdk
-      web.py          the browser entry points, json in and json out
-      match.py        reading to syllabus scoring, shared by both paths
-      config.py       where files live
-      db.py           all sql, sqlite behind one module
-      publish.py      the public/private boundary
+      site/           parse + db -> static html and print pdfs
+      llm/            the only module allowed to import a model sdk
+      web.py          browser entry points, json in / json out
+      match.py        reading-to-syllabus scoring, shared
+      config.py       file locations
+      db.py           all sql
+      publish.py      public/private filter
       ingest.py       reading pdfs in
-      status.py       the week view
-      review.py       the confirmation step
-      enrich.py       crossref and openlibrary, cached, additive only
-      brief.py        model-backed briefs, gated by course ai policy
+      status.py       week view
+      review.py       confirmation step
+      enrich.py       crossref / openlibrary, cached, additive only
+      brief.py        model briefs, gated by course ai policy
       cli.py          the vault command
-    app/              the browser app. plain html, css and modules
+    app/              browser app. plain html/css/js modules
       extract-worker.js   pdf.js
       parse-worker.js     pyodide running src/vault
       store.js            indexeddb
-      render.js           the views
-    db/migrations/    sqlite schema, applied in filename order
-    db/postgres/      the same schema in postgres dialect, unused but current
-    tests/fixtures/   synthetic pdfs reproducing hostile layouts
-    scripts/          fixture generator, app bundler, the publish gate
-    .githooks/        the pre-commit guard
+      render.js           views
+    db/migrations/    sqlite schema
+    db/postgres/      same schema, postgres dialect, unused
+    tests/fixtures/   synthetic pdfs. no real course material anywhere in the repo
+    scripts/          fixture generator, app bundler, publish gate
+    .githooks/        pre-commit guard
 
-## Decisions and why
+## Decisions
 
-Two extractors, one parser. Extraction is the only part that differs between
-the command line and the browser. `text/model.py` holds the extracted document
-and imports no pdf library, so `extract.py` (pymupdf and pdfplumber) and
-`runs.py` (positioned text runs from pdf.js) are interchangeable and everything
-downstream is shared. `tests/test_runs_parity.py` drives the same fixtures
-through both and holds them to the same expected output, which is what stops
-the two drifting apart.
+Two extractors, one parser. extract.py (cli) and runs.py (browser) both
+produce the ExtractedDoc in model.py. Everything downstream is shared.
+test_runs_parity.py runs the same fixtures through both and compares.
 
-Pyodide rather than a second parser in TypeScript. The citation patterns, the
-week detection and the normalization table are the expensive part of this
-project, and every one of them was arrived at by finding a case that broke.
-Reimplementing them would mean rediscovering the same bugs. The cost is a large
-download, so nothing loads until a file is picked and the service worker keeps
-it afterwards.
+Pyodide instead of a typescript rewrite. The citation patterns and week
+detection took a long time to get right. A second implementation would drift.
+Cost is a big download, so nothing loads until a file is picked, and the
+service worker caches it after.
 
-Table structure is recovered differently in each path. pdfplumber reads ruled
-lines directly. pdf.js exposes no rules at all, so `runs.py` infers columns
-from where text starts and rows from vertical gaps in the leftmost column. The
-two disagree on one point: cell extraction gives the header its own row, while
-the geometric path folds it into the first data row, because the gap under a
-heading is no larger than the gap between lines inside a cell. Rather than
-tuning a threshold that would break on the next document, the schedule parser
-strips header labels from the top of every cell and drops a row only when
-nothing survives. That is correct for both.
+Tables differ by path. pdfplumber sees ruled lines. pdf.js does not, so
+runs.py infers columns from where text starts and rows from anchor-column
+gaps, with week markers as hard row starts. Cell headers get stripped
+per cell in schedule.py since the two paths disagree about whether the header
+is its own row.
 
-Print output uses print CSS and `window.print()` in the browser, and WeasyPrint
-on the command line. The browser already has a typesetter and a pdf writer, and
-using them gives selectable text and correct page breaks for no bundle cost.
-`pdf-lib` is not used anywhere.
+Column mapping comes from the header row when one exists (week / date / topic /
+unit / readings / due). Learned per grid, not per document, because pdfplumber
+reports different phantom columns page to page. No header row means the old
+positional reading.
 
-Single threaded builds of pyodide. GitHub Pages cannot set response headers, so
-`Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` cannot be sent,
-which rules out `SharedArrayBuffer` and therefore WASM threading. A syllabus
-parses in about two seconds single threaded, so the `coi-serviceworker` shim is
-not worth its risk to first load. `app/_headers` is committed anyway: Cloudflare
-Pages and Netlify honour it and GitHub Pages ignores it harmlessly.
+Print output: print css + window.print() in the browser, WeasyPrint in the
+cli. No js pdf library.
 
-SQLite over hosted Postgres. Nothing reads the database at request time, so a
-server bought nothing but a connection string and a free tier to outgrow. The
-schema is kept portable and `db/postgres/` holds the same DDL; the swap is
-mechanical because every query already lives in `db.py`.
+Pyodide is the single threaded build. GitHub Pages cannot set COOP/COEP
+headers, so no SharedArrayBuffer, so no wasm threads. Parse time is a couple
+of seconds, fine. `app/_headers` is committed for hosts that do honour it.
 
-Static site over an app. The site is tables of readings and deadlines. It is
-rebuilt when data changes, which is a few times a week, not per request. Plain
-HTML with one stylesheet is faster, cannot break at 2 a.m., and is trivially
-hostable anywhere.
+SQLite, not hosted postgres. Nothing reads the db at request time. Schema kept
+portable, db/postgres/ has the same DDL.
 
-Deterministic parsing over a model. The parsers are pattern sets built against
-real syllabus structures, and every extracted row records which pattern
-produced it and at what confidence. A model may only improve low-confidence
-rows, never do the primary extraction. This is a cost decision and an accuracy
-one: mechanical extraction is auditable, model extraction is not. The whole
-pipeline runs with zero keys configured, which the test suite enforces.
+Deterministic parsing, model second. Every extracted row records the pattern
+that produced it and a confidence. A model may only improve low-confidence
+rows. Zero keys configured must keep the whole pipeline working; a test
+enforces it.
 
-Citation parsing refuses to guess. Anything no pattern claims lands in the
-review queue as unparsed rather than being half-filled. A wrong citation is
-worse than a flagged one, because a wrong one looks done.
+Citations never guess. Unmatched lines go to review as unparsed. A wrong
+citation looks finished, a flagged one does not.
 
-Counts are the primary test currency. A parser that drops one reading in five
-looks correct from the outside. Fixture tests assert exact per-week counts
-before anything else.
+Counts are the main test currency. Fixture tests assert exact per-week reading
+counts. A parser that drops one reading in five passes every other kind of
+check.
 
-The confirmation step is not skippable by accident. `vault syllabus` shows the
-full parse and walks the low-confidence rows before anything is written. A
-syllabus is parsed once a term; wrong data poisons everything downstream.
+## Publishing boundary
 
-## The publishing boundary
+Three separate guards:
 
-This is the part with real consequences, so it is enforced three ways, each
-independent of the others.
+1. publish.py is default deny. A field reaches data/public.json only if named
+   in ALLOWED. New schema columns publish nothing until allowlisted. Tests
+   fail a payload with unknown keys.
 
-1. The export filter in `publish.py` is default deny. A field reaches
-   `data/public.json` only if it is named in the `ALLOWED` map. Adding a schema
-   column publishes nothing until someone adds it to the allowlist, and the
-   test suite fails a payload carrying any unknown key.
+2. CI never sees the database. The Pages workflow builds from data/public.json
+   only, which is written by `vault export --public` and reviewed before
+   commit.
 
-2. CI never sees the database. The Pages workflow builds the public site from
-   `data/public.json`, the one data file allowed in the repo, written by
-   `vault export --public` and reviewed before committing. CI cannot leak what
-   it cannot read.
+3. The pre-commit hook (.githooks) rejects staged pdf/sqlite/db files outside
+   tests/fixtures/ and anything over 5 MB. Data lives in ~/.seminar-vault,
+   outside the tree.
 
-3. The pre-commit hook (`git config core.hooksPath .githooks`) rejects any
-   staged pdf, sqlite or db file outside `tests/fixtures/`, and anything over
-   5 MB. The database and the reading library live under `~/.seminar-vault`,
-   outside the working tree, so `git add -A` has nothing to sweep up.
+Never published: extracted reading text, briefs, instructor emails and
+locations, notes not marked shareable, courses flagged sensitive.
 
-What never publishes: extracted reading text (other people's copyright),
-briefs (model output, opt-in per course), instructor emails and locations,
-notes not explicitly marked shareable, and any course flagged sensitive.
+Do not swap any of this for an unlisted URL, robots.txt, or a client-side
+gate. Public host, no access layer: published.
 
-Do not weaken this with an unlisted URL, robots.txt, or a client-side gate.
-A public host without a real access layer is published to the world.
+## Private access from other devices
 
-## Private access away from this machine
+Default: `vault build --private` (gitignored output), `vault serve` locally.
 
-`vault build --private` renders everything, including full text and briefs, to
-`_site_private/`, which is gitignored. `vault serve` serves it locally. That is
-the default and it is enough for a desk.
-
-To reach the private build from a phone or the library, deploy it to Cloudflare
-Pages behind Cloudflare Access. By hand, from this machine, never from CI:
+Remote, by hand, never from CI:
 
     npm install -g wrangler
     wrangler login
     vault build --private --pdf
     wrangler pages deploy _site_private --project-name seminar-vault-private
 
-Then in the Cloudflare dashboard, Zero Trust, Access, Applications: add a
-self-hosted application covering `seminar-vault-private.pages.dev`, policy
-Allow, include emails: your email only, login method one-time PIN. The free
-Zero Trust plan covers this at time of writing; verify at signup.
+Then Cloudflare Zero Trust > Access > Applications: self-hosted app on the
+pages.dev domain, allow one email, one-time PIN. Free tier covered this when
+written, check at signup.
 
-Alternative with no third-party auth: `tailscale serve` in front of
-`vault serve` exposes the site to your own devices only. Not built here, just
-noted.
+Or `tailscale serve` in front of `vault serve`. Not built, just works.
 
 ## Print PDFs
 
-WeasyPrint renders the semester plans, week sheets, bibliographies and the
-deadlines document from the same payload as the site, using
-`site/assets/print.css`. On Windows the native pango libraries are usually
-absent; the build then says so and skips PDFs rather than failing. CI runs
-Ubuntu and produces them every time. If a layout ever exceeds what WeasyPrint
-can do, the fallback is headless Chromium via Playwright for that document
-only; nothing needs it today.
+WeasyPrint renders semester plans, week sheets, bibliographies, deadlines from
+the same payload as the site. Windows usually lacks the pango libraries; the
+build says so and skips instead of failing. CI (ubuntu) always produces them.
 
-## Known rough edges
+## Known gaps
 
-Four schedule layouts are handled: bulleted lists, ruled tables, labelled
-blocks, and date-led headings ("January 17th: Module 1"). A genuinely novel
-layout degrades to the nearest parser and shows up as low confidence and count
-warnings during review, which is the intended failure mode, but the review step
-is then doing real work.
+Schedule layouts handled: bulleted lists, ruled tables, labelled blocks,
+date-led headings ("January 17th: Module 1"). Anything else degrades to the
+closest parser and shows up as low confidence plus count warnings in review.
 
-Measured against sixteen real syllabi from one university, the parser finds a
-schedule in twelve. Table columns are mapped from the header row when one names
-them (week, date, topic, unit, readings, material due), so a six column grid no
-longer reads a date as the topic, a bare "1" under a Week heading counts as a
-week, and "01-07" in a date column parses as a date. The shape is learned per
-grid, because pdfplumber reports different phantom columns page by page.
+Some syllabi have no weekly schedule in the pdf at all, or only a deadline
+grid with no topics or readings. Those parse to an empty schedule with course
+info and weights still extracted. That is the correct output, not a bug.
 
-The remaining four are empty for honest reasons, checked by hand: two contain
-no weekly schedule at all (it lives on the course site), and two carry only a
-quiz deadline grid with no topics or readings, which surfaces through the
-deliverables instead. An empty schedule with the course identity and weights
-still extracted is the correct output for all four.
+The browser cannot see grids that fit one row per line with no week markers.
+pdfplumber reads their rules; pdf.js has none to read. Tried clustering run
+starts instead of line starts: it mistakes hanging-indent citation lists for
+tables and shreds them. Reverted. Closing this needs line/rect data from the
+pdf.js operator list added to the runs contract.
 
-The browser path reconstructs tables from text positions and cannot see ruled
-lines, so grids that fit one row per line (the six column kind) are found by
-the command line but not yet in the browser, which falls back to flowing text
-there. Clustering run starts instead of line starts would find them, but it
-also mistakes hanging-indent citation lists for tables and shreds the document,
-so the conservative side of that trade is kept and the gap stands recorded.
+Weight reconciliation merges a summary-table row with its prose paragraph on
+equal weight plus title overlap. Works on the cases seen so far, not general.
+Totals off 100 are reported, never corrected.
 
-Weights do not always reconcile. Where a syllabus states them once in a summary
-table and again in prose, the two are merged on an equal weight plus overlapping
-title rule, which fixed the trade seminars but is not general. A total other
-than 100 is reported rather than corrected.
+Reading lists inside table cells are the weakest output. Wrapped urls can
+leave fragments; obvious ones are dropped. A topic cell can still leak into
+readings on tables wider than the mapped columns.
 
-Reading lists inside table cells are the least reliable output. A long URL that
-wraps inside a cell can survive as two fragments; the obvious fragments are now
-dropped rather than listed as readings, but a topic cell can still leak into a
-reading list when a table has more columns than the parser expects.
+Title detection can truncate an unusual front-matter block. Surfaces in
+review.
 
-Front-matter title detection joins wrapped lines by continuation words. An
-unusual header block can still truncate a title; it surfaces in review.
+The matcher needs text. Scanned files with no OCR match nothing. Install
+ocrmypdf for the cli. The browser app detects a missing text layer and says
+so; tesseract.js is not wired in yet.
 
-The document matcher scores author, title and year overlap from the first two
-pages. Scanned files with no OCR yield no text and match nothing; install
-ocrmypdf to close that gap.
+Chunk embedding is a nullable column with no code behind it. Add sqlite-vec or
+pgvector behind db.py if semantic search ever earns its place.
 
-Chunk embedding is a nullable column with no code behind it. If semantic search
-ever earns its keep, add pgvector or sqlite-vec behind `db.py` and fill it; the
-schema is already shaped for it.
+weasyprint and pagefind are soft dependencies, missing ones degrade to a
+message.
 
-`weasyprint` and `pagefind` are soft dependencies. Missing binaries degrade to
-a message, never a failure.
+No headless browser test in CI. Parity tests cover the parsing half by
+running the browser code path in python. The app itself was exercised by hand:
+parse, review, confirm, views, matching, reload persistence, and a check that
+no request leaves the origin while a file is processed.
 
-OCR is not wired into the browser app. A scanned page is detected and reported
-as having no text layer, and is left empty rather than guessed at. Tesseract.js
-would slot into a third worker behind an explicit prompt; the detection and the
-reporting are already there, the OCR pass is not.
-
-The browser app has been exercised by hand through a real browser: parse,
-review, confirm, all five views, reading match, reload persistence, and a check
-that every network request stays same origin. It has not been run against a
-mobile browser or a 200 page scan, and there is no headless browser test in CI
-yet. `tests/test_runs_parity.py` covers the parsing half of that gap by driving
-the same fixtures through the browser code path in Python.
-
-## Running everything locally
+## Running locally
 
     python -m venv .venv && .venv/Scripts/activate     # or bin/activate
     pip install -e ".[dev]"
     git config core.hooksPath .githooks
 
     vault syllabus path/to/syllabus.pdf     # parse, review, confirm
-    vault ingest path/to/readings/          # or drop files in ~/.seminar-vault/inbox
-    vault status                            # the week view
-    vault search "some phrase"              # full text, cli
-    vault export --public                   # writes data/public.json for review
+    vault ingest path/to/readings/          # or ~/.seminar-vault/inbox
+    vault status
+    vault search "some phrase"
+    vault export --public                   # writes data/public.json
     vault build --public --pdf              # what ci does
-    vault build --private && vault serve    # the full private site locally
+    vault build --private && vault serve
 
-    pytest -q                               # the suite runs offline, no keys
-    python scripts/make_fixtures.py         # regenerate the synthetic pdfs
+    pytest -q                               # offline, no keys
+    python scripts/make_fixtures.py         # regenerate synthetic pdfs
 
-The browser app:
+Browser app:
 
-    python scripts/build_app.py --vendor    # bundle the parser, fetch pdf.js and pyodide
-    python -m http.server 8123 -d app       # then open http://127.0.0.1:8123
+    python scripts/build_app.py --vendor    # bundle parser, fetch pdf.js + pyodide
+    python -m http.server 8123 -d app
 
-`--vendor` downloads pdf.js and the pyodide core into `app/vendor/`, which is
-gitignored and rebuilt in CI. Nothing is loaded from a CDN at runtime: a tool
-that promises files never leave the browser must not be calling anywhere while
-it works.
+vendor/ is gitignored and rebuilt in CI. Nothing loads from a CDN at runtime.
 
-    python scripts/check_publish.py _site   # the gate ci runs before deploying
+    python scripts/check_publish.py _site   # the gate ci runs before deploy
