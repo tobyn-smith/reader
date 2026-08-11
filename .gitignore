@@ -26,3 +26,5 @@ _site_private/
 data/private*
 app/vendor/
 _site/
+build/
+dist/
