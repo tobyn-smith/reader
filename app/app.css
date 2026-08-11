@@ -1,149 +1,176 @@
-/* direction: warm paper. a student stares at reading lists for long stretches,
-   and a warm off-white sheet with near-black ink is the easiest surface to do
-   that on. one committed system, expressed as tokens: swap the values under
-   :root and the whole theme follows. a slate-warm dark variant derives from
-   the same hues for prefers-color-scheme: dark, because forcing light on a
-   dark os is its own kind of glare.
+/* direction: field notebook. the warm paper version read as a document; this
+   one reads as a reference table, which is what the tool actually is. two
+   deliberate changes carry it:
 
-   the color system, and nothing outside it:
-     --paper       page background
-     --surface     cards, fields, buttons
-     --ink         primary text          (16.1:1 on paper)
-     --muted       secondary text        (5.3:1 on paper, aa normal text)
-     --border      hairlines and rules
-     --border-strong  control borders, table head rules
-     --accent      primary actions, links, focus  (5.9:1 on paper)
-     --accent-ink  text on accent fills
-     --danger      destructive actions only       (6.1:1 on paper)
-     --flag        rows needing review
-   colour only ever means something: blue acts, red destroys, amber checks. */
+   neutral high contrast instead of warm. near black on near white, near white
+   on near black, no tint either way. a reading list is scanned, not savoured,
+   and the warmth was costing contrast for nothing.
+
+   a second typeface, but only for data. dates, weights, week numbers and
+   course codes set in the system monospace with tabular figures, so columns
+   line up down the page and a date is instantly distinguishable from a title.
+   prose stays in the system sans. the hierarchy comes from the content rather
+   than from decoration.
+
+   the token set, and nothing outside it:
+     --paper / --surface / --sunken   backgrounds
+     --ink / --muted                  text
+     --rule / --rule-strong           hairlines and structural rules
+     --accent / --accent-ink          actions, links, focus
+     --danger                         irreversible actions
+     --flag                           rows needing a decision
+   colour means one of three things: act, destroy, check. nothing else. */
 
 :root {
-  --paper: #faf8f4;
+  --paper: #fcfcfc;
   --surface: #ffffff;
-  --ink: #1c1b18;
-  --muted: #6b675f;
-  --border: #e3ddd2;
-  --border-strong: #b8b2a6;
-  --accent: #1a5fb4;
+  --sunken: #f4f4f5;
+  --ink: #141414;
+  --muted: #5c5c60;
+  --rule: #e4e4e7;
+  --rule-strong: #a1a1aa;
+  --accent: #1452b8;
   --accent-ink: #ffffff;
   --danger: #b3261e;
-  --flag: #8a6d00;
+  --flag: #8a6100;
+
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --size: 15px;
-  --small: 13px;
+  --small: 12.5px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #1b1e24;
-    --surface: #242832;
-    --ink: #e9e7e2;
-    --muted: #a5a099;
-    --border: #343945;
-    --border-strong: #4e5461;
-    --accent: #8ab4f8;
-    --accent-ink: #10131a;
-    --danger: #f28b82;
-    --flag: #d7ba5a;
+    --paper: #101012;
+    --surface: #17171a;
+    --sunken: #1d1d21;
+    --ink: #ededf0;
+    --muted: #a1a1a8;
+    --rule: #2a2a30;
+    --rule-strong: #4a4a52;
+    --accent: #7aa7f5;
+    --accent-ink: #0b0b0d;
+    --danger: #f08a82;
+    --flag: #d9b45c;
   }
 }
 
 * { box-sizing: border-box; }
 
 html {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--sans);
   font-size: var(--size);
-  line-height: 1.55;
+  line-height: 1.5;
   color: var(--ink);
   background: var(--paper);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0 auto;
-  padding: 1.75rem 1.25rem 4rem;
-  max-width: 66rem;
+  padding: 1.5rem 1.25rem 4rem;
+  max-width: 64rem;
 }
 
-h1, h2, h3 { margin: 1.6rem 0 0.45rem; line-height: 1.3; }
-h1 { font-size: 20px; font-weight: 700; margin-top: 0; letter-spacing: -0.01em; }
-h2 { font-size: 17px; font-weight: 700; }
+h1, h2, h3 { margin: 1.5rem 0 0.4rem; line-height: 1.25; }
+
+h1 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+h2 { font-size: 16px; font-weight: 700; }
 h3 { font-size: var(--size); font-weight: 700; }
 
-p { margin: 0.4rem 0; max-width: 80ch; }
+p { margin: 0.35rem 0; max-width: 78ch; }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* reassurance text stays present but quiet */
 .statement, .note, .status, .secondary {
   color: var(--muted);
   font-size: var(--small);
 }
 
-header {
-  border-bottom: 2px solid var(--border-strong);
-  padding-bottom: 0.75rem;
+/* data reads in monospace with tabular figures so columns align down the page */
+.when, .num, .flagcol, header nav a, #review-name {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
-header .statement { margin: 0.1rem 0 0; }
+header {
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 0.6rem;
+}
+
+header .statement { margin: 0.15rem 0 0; }
 
 header nav {
-  margin-top: 0.75rem;
+  margin-top: 0.7rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0 1.4rem;
+  gap: 0.35rem 0.4rem;
 }
 
 header nav a {
-  padding-bottom: 0.15rem;
-  border-bottom: 2px solid transparent;
+  font-size: var(--small);
+  padding: 0.12rem 0.45rem;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--muted);
 }
+
+header nav a:hover { text-decoration: none; border-color: var(--rule-strong); color: var(--ink); }
 
 header nav a[aria-current="page"] {
-  color: var(--ink);
+  color: var(--accent-ink);
+  background: var(--ink);
+  border-color: var(--ink);
   font-weight: 700;
-  border-bottom-color: var(--accent);
 }
-
-header nav a:hover { text-decoration: none; border-bottom-color: var(--border-strong); }
 
 nav.tabs {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0 1.4rem;
-  border-bottom: 1px solid var(--border);
-  margin: 0 0 1rem;
+  gap: 0 1.25rem;
+  border-bottom: 1px solid var(--rule);
+  margin: 0 0 0.9rem;
 }
 
 nav.tabs button {
   border: 0;
-  background: none;
-  padding: 0.35rem 0 0.45rem;
-  color: var(--accent);
-  cursor: pointer;
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  background: none;
   border-radius: 0;
+  padding: 0.3rem 0 0.4rem;
+  margin-bottom: -1px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-nav.tabs button:hover { border-bottom-color: var(--border-strong); }
+nav.tabs button:hover { color: var(--ink); }
 
 nav.tabs button[aria-current="true"] {
-  font-weight: 700;
   color: var(--ink);
+  font-weight: 700;
   border-bottom-color: var(--accent);
 }
 
-nav.tabs .right { margin-left: auto; }
-nav.tabs .right label { color: var(--muted); font-size: var(--small); margin-right: 0.35rem; }
+nav.tabs .right { margin-left: auto; text-transform: none; }
+nav.tabs .right label { color: var(--muted); font-size: var(--small); margin-right: 0.3rem; }
 
-section { margin-top: 1.75rem; }
+section { margin-top: 1.5rem; }
 
-/* controls: three visible weights.
-   primary   filled accent, the action the page exists for
-   standard  outlined on surface
-   quiet     text link weight, and danger recolors it for irreversible acts */
 button, input, select, textarea {
   font: inherit;
   color: var(--ink);
@@ -151,9 +178,9 @@ button, input, select, textarea {
 }
 
 select, input[type="text"], input[type="search"] {
-  border: 1px solid var(--border-strong);
-  border-radius: 3px;
-  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 0.18rem 0.4rem;
 }
 
 select:focus, input:focus, button:focus-visible {
@@ -162,14 +189,15 @@ select:focus, input:focus, button:focus-visible {
 }
 
 button {
-  border: 1px solid var(--border-strong);
-  border-radius: 3px;
-  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 0.26rem 0.8rem;
   cursor: pointer;
+  font-size: var(--small);
 }
 
 button:hover { border-color: var(--ink); }
-button:disabled { color: var(--muted); border-color: var(--border); cursor: default; }
+button:disabled { color: var(--muted); border-color: var(--rule); cursor: default; }
 
 button.primary, #confirm {
   background: var(--accent);
@@ -178,93 +206,88 @@ button.primary, #confirm {
   font-weight: 700;
 }
 
-button.primary:hover, #confirm:hover { filter: brightness(1.08); border-color: var(--accent); }
+button.primary:hover, #confirm:hover { filter: brightness(1.1); border-color: var(--accent); }
 
-/* only the intake picker is a primary action. a backup import is occasional,
-   so it stays quiet and does not compete with the main path. */
+/* only the intake picker is a primary action; a backup import is occasional */
 input[type="file"] { border: 0; background: none; color: var(--muted); font-size: var(--small); }
 
 .drop input[type="file"]::file-selector-button {
   font: inherit;
+  font-size: var(--small);
   background: var(--accent);
   color: var(--accent-ink);
   border: 1px solid var(--accent);
-  border-radius: 3px;
-  padding: 0.3rem 0.85rem;
-  margin-right: 0.6rem;
+  border-radius: 2px;
+  padding: 0.26rem 0.8rem;
+  margin-right: 0.55rem;
   cursor: pointer;
   font-weight: 700;
 }
 
-.drop input[type="file"]::file-selector-button:hover { filter: brightness(1.08); }
+.drop input[type="file"]::file-selector-button:hover { filter: brightness(1.1); }
 
 input[type="file"].plain::file-selector-button {
   font: inherit;
   font-size: var(--small);
   background: var(--surface);
   color: var(--ink);
-  border: 1px solid var(--border-strong);
-  border-radius: 3px;
-  padding: 0.2rem 0.6rem;
-  margin-right: 0.5rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 0.18rem 0.55rem;
+  margin-right: 0.45rem;
   cursor: pointer;
 }
 
 input[type="file"].plain::file-selector-button:hover { border-color: var(--ink); }
 
-#data-tools { margin-top: 0.75rem; border-top: 0; padding-top: 0; }
-#data-tools .controls { margin-top: 0.4rem; }
-#data-tools .controls .danger:first-of-type { margin-left: 0; }
-
 button.quiet {
   border: 0;
   background: none;
   padding: 0;
+  border-radius: 0;
   color: var(--muted);
   font-size: var(--small);
   text-decoration: underline;
-  border-radius: 0;
 }
 
 button.quiet:hover { color: var(--ink); border: 0; }
 
-/* irreversible actions carry their own color at rest, not only on hover */
+/* irreversible actions carry their colour at rest, not only on hover */
 button.danger {
   border: 0;
   background: none;
   padding: 0;
+  border-radius: 0;
   color: var(--danger);
   font-size: var(--small);
   text-decoration: underline;
-  border-radius: 0;
 }
 
 button.danger:hover { color: var(--danger); filter: brightness(0.85); border: 0; }
 
-label { display: inline-block; margin-right: 0.5rem; }
-label.inline { margin-left: 0.75rem; }
+label { display: inline-block; margin-right: 0.45rem; }
+label.inline { margin-left: 0.7rem; }
 
-/* the drop zone is the front door: visibly interactive, louder on hover,
-   loudest while a file is being dragged over it */
+/* the drop zone: interactive at rest, louder on hover, loudest on drag over */
 .drop {
-  border: 1.5px dashed var(--border-strong);
-  border-radius: 4px;
-  background: var(--surface);
-  padding: 1.1rem 1.2rem;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 3px;
+  background: var(--sunken);
+  padding: 1rem 1.1rem;
   margin: 0.5rem 0;
   color: var(--muted);
   font-size: var(--small);
 }
 
-.drop:hover { border-color: var(--accent); }
-
+.drop:hover { border-color: var(--accent); background: var(--surface); }
 .drop label { color: var(--ink); font-size: var(--size); }
-.drop .note { margin: 0.4rem 0 0; }
+.drop .note { margin: 0.35rem 0 0; }
 
 /* set by the dragenter handler while a file is held over the zone */
 .drop[data-active="true"] {
-  border-color: var(--accent);
   border-style: solid;
+  border-color: var(--accent);
+  background: var(--surface);
   color: var(--ink);
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -273,37 +296,39 @@ label.inline { margin-left: 0.75rem; }
 table {
   border-collapse: collapse;
   width: 100%;
-  margin: 0.5rem 0 1.25rem;
+  margin: 0.4rem 0 1.1rem;
 }
 
 th {
-  font-weight: 700;
   font-size: var(--small);
+  font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 2px solid var(--border-strong);
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--ink);
+  padding: 0.2rem 0.7rem 0.3rem 0;
+  text-align: left;
 }
 
-th, td {
+td {
   text-align: left;
   vertical-align: top;
-  padding: 0.4rem 0.75rem 0.4rem 0;
+  padding: 0.35rem 0.7rem 0.35rem 0;
+  border-bottom: 1px solid var(--rule);
 }
 
-td { border-bottom: 1px solid var(--border); }
-
-td.num, th.num { text-align: right; padding-right: 0.25rem; white-space: nowrap; }
-td.when, th.when { white-space: nowrap; color: var(--muted); }
+td.num, th.num { text-align: right; padding-right: 0.2rem; white-space: nowrap; }
+td.when, th.when { white-space: nowrap; color: var(--muted); font-size: var(--small); }
 
 tr.missing td { color: var(--danger); }
-.review-row td { color: var(--flag); }
+.review-row td { background: var(--sunken); }
+.flagged { color: var(--flag); font-weight: 700; }
 
-ul { margin: 0.3rem 0; padding-left: 1.2rem; }
+ul { margin: 0.25rem 0; padding-left: 1.15rem; }
 
-table.checklist td { padding: 0.45rem 0.75rem 0.45rem 0; }
-table.checklist td.tick { width: 1.6rem; padding-right: 0.4rem; }
-table.checklist td.when { width: 4.5rem; }
+table.checklist td { padding: 0.4rem 0.7rem 0.4rem 0; }
+table.checklist td.tick { width: 1.5rem; padding-right: 0.35rem; }
+table.checklist td.when { width: 4.6rem; }
 
 input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
 
@@ -311,54 +336,77 @@ input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px;
 
 input.note {
   width: 100%;
-  max-width: 36rem;
-  margin-top: 0.25rem;
+  max-width: 34rem;
+  margin-top: 0.2rem;
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule);
   border-radius: 0;
-  padding: 0.1rem 0;
+  padding: 0.08rem 0;
   background: transparent;
   font-size: var(--small);
   color: var(--ink);
 }
 
-input.note::placeholder { color: var(--border-strong); }
+input.note::placeholder { color: var(--rule-strong); }
 input.note:focus { border-bottom-color: var(--accent); outline: none; }
 
-section.week { margin-top: 1.4rem; }
+section.week { margin-top: 1.25rem; }
 section.week h3 .secondary { font-weight: 400; margin-left: 0.3rem; }
 
-section.course-deadlines { margin-top: 1.5rem; }
-section.course-deadlines h3 .secondary { font-weight: 400; margin-left: 0.5rem; }
+section.course-deadlines { margin-top: 1.4rem; }
+section.course-deadlines h3 .secondary { font-weight: 400; margin-left: 0.45rem; }
 
-ol.bibliography { padding-left: 1.5rem; }
-ol.bibliography li { margin-bottom: 0.4rem; }
+ol.bibliography { padding-left: 1.4rem; }
+ol.bibliography li { margin-bottom: 0.35rem; }
 
-table.review td.flagcol { width: 3.5rem; color: var(--flag); font-size: var(--small); }
-table.review input[type="text"] { width: 100%; max-width: 46rem; }
-.source { margin-top: 0.25rem; }
-#review .week h3 { margin: 1rem 0 0.15rem; }
-
-#tools {
-  margin-top: 2.5rem;
-  border-top: 1px solid var(--border);
-  padding-top: 0.6rem;
+table.review td.flagcol {
+  width: 3.4rem;
+  color: var(--flag);
+  font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-#tools summary {
+table.review input[type="text"] { width: 100%; max-width: 44rem; }
+.source { margin-top: 0.2rem; }
+#review .week h3 { margin: 0.9rem 0 0.1rem; }
+
+/* the accuracy note. plain, permanent, and sitting where the decision is made
+   rather than tucked away in a help page. */
+.caveat {
+  border-left: 2px solid var(--flag);
+  background: var(--sunken);
+  padding: 0.5rem 0.75rem;
+  margin: 0.6rem 0;
+  font-size: var(--small);
+  color: var(--ink);
+  max-width: 78ch;
+}
+
+#tools, #data-tools, #accuracy {
+  margin-top: 2rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.5rem;
+}
+
+#data-tools { margin-top: 0.5rem; border-top: 0; padding-top: 0; }
+
+#tools summary, #data-tools summary, #accuracy summary {
   cursor: pointer;
   color: var(--muted);
   font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-#tools summary:hover { color: var(--ink); }
-#tools[open] summary { margin-bottom: 0.75rem; }
+#tools summary:hover, #data-tools summary:hover, #accuracy summary:hover { color: var(--ink); }
+#tools[open] summary, #data-tools[open] summary, #accuracy[open] summary { margin-bottom: 0.6rem; }
 
-.controls { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: baseline; }
-.controls .danger:first-of-type { margin-left: auto; }
+#accuracy table { max-width: 34rem; }
 
-#review-name { font-weight: 400; }
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: baseline; }
+#data-tools .controls .danger:first-of-type { margin-left: 0; }
+
+#review-name { font-weight: 400; font-size: var(--small); }
 
 footer { margin-top: 2rem; color: var(--muted); font-size: var(--small); }
-
-.flagged { color: var(--flag); font-weight: 700; }

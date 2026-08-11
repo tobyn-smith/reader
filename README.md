@@ -24,6 +24,40 @@ The parser is the same Python the command line uses, compiled to WebAssembly
 and run in a worker, so both paths give the same answers. The fixture suite
 checks exactly that.
 
+## How accurate it is
+
+Read this before trusting the output. The parser is a set of patterns, not a
+model, and syllabi are written in every layout a person can invent.
+
+Measured over 24 real syllabi from one university, parsed and checked by hand:
+
+| What | Rate |
+| --- | --- |
+| Recognised a syllabus from a reading | 100% |
+| Course code | 100% |
+| Term | 96% |
+| Found the schedule | 79% |
+| Readings turned into full citations | 66% |
+| Weights totalling near 100% | 6 of 10 |
+
+The structural fields are reliable. Reading lists are not, and that is the
+number to keep in mind: a third of readings come through as the raw line from
+your syllabus rather than as author, title and year.
+
+What it will not do is hide that from you. A reading it cannot parse is shown
+as the exact text from the PDF and marked for checking. Nothing is dropped
+silently and nothing is invented. That is what the review step is for, and why
+it is worth the few minutes at the start of term.
+
+Where a schedule is missing entirely it is usually because the PDF has none:
+the schedule lives on the course site, or the file carries only a deadline
+grid with no topics or readings. In those cases the course, term and weights
+still come through.
+
+Layouts handled: bulleted lists, ruled tables, labelled blocks, date-led
+headings, and numbered meetings with the date leading or trailing. Anything
+else degrades to the closest parser and shows up as low confidence in review.
+
 ## On the command line
 
 For batch work: a folder of readings, full text search, and publishing a site.
