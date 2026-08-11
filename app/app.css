@@ -410,8 +410,9 @@ ol.bibliography li { margin-bottom: 0.35rem; }
 }
 
 /* the week header stays put while its rows scroll under it, so it is always
-   clear which week is being corrected */
-#review .week { margin-top: 1.5rem; }
+   clear which week is being corrected. the spacing is tight because most weeks
+   contribute one row, and a generous gap turns the page into headings. */
+#review .week { margin-top: 0.9rem; }
 
 .whead {
   position: sticky;
@@ -513,17 +514,18 @@ input.cite:focus {
 
 /* the accuracy note. plain, permanent, and sitting where the decision is made
    rather than tucked away in a help page. */
-.caveat {
-  border-left: 2px solid var(--flag);
-  padding: 0.1rem 0 0.1rem 0.75rem;
-  margin: 0.7rem 0 1rem;
-  font-size: var(--small);
-  line-height: 1.5;
-  color: var(--muted);
-  max-width: 74ch;
+/* the review actions ride along the bottom of the window. twenty five rows is
+   a long way to scroll back down once the last one is fixed. */
+.actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0.7rem 0;
+  background: var(--paper);
+  border-top: 1px solid var(--ink);
 }
-
-.caveat strong { color: var(--ink); font-weight: 700; }
 
 #tools, #data-tools, #accuracy {
   margin-top: 2rem;

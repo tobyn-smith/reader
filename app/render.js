@@ -235,6 +235,10 @@ export function reviewTable(parse, showAll = false) {
   const flagged = new Set(parse.review.map((r) => r.source_text))
   let checkCount = 0
   let cleanCount = 0
+  // one running count down the whole review, not one per week. most weeks
+  // show a single row, so a number that restarts every heading says nothing,
+  // where "14" out of 25 says how much is left.
+  let seq = 0
 
   const blocks = []
   parse.sessions.forEach((session, index) => {
@@ -252,8 +256,9 @@ export function reviewTable(parse, showAll = false) {
       // the flag is a rule down the side rather than the word "check" set
       // twenty five times. the colour already says it, and repeating it turns
       // the page into a column of the same word.
+      seq += 1
       rows.push(`<li class="rrow${low ? ' needs-check' : ''}">
-        <span class="rnum">${ri + 1}</span>
+        <span class="rnum">${seq}</span>
         <div class="rbody">
           <input type="text" class="cite" aria-label="Citation"
             data-session="${index}" data-reading="${ri}"
