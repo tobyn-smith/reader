@@ -180,10 +180,11 @@ button.primary, #confirm {
 
 button.primary:hover, #confirm:hover { filter: brightness(1.08); border-color: var(--accent); }
 
-/* the file picker is a primary action, so it dresses like one */
+/* only the intake picker is a primary action. a backup import is occasional,
+   so it stays quiet and does not compete with the main path. */
 input[type="file"] { border: 0; background: none; color: var(--muted); font-size: var(--small); }
 
-input[type="file"]::file-selector-button {
+.drop input[type="file"]::file-selector-button {
   font: inherit;
   background: var(--accent);
   color: var(--accent-ink);
@@ -195,7 +196,25 @@ input[type="file"]::file-selector-button {
   font-weight: 700;
 }
 
-input[type="file"]::file-selector-button:hover { filter: brightness(1.08); }
+.drop input[type="file"]::file-selector-button:hover { filter: brightness(1.08); }
+
+input[type="file"].plain::file-selector-button {
+  font: inherit;
+  font-size: var(--small);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 0.2rem 0.6rem;
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+input[type="file"].plain::file-selector-button:hover { border-color: var(--ink); }
+
+#data-tools { margin-top: 0.75rem; border-top: 0; padding-top: 0; }
+#data-tools .controls { margin-top: 0.4rem; }
+#data-tools .controls .danger:first-of-type { margin-left: 0; }
 
 button.quiet {
   border: 0;

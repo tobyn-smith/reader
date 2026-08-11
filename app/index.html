@@ -43,7 +43,7 @@
 </section>
 
 <details id="tools">
-  <summary>Add PDFs, export, clear</summary>
+  <summary>Add PDFs</summary>
 
   <div id="file-drop" class="drop">
     <label for="file-input">Drop syllabi and readings here, or</label>
@@ -53,16 +53,23 @@
   <p id="intake-status" class="status" role="status"></p>
   <div id="queue"></div>
   <div id="unmatched"></div>
+</details>
 
+<!-- nothing here does anything until a course exists, so it stays hidden
+     until one does -->
+<details id="data-tools" hidden>
+  <summary>Export, import, clear</summary>
+  <p class="controls">
+    <button type="button" id="print">Print or save as PDF</button>
+    <button type="button" id="export">Export JSON</button>
+    <label class="inline" for="import-input">Import a backup</label>
+    <input type="file" id="import-input" accept="application/json" class="plain">
+  </p>
   <p class="note">
     Stored in this browser only. It will not follow you to another device, and
     clearing browser data removes it.
   </p>
   <p class="controls">
-    <button type="button" id="print" class="primary">Print or save as PDF</button>
-    <button type="button" id="export">Export JSON</button>
-    <label class="inline" for="import-input">Import</label>
-    <input type="file" id="import-input" accept="application/json">
     <button type="button" id="remove-course" class="danger">Remove this course</button>
     <button type="button" id="clear" class="danger">Clear all data</button>
   </p>

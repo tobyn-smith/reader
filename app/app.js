@@ -268,6 +268,7 @@ async function confirmParse() {
   state.active = course.id
   $('views').hidden = false
   $('tools').open = false
+  $('data-tools').hidden = false
   nextReview()
   await rematchUnmatched()
   draw()
@@ -419,6 +420,7 @@ async function boot() {
   // with nothing parsed yet the drop zone is the only thing worth showing, so
   // it starts open and folds away once there is a schedule to look at
   $('tools').open = state.courses.length === 0
+  $('data-tools').hidden = state.courses.length === 0
   if (state.courses.length) {
     state.active = state.courses[0].id
     applyRequiredStyle()
@@ -501,6 +503,7 @@ async function boot() {
       state.active = state.courses[0]?.id ?? null
       $('views').hidden = !state.courses.length
       $('tools').open = state.courses.length === 0
+      $('data-tools').hidden = state.courses.length === 0
       draw()
     } catch (error) {
       status('intake-status', `Import failed: ${error.message}`)
@@ -515,6 +518,7 @@ async function boot() {
     state.active = null
     $('views').hidden = true
     $('tools').open = true
+    $('data-tools').hidden = true
     state.files = []
     drawQueue()
     drawNav()
