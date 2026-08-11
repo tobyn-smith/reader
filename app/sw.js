@@ -2,7 +2,7 @@
 // the first visit. nothing the visitor loads is ever cached, because nothing
 // the visitor loads ever reaches this worker.
 
-const CACHE = 'schedule-reader-v2'
+const CACHE = 'schedule-reader-v3'
 
 const SHELL = [
   './',
@@ -17,8 +17,14 @@ const SHELL = [
 ]
 
 self.addEventListener('install', (event) => {
+  // bypass the http cache when filling the shell. github pages serves with
+  // max-age=600, and installing through that cache can pin a stale stylesheet
+  // into a brand new worker, which keeps an old page alive for another visit.
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(SHELL.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   )
 })
 
