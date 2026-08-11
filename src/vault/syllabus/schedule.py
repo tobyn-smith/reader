@@ -303,14 +303,27 @@ def parse(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> SchedulePa
     return result
 
 
-def _score(parsed: ScheduleParse) -> tuple[int, int]:
-    """readings first, then sessions.
+def _score(parsed: ScheduleParse) -> tuple[int, int, int, int]:
+    """rank one parse of a schedule against another.
 
-    a syllabus that carries both a summary grid and the real listing gives the
-    grid more rows and the listing all the readings. the reading list is the
-    thing the tool exists to produce, so it decides.
+    two signals, and neither works alone.
+
+    dated meetings measure structure. running a flowing text parser over a
+    table finds rows but no dates, because the dates were in a column it never
+    saw, and a schedule with no dates is not a schedule.
+
+    resolved citations measure content. a parse can date every meeting and
+    still be the summary grid rather than the reading list, carrying three
+    entries where the real listing has ninety.
+
+    ranking on either one alone picks a known-wrong parse on real syllabi, so
+    they are added. raw counts only break ties, and detection breaks the rest,
+    which keeps the reported structure the honest explanation of the result.
     """
-    return sum(len(s.readings) for s in parsed.sessions), len(parsed.sessions)
+    dated = sum(1 for s in parsed.sessions if s.meeting_date)
+    readings = [r for s in parsed.sessions for r in s.readings]
+    resolved = sum(1 for r in readings if r.citation.matched_pattern)
+    return dated + resolved, resolved, len(readings), len(parsed.sessions)
 
 
 def _find_important_dates(doc: ExtractedDoc, term: Term | None) -> list[DatedEntry]:

@@ -157,3 +157,62 @@ class TestTableSessions:
         weeks = [s.week_number for s in parsed.sessions]
         assert weeks == [1, 2]
         assert len(parsed.sessions[1].readings) == 1
+
+
+class TestParserChoice:
+    """every parser runs and the best result wins. these pin the two ways the
+    ranking is known to go wrong if either signal is used on its own."""
+
+    def _doc(self, grid, text):
+        page = ExtractedPage(
+            number=1, text=text, raw_text=text, tables=[grid], block_texts=text.split("\n\n")
+        )
+        return ExtractedDoc(path=Path("t.pdf"), file_hash="t", page_count=1, pages=[page])
+
+    def _zone(self, doc):
+        lines = []
+        for block in doc.pages[0].block_texts:
+            for offset, raw in enumerate(block.splitlines()):
+                lines.append(zones.Line(1, len(lines), raw, starts_block=offset == 0))
+        return [zones.Zone(zones.SCHEDULE, None, lines)]
+
+    def test_a_dated_table_beats_undated_shredding(self):
+        # flowing text parsers run over a table find more rows than the cell
+        # reader, but they are fragments and they carry no dates. counting
+        # readings alone picks them, which is wrong.
+        grid = [
+            ["Week", "Date", "Topic", "Readings"],
+            ["1", "1/7", "Opening", "Voss, Mara. 2019. \"A Real Title.\" Journal 1(1): 1-10."],
+            ["2", "1/14", "Next Topic", "Ruiz, Ana. 2020. \"Another Title.\" Journal 2(2): 5-9."],
+            ["3", "1/21", "Third Topic", "Weber, Sam. 2021. \"A Third Title.\" Journal 3(1): 2-8."],
+        ]
+        text = "Week 1 Opening\n\nWeek 2 Next Topic\n\nWeek 3 Third Topic"
+        doc = self._doc(grid, text)
+        parsed = schedule.parse(doc, self._zone(doc), Term("spring", 2025))
+        assert parsed.structure == schedule.TABLE
+        assert sum(1 for s in parsed.sessions if s.meeting_date) >= 3
+
+    def test_a_real_reading_list_beats_a_dated_summary_grid(self):
+        # the other direction: a summary grid dates every row but carries three
+        # entries, while the real listing below it has the readings. ranking on
+        # dates alone picks the grid.
+        grid = [
+            ["Date", "Class Topics", "Assignments"],
+            ["Jan 7", "Opening", ""],
+            ["Jan 14", "Next", ""],
+            ["Jan 21", "Third", ""],
+        ]
+        text = (
+            "Class 1: January 7 - Opening\n"
+            "Voss, Mara. 2019. \"A Real Title.\" Journal of Examples 1(1): 1-10.\n"
+            "Ruiz, Ana. 2020. \"Another Title.\" Journal of Examples 2(2): 5-9.\n\n"
+            "Class 2: January 14 - Next\n"
+            "Weber, Sam. 2021. \"A Third Title.\" Journal of Examples 3(1): 2-8.\n"
+            "Nowak, Piotr. 2022. \"A Fourth Title.\" Journal of Examples 4(2): 7-9.\n\n"
+            "Class 3: January 21 - Third\n"
+            "Okonkwo, Adaeze. 2023. \"A Fifth Title.\" Journal of Examples 5(1): 3-6.\n"
+        )
+        doc = self._doc(grid, text)
+        parsed = schedule.parse(doc, self._zone(doc), Term("spring", 2025))
+        readings = sum(len(s.readings) for s in parsed.sessions)
+        assert readings >= 5, f"took the summary grid instead of the listing ({readings} readings)"
