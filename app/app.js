@@ -267,7 +267,7 @@ async function confirmParse() {
   state.courses = await store.listCourses()
   state.active = course.id
   $('views').hidden = false
-  $('data').hidden = false
+  $('tools').open = false
   nextReview()
   await rematchUnmatched()
   draw()
@@ -414,6 +414,9 @@ async function boot() {
   state.courses = await store.listCourses()
   state.documents = await store.listDocuments()
   state.progress = new Map((await store.listProgress()).map((e) => [e.id, e]))
+  // with nothing parsed yet the drop zone is the only thing worth showing, so
+  // it starts open and folds away once there is a schedule to look at
+  $('tools').open = state.courses.length === 0
   if (state.courses.length) {
     state.active = state.courses[0].id
     applyRequiredStyle()
@@ -495,6 +498,7 @@ async function boot() {
       state.documents = await store.listDocuments()
       state.active = state.courses[0]?.id ?? null
       $('views').hidden = !state.courses.length
+      $('tools').open = state.courses.length === 0
       draw()
     } catch (error) {
       status('intake-status', `Import failed: ${error.message}`)
@@ -508,7 +512,7 @@ async function boot() {
     state.documents = []
     state.active = null
     $('views').hidden = true
-    $('data').hidden = true
+    $('tools').open = true
     state.files = []
     drawQueue()
     drawNav()

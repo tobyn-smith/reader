@@ -233,3 +233,19 @@ table.review td.flagcol { width: 3.5rem; color: var(--review); font-size: var(--
 table.review input[type="text"] { width: 100%; max-width: 46rem; }
 .source { margin-top: 0.2rem; }
 #review .week h3 { margin: 0.9rem 0 0.1rem; }
+
+/* add pdfs, export and clear are occasional. folded away, they stop competing
+   with the schedule for attention on every view. */
+#tools {
+  margin-top: 2rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.5rem;
+}
+
+#tools summary {
+  cursor: pointer;
+  color: var(--grey);
+  font-size: var(--small);
+}
+
+#tools[open] summary { margin-bottom: 0.6rem; }

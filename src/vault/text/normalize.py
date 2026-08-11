@@ -160,6 +160,26 @@ _LIGATURES = {
     "æ": "ae",
 }
 
+# some tex fonts put ligatures and quotes in the control character range, so a
+# pdf produced from one extracts "di<0x1b>erent" for "different". these are the
+# mappings that can be made with confidence; the rest are stripped as glyphs.
+_CONTROL_TEXT = {
+    "\x0b": "ff",
+    "\x0c": "fi",
+    "\x0e": "ffi",
+    "\x0f": "ffl",
+    "\x1b": "ff",
+    "\x10": "“",
+    "\x11": "”",
+    "\x12": "‘",
+    "\x13": "’",
+}
+
+# a control character used as a list marker in one place and an en dash in
+# another. between digits it is a range, everywhere else it is decoration.
+_CONTROL_DASH_RE = re.compile(r"(?<=\d)[\x14\x15](?=\d)")
+_CONTROL_MARKERS = "\x14\x15\x16\x17\x18\x19\x1a\x1c\x1d\x1e\x1f\x80\x88\x95\xa7"
+
 # characters that carry no meaning for us but break naive matching
 _INVISIBLE = dict.fromkeys(
     [
@@ -189,6 +209,27 @@ def expand_ligatures(text: str) -> Cleaned:
     return Cleaned("".join(out), edits)
 
 
+def decode_control_glyphs(text: str) -> Cleaned:
+    """recover text from a font that put glyphs in the control range."""
+    edits: list[Edit] = []
+
+    out = _CONTROL_DASH_RE.sub("-", text)
+    if out != text:
+        edits.append(Edit("control_dash", "", "-"))
+
+    pieces: list[str] = []
+    for ch in out:
+        if ch in _CONTROL_TEXT:
+            edits.append(Edit("control_glyph", repr(ch), _CONTROL_TEXT[ch]))
+            pieces.append(_CONTROL_TEXT[ch])
+        elif ch in _CONTROL_MARKERS:
+            edits.append(Edit("control_marker", repr(ch), ""))
+            pieces.append(" ")
+        else:
+            pieces.append(ch)
+    return Cleaned("".join(pieces), edits)
+
+
 def normalize_unicode(text: str) -> Cleaned:
     """nfc, ligatures expanded, invisible and exotic spaces flattened.
 
@@ -197,6 +238,7 @@ def normalize_unicode(text: str) -> Cleaned:
     """
     result = Cleaned(text)
     result.extend(strip_cid_glyphs(result.text))
+    result.extend(decode_control_glyphs(result.text))
     result.extend(compose_diacritics(result.text))
     result.extend(expand_ligatures(result.text))
 

@@ -20,7 +20,7 @@ import re
 from dataclasses import dataclass, field
 
 from ..text.model import ExtractedDoc
-from ..text.normalize import collapse_whitespace, strip_leading_marker
+from ..text.normalize import URL_RE, collapse_whitespace, strip_leading_marker
 from . import citations as cit
 from .dates import DatedEntry, Term, iter_dates, parse_important_dates
 from .zones import SCHEDULE, Line, Zone
@@ -76,6 +76,36 @@ WEEK_RE = re.compile(
     r"\s*(?P<rest>.*)$",
     re.IGNORECASE,
 )
+
+# plenty of syllabi number nothing and head each meeting with its date instead:
+# "January 17th: Module 1: Introduction". a separator or a capitalised
+# continuation is required so a sentence that merely opens with a date is not
+# mistaken for a heading.
+DATE_HEADING_RE = re.compile(
+    r"^\s*(?P<date>(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?"
+    r"\s+\d{1,2}\s*(?:st|nd|rd|th)?)"
+    r"\s*(?:[:.–—-]\s*(?P<rest>.*)|\s+(?P<rest2>[A-Z].*))$",
+    re.IGNORECASE,
+)
+
+
+def date_heading(text: str) -> re.Match[str] | None:
+    """match a date-led session heading, if the line is one."""
+    if len(text) > 160:
+        return None
+    return DATE_HEADING_RE.match(text)
+
+
+def is_session_head(text: str, *, starts_block: bool = True) -> bool:
+    """a week marker anywhere, or a date heading that opens a block.
+
+    a week marker is unambiguous. a date-led heading is not: prose inside a
+    week can begin with a date too, so it only counts where a block starts,
+    which is where a heading actually sits.
+    """
+    if WEEK_RE.match(text):
+        return True
+    return starts_block and date_heading(text) is not None
 
 # a keyword block label, as used by the labelled layout
 LABEL_RE = re.compile(
@@ -149,6 +179,10 @@ def _starts_new_entry(text: str, buffer: list[str]) -> bool:
     if _BARE_URL_RE.match(text) and buffer:
         return any(_BARE_URL_RE.search(line) or "http" in line for line in buffer)
     return False
+
+
+def count_date_headings(lines: list[str]) -> int:
+    return sum(1 for line in lines if date_heading(line))
 
 
 def detect_structure(doc: ExtractedDoc, zones: list[Zone]) -> str:
@@ -249,6 +283,14 @@ def _split_week_heading(session: SessionEntry, text: str, term: Term | None) -> 
         session.week_number = int(m.group("number"))
         rest = m.group("rest")
     else:
+        dated = date_heading(text)
+        if dated:
+            rest = dated.group("rest") or dated.group("rest2") or ""
+            found = list(iter_dates(dated.group("date"), term))
+            if found:
+                session.meeting_date = found[0]
+            session.topic = collapse_whitespace(rest).strip(" :,-–—") or None
+            return
         rest = text
 
     found = list(iter_dates(rest, term))
@@ -311,6 +353,9 @@ def _build_reading(raw: str, ordinal: int) -> ReadingEntry | None:
     if m:
         pages = collapse_whitespace(m.group(1))
 
+    if _is_fragment(working):
+        return None
+
     citation = cit.parse_citation(working)
     return ReadingEntry(
         raw=text,
@@ -320,6 +365,27 @@ def _build_reading(raw: str, ordinal: int) -> ReadingEntry | None:
         content_warning=warning,
         ordinal=ordinal,
     )
+
+
+def _is_fragment(text: str) -> bool:
+    """a leftover piece of a url rather than a reading.
+
+    a long url wrapped inside a table cell can survive as two pieces, and the
+    tail looks like an entry of its own: ".org/details/foo/page/n9" or
+    "mode/2up". listing those as assigned readings is worse than dropping them,
+    because a checklist of things that were never assigned is unusable.
+    """
+    stripped = text.strip()
+    if stripped[:1] in {".", "/", "-", "?", "&", "="}:
+        return True
+
+    # what is left once every url is removed. a real citation keeps words.
+    without_urls = URL_RE.sub(" ", stripped)
+    words = re.findall(r"[A-Za-z]{3,}", without_urls)
+    if len(words) >= 3:
+        return False
+    # nothing but a url, or a couple of path words, is not a citation
+    return len(" ".join(words)) < 12
 
 
 def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
@@ -356,7 +422,7 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
         stripped, marker = strip_leading_marker(text)
         heading_candidate = stripped if marker else text
 
-        if WEEK_RE.match(heading_candidate):
+        if is_session_head(heading_candidate, starts_block=line.starts_block):
             flush_session()
             session = _new_session(len(result.sessions), line.page, heading_candidate)
             session.section_heading = section_heading
@@ -427,7 +493,7 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
             flush_entry()
             continue
 
-        if WEEK_RE.match(text):
+        if is_session_head(text, starts_block=line.starts_block):
             flush_session()
             session = _new_session(len(result.sessions), line.page, text)
             _split_week_heading(session, text, term)

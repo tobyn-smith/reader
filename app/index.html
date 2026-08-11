@@ -42,8 +42,9 @@
   <div id="view"></div>
 </section>
 
-<section id="intake">
-  <h2>Add PDFs</h2>
+<details id="tools">
+  <summary>Add PDFs, export, clear</summary>
+
   <div id="file-drop" class="drop">
     <label for="file-input">Drop syllabi and readings here, or</label>
     <input type="file" id="file-input" accept="application/pdf" multiple>
@@ -52,10 +53,7 @@
   <p id="intake-status" class="status" role="status"></p>
   <div id="queue"></div>
   <div id="unmatched"></div>
-</section>
 
-<section id="data">
-  <h2>Data</h2>
   <p class="note">
     Stored in this browser only. It will not follow you to another device, and
     clearing browser data removes it.
@@ -63,12 +61,12 @@
   <p class="controls">
     <button type="button" id="print">Print or save as PDF</button>
     <button type="button" id="export">Export JSON</button>
-    <label class="inline" for="import-input">Import JSON</label>
+    <label class="inline" for="import-input">Import</label>
     <input type="file" id="import-input" accept="application/json">
     <button type="button" id="remove-course" class="quiet">Remove this course</button>
     <button type="button" id="clear" class="quiet">Clear all data</button>
   </p>
-</section>
+</details>
 
 </main>
 
