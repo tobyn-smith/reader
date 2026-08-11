@@ -286,13 +286,15 @@ function drawNav() {
     return
   }
   nav.hidden = false
+  const codeCounts = new Map()
+  for (const c of state.courses) codeCounts.set(c.code, (codeCounts.get(c.code) || 0) + 1)
   nav.innerHTML = state.courses
-    .map(
-      (c) =>
-        `<a href="#" data-course="${view.esc(c.id)}" title="${view.esc(courseLabel(c))}"${
-          c.id === state.active ? ' aria-current="page"' : ''
-        }>${view.esc(c.code)}</a>`
-    )
+    .map((c) => {
+      const tag = codeCounts.get(c.code) > 1 ? ` ${view.courseTag(c)}` : ''
+      return `<a href="#" data-course="${view.esc(c.id)}" title="${view.esc(courseLabel(c))}"${
+        c.id === state.active ? ' aria-current="page"' : ''
+      }>${view.esc(c.code)}${view.esc(tag)}</a>`
+    })
     .join('')
 }
 
@@ -341,7 +343,7 @@ function draw() {
   const target = $('view')
   if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
   else if (state.currentView === 'week') target.innerHTML = view.weekView(course, state.progress)
-  else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses)
+  else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active)
   else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
   else if (state.currentView === 'search') drawSearch(target)
 

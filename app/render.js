@@ -131,11 +131,29 @@ export function weekView(course, progress) {
 }
 
 
-export function deadlinesView(courses) {
-  const graded = []
-  const events = []
+export function courseTag(course) {
+  const meta = course.parse.course
+  const term = meta.term ? meta.term[0].toUpperCase() + meta.term.slice(1) : ''
+  return [term, meta.year].filter(Boolean).join(' ')
+}
 
+export function deadlinesView(courses, activeId) {
+  // one section per course. merging every course into one table made the same
+  // assignment appear once per parsed edition and detached the weights from
+  // the course they belong to, and it also meant switching course changed
+  // nothing on this view. the active course leads.
+  const ordered = [...courses].sort((a, b) =>
+    (a.id === activeId ? 0 : 1) - (b.id === activeId ? 0 : 1)
+  )
+
+  const codeCounts = new Map()
   for (const course of courses) {
+    codeCounts.set(course.code, (codeCounts.get(course.code) || 0) + 1)
+  }
+
+  const sections = ordered.map((course) => {
+    const graded = []
+    const events = []
     for (const item of course.parse.deliverables.items) {
       const when = item.due_date
         ? shortDate(item.due_date)
@@ -146,40 +164,39 @@ export function deadlinesView(courses) {
         sort: item.due_date || '9999-99-99',
         html: `<tr>
           <td class="when">${esc(when)}</td>
-          <td>${esc(course.code)}</td>
           <td>${esc(item.title)}</td>
           <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
         </tr>`,
       }
-      // graded work is what the term is actually assessed on. presentation
-      // slots and sign-ups are real dates but they are not deadlines, and
-      // mixing them buries the four things that carry the grade.
+      // graded work is what the term is assessed on. presentation slots and
+      // sign-ups are real dates but not deadlines, and mixing them buries the
+      // few items that carry the grade.
       if (item.weight_percent) graded.push(row)
       else if (item.due_date) events.push(row)
     }
-  }
+    graded.sort((a, b) => a.sort.localeCompare(b.sort))
+    events.sort((a, b) => a.sort.localeCompare(b.sort))
 
-  graded.sort((a, b) => a.sort.localeCompare(b.sort))
-  events.sort((a, b) => a.sort.localeCompare(b.sort))
+    const table = (rows) => `<table>
+        <thead><tr><th class="when">Due</th><th>Item</th><th class="num">Weight</th></tr></thead>
+        <tbody>${rows.map((r) => r.html).join('')}</tbody>
+      </table>`
 
-  const table = (rows) => `<table>
-      <thead><tr><th>Due</th><th>Course</th><th>Item</th><th class="num">Weight</th></tr></thead>
-      <tbody>${rows.map((r) => r.html).join('')}</tbody>
-    </table>`
+    const total = course.parse.deliverables.weight_total
+    // a shared course code alone cannot tell two editions apart
+    const tag = codeCounts.get(course.code) > 1 ? ` ${courseTag(course)}` : ''
 
-  const total = courses
-    .map((c) => c.parse.deliverables.weight_total)
-    .filter((t) => t)
-    .reduce((a, b) => a + b, 0)
+    return `<section class="course-deadlines">
+      <h3>${esc(course.code)}${esc(tag)}
+        ${total ? `<span class="secondary">weights total ${total}%</span>` : ''}</h3>
+      ${graded.length ? table(graded) : '<p class="secondary">No weighted work found.</p>'}
+      ${events.length
+        ? `<p class="secondary">On the schedule, not separately weighted</p>${table(events)}`
+        : ''}
+    </section>`
+  })
 
-  return `<h2>Graded work</h2>
-    ${graded.length ? table(graded) : '<p class="secondary">None found.</p>'}
-    ${courses.length === 1 && total
-      ? `<p class="secondary">Weights total ${total}%</p>` : ''}
-    ${events.length
-      ? `<h2>On the schedule</h2>
-         <p class="secondary">Dated, but not separately weighted.</p>${table(events)}`
-      : ''}`
+  return `<h2>Deadlines</h2>${sections.join('')}`
 }
 
 
