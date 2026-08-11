@@ -73,8 +73,8 @@ html {
 
 body {
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 4rem;
-  max-width: 64rem;
+  padding: 1.5rem 1.5rem 4rem;
+  max-width: 82rem;
 }
 
 h1, h2, h3 { margin: 1.5rem 0 0.4rem; line-height: 1.25; }
@@ -418,11 +418,165 @@ input.note {
 input.note::placeholder { color: var(--rule-strong); }
 input.note:focus { border-bottom-color: var(--accent); outline: none; }
 
-section.week { margin-top: 1.25rem; }
-section.week h3 .secondary { font-weight: 400; margin-left: 0.3rem; }
+/* the week list.
+   a week was a stacked block: heading, a progress line, then a table, which
+   spent ninety pixels of height and none of the width on a single reading.
+   the label moves into a gutter and the readings sit beside it, so a term
+   reads as a list you can scan instead of a column you scroll. */
+/* three columns: which week, what it is about, what to read. each is a
+   different question, and side by side they answer all three in the height
+   of one line instead of four. */
+#view section.week {
+  display: grid;
+  grid-template-columns: 6.5rem 14rem minmax(0, 1fr);
+  gap: 0 1.5rem;
+  align-items: start;
+  margin: 0;
+  padding: 0.5rem 0 0.55rem;
+  border-top: 1px solid var(--rule);
+}
+
+#view section.week:first-of-type { border-top: 1px solid var(--ink); }
+
+.wmeta { display: flex; align-items: baseline; gap: 0.4rem; }
+
+.wmeta h3 {
+  margin: 0;
+  font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wtopic {
+  margin: 0;
+  font-size: var(--small);
+  color: var(--muted);
+  line-height: 1.35;
+  /* two lines, then the title attribute carries the rest. a long topic must
+     not set the height of the whole row. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wcount {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--rule-strong);
+}
+
+.wcount.all-done { color: var(--accent); }
+
+/* the note is empty on nearly every row, and an empty field still holds a
+   line of height. the wrapper collapses with it. */
+.notewrap { height: 0; overflow: hidden; }
+
+tr:hover .notewrap,
+.notewrap:focus-within,
+tr:has(input.note:not(:placeholder-shown)) .notewrap {
+  height: auto;
+  overflow: visible;
+}
+
+.wbody > table { margin: 0; }
+.wbody > .secondary { margin: 0.15rem 0 0; }
+
+.wdue {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+  font-size: var(--small);
+  color: var(--muted);
+}
+
+/* the week the term is actually in. it is the reason the page was opened. */
+#view section.week.now {
+  border-left: 2px solid var(--accent);
+  margin-left: -0.9rem;
+  padding-left: 0.7rem;
+}
+
+#view section.week.now .wmeta h3::after {
+  content: "now";
+  margin-left: 0.45rem;
+  padding: 0.02rem 0.3rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  vertical-align: 0.08em;
+}
+
+.viewhead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.viewhead h2 { margin: 0; }
+.viewhead p { margin: 0; }
+
+/* a note is empty on almost every row, so it stops taking a line of its own
+   until there is something in it or the row is being worked on */
+table.checklist input.note {
+  opacity: 0;
+  height: 0;
+  padding: 0;
+  border: 0;
+  pointer-events: none;
+}
+
+table.checklist tr:hover input.note,
+table.checklist input.note:focus,
+table.checklist input.note:not(:placeholder-shown) {
+  opacity: 1;
+  height: auto;
+  padding: 0.08rem 0;
+  border-bottom: 1px solid var(--rule);
+  pointer-events: auto;
+}
 
 section.course-deadlines { margin-top: 1.4rem; }
 section.course-deadlines h3 .secondary { font-weight: 400; margin-left: 0.45rem; }
+
+/* deadlines banded by how close they are. sorted by date alone opens a term
+   on things that happened in february. */
+.band {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 1rem 0 0.15rem;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.bandcount {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  color: var(--rule-strong);
+}
+
+.band.band-late { color: var(--danger); }
+.band.band-soon { color: var(--flag); }
+
+.band.band-late + table td:first-child,
+.band.band-soon + table td:first-child { font-weight: 700; }
+
+/* "in 3 days" is what is being asked; the date itself is the smaller half */
+.relday { display: block; font-size: 10.5px; color: var(--muted); }
+.band-late + table .relday { color: var(--danger); }
 
 ol.bibliography { padding-left: 1.4rem; }
 ol.bibliography li { margin-bottom: 0.35rem; }
@@ -689,6 +843,17 @@ footer { margin-top: 2rem; color: var(--muted); font-size: var(--small); }
     overflow-x: auto;
     white-space: nowrap;
   }
+
+  /* the columns have nowhere to go on a phone, so week, topic and readings
+     go back to stacking, with week and topic sharing the first line */
+  #view section.week {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.1rem 0.6rem;
+  }
+
+  .wbody { grid-column: 1 / -1; }
+  .wtopic { -webkit-line-clamp: 1; line-clamp: 1; }
+  #view section.week.now { margin-left: -0.5rem; padding-left: 0.4rem; }
 
   .rrow { grid-template-columns: 1.4rem minmax(0, 1fr); padding-left: 0.5rem; }
   .rstats { gap: 0.5rem 1.4rem; }

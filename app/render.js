@@ -27,6 +27,30 @@ export function shortDate(iso) {
 // signature is the stable choice across re-parses, but a reading no pattern
 // claimed has an empty one, and every such reading in a course would then
 // share a key: ticking one ticked them all. those fall back to their position.
+// how many days from today, negative for past. dates are compared as calendar
+// days rather than instants, so something due at 9am today reads as "today"
+// all day rather than flipping to overdue at breakfast.
+export function daysUntil(iso) {
+  if (!iso) return null
+  const parts = String(iso).slice(0, 10).split('-').map(Number)
+  if (parts.length !== 3 || parts.some((n) => !n)) return null
+  const now = new Date()
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((Date.UTC(parts[0], parts[1] - 1, parts[2]) - today) / 86400000)
+}
+
+// a date is not the question a student is asking. "in 3 days" is.
+export function whenLabel(iso) {
+  const n = daysUntil(iso)
+  if (n === null) return ''
+  if (n === 0) return 'today'
+  if (n === 1) return 'tomorrow'
+  if (n === -1) return 'yesterday'
+  if (n < 0) return `${-n} days ago`
+  if (n <= 14) return `in ${n} days`
+  return ''
+}
+
 export function readingKey(course, session, reading) {
   const signature = (reading.work.signature || '').replace(/\|/g, '').trim()
   if (signature) return `${course.id}::${reading.work.signature}`
@@ -89,6 +113,7 @@ export function weekView(course, progress, editing = false) {
   })
 
   const blocks = []
+  const weekStamps = []
   for (const [key, entries] of groups) {
     const rows = []
     for (const { session, si } of entries) {
@@ -112,7 +137,7 @@ export function weekView(course, progress, editing = false) {
              ${reading.access_note ? `<span class="secondary">${esc(reading.access_note)}</span>` : ''}
              ${reading.content_warning
                ? `<div class="secondary">Content warning: ${esc(reading.content_warning)}</div>` : ''}
-             <div><input type="text" class="note" data-note="${esc(id)}"
+             <div class="notewrap"><input type="text" class="note" data-note="${esc(id)}"
                value="${esc(saved.note || '')}" placeholder="note"></div>`
 
         rows.push(`<tr class="entry">
@@ -132,29 +157,63 @@ export function weekView(course, progress, editing = false) {
       .join('')
 
     const heading = sessions[0].topic || sessions[0].section_heading || ''
+    const total = rows.length
     const done = rows.filter((r) => r.includes('checked')).length
     // a break or a cancelled class has no week number, so it is titled by its
     // date rather than by an invented one
     const title = sessions[0].week_number
       ? `Week ${sessions[0].week_number}`
       : shortDate(sessions[0].meeting_date) || 'Unscheduled'
-    blocks.push(`<section class="week">
-      <h3>${esc(title)} <span class="secondary">${esc(heading)}</span></h3>
-      ${rows.length
-        ? `${editing ? '' : `<p class="secondary">${done} of ${rows.length} read</p>`}
-           <table class="checklist"><tbody>${rows.join('')}</tbody></table>`
-        : editing
-          ? ''
-          : `<p class="secondary">${esc(sessions[0].session_type.replace('_', ' '))}</p>`}
-      ${editing
-        ? `<button type="button" class="addrow" data-add-reading="${firstIndex}">
-             Add a reading to this week</button>`
-        : ''}
-      ${due ? `<p class="secondary">Due this week</p><ul>${due}</ul>` : ''}
+
+    const start = sessions.map((s) => s.meeting_date).filter(Boolean).sort()[0] || null
+    const days = daysUntil(start)
+    weekStamps.push({ index: blocks.length, days })
+
+    blocks.push(`<section class="week" data-week="${blocks.length}">
+      <div class="wmeta">
+        <h3>${esc(title)}</h3>
+        ${total && !editing
+          ? `<span class="wcount${done === total ? ' all-done' : ''}">${done}/${total}</span>`
+          : ''}
+      </div>
+      <p class="wtopic" title="${esc(heading)}">${esc(heading)}</p>
+      <div class="wbody">
+        ${rows.length
+          ? `<table class="checklist"><tbody>${rows.join('')}</tbody></table>`
+          : editing
+            ? ''
+            : `<p class="secondary">${esc(sessions[0].session_type.replace('_', ' '))}</p>`}
+        ${editing
+          ? `<button type="button" class="addrow" data-add-reading="${firstIndex}">
+               Add a reading</button>`
+          : ''}
+        ${due ? `<ul class="wdue">${due}</ul>` : ''}
+      </div>
     </section>`)
   }
 
-  return `<h2>${esc(course.code)} by week</h2>${blocks.join('')}`
+  // "now" is the week whose meetings are nearest ahead, counting a week as
+  // still current for six days after it starts. a term that has finished gets
+  // no marker at all, because pointing at the last week of a course that ended
+  // in May is worse than pointing at nothing.
+  const upcoming = weekStamps.filter((w) => w.days !== null && w.days >= -6)
+  const current = upcoming.length
+    ? upcoming.reduce((best, w) => (w.days < best.days ? w : best))
+    : null
+
+  let html = blocks.join('')
+  if (current) {
+    html = html.replace(
+      `<section class="week" data-week="${current.index}">`,
+      `<section class="week now" data-week="${current.index}">`
+    )
+  }
+
+  const totals = course.parse.sessions.reduce((n, s) => n + s.readings.length, 0)
+  return `<div class="viewhead">
+      <h2>${esc(course.code)} by week</h2>
+      <p class="secondary">${course.parse.sessions.length} weeks, ${totals} readings</p>
+    </div>${html}`
 }
 
 
@@ -204,11 +263,14 @@ export function deadlinesView(courses, activeId, editing = false) {
                 data-remove-due="${course.id}|${di}">Remove</button></td>
             </tr>`
           : `<tr>
-              <td class="when">${esc(when)}</td>
+              <td class="when">${esc(when)}
+                ${whenLabel(item.due_date)
+                  ? `<span class="relday">${esc(whenLabel(item.due_date))}</span>` : ''}</td>
               <td>${esc(item.title)}</td>
               <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
             </tr>`,
       }
+      row.days = daysUntil(item.due_date)
       // graded work is what the term is assessed on. presentation slots and
       // sign-ups are real dates but not deadlines, and mixing them buries the
       // few items that carry the grade. while editing, everything is listed
@@ -226,6 +288,27 @@ export function deadlinesView(courses, activeId, editing = false) {
         <tbody>${rows.map((r) => r.html).join('')}</tbody>
       </table>`
 
+    // sorted by date is not the same as sorted by what matters. a term list
+    // opens on things that happened in February unless it is banded by how
+    // close they are, and the band a student actually needs is "this week".
+    const bands = [
+      ['Overdue', (r) => r.days !== null && r.days < 0, 'band-late'],
+      ['Next 7 days', (r) => r.days !== null && r.days >= 0 && r.days <= 7, 'band-soon'],
+      ['Later', (r) => r.days !== null && r.days > 7, ''],
+      ['No date found', (r) => r.days === null, ''],
+    ]
+
+    const banded = editing
+      ? table(graded)
+      : bands
+          .map(([label, test, cls]) => {
+            const rows = graded.filter(test)
+            if (!rows.length) return ''
+            return `<h4 class="band ${cls}">${label}
+              <span class="bandcount">${rows.length}</span></h4>${table(rows)}`
+          })
+          .join('')
+
     const total = course.parse.deliverables.weight_total
     // a shared course code alone cannot tell two editions apart
     const tag = codeCounts.get(course.code) > 1 ? ` ${courseTag(course)}` : ''
@@ -236,9 +319,9 @@ export function deadlinesView(courses, activeId, editing = false) {
         ${total
           ? `<span class="${off ? 'flagged' : 'secondary'}">adds up to ${total}%</span>`
           : ''}</h3>
-      ${graded.length ? table(graded) : '<p class="secondary">Nothing weighted found.</p>'}
-      ${events.length
-        ? `<p class="secondary">On the schedule, not separately weighted</p>${table(events)}`
+      ${graded.length ? banded : '<p class="secondary">Nothing weighted found.</p>'}
+      ${events.length && !editing
+        ? `<h4 class="band">On the schedule, not separately weighted</h4>${table(events)}`
         : ''}
       ${editing
         ? `<button type="button" class="addrow" data-add-due="${course.id}">
