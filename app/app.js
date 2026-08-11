@@ -427,19 +427,33 @@ function draw() {
   $('edit-toggle').setAttribute('aria-pressed', String(editing))
   document.body.classList.toggle('is-editing', editing)
 
+  // the record header and the rail belong to the ledger, and are cleared on
+  // every other view so the sheet does not carry an index of nothing
+  $('record').innerHTML = view.recordHeader(course)
+
   const target = $('view')
-  if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
-  else if (state.currentView === 'week') target.innerHTML = view.weekView(course, state.progress, editing)
-  else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active, editing)
-  else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
-  else if (state.currentView === 'search') drawSearch(target)
+  if (state.currentView === 'week') {
+    const ledger = view.weekView(course, state.progress, editing)
+    target.innerHTML = ledger.html
+    $('rail').innerHTML = view.railView(course, ledger, state.courses)
+  } else {
+    $('rail').innerHTML = ''
+    if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
+    else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active, editing)
+    else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
+    else if (state.currentView === 'search') drawSearch(target)
+  }
 
   for (const button of document.querySelectorAll('.tabs button[data-view]')) {
     button.setAttribute('aria-current', String(button.dataset.view === state.currentView))
   }
 
+  // the document line and the sheet number: a record identifies itself
+  const stamp = new Date().toISOString().slice(0, 10)
+  const ref = (course.code || 'UNFILED').replace(/\s+/g, '-').toUpperCase()
+  $('docline').textContent = `Rec. ${ref} · ${course.term || '—'} · Compiled ${stamp}`
   $('print-meta').textContent =
-    `${course.code}. Generated ${new Date().toISOString().slice(0, 10)}.`
+    `Sheet ${state.courses.indexOf(course) + 1} of ${state.courses.length} · ${stamp}`
 }
 
 function drawSearch(target) {
@@ -615,6 +629,15 @@ async function boot() {
     state.editing = !state.editing
     draw()
   }
+
+  // the index scrolls the ledger to a week rather than navigating anywhere
+  $('rail').addEventListener('click', (e) => {
+    const jump = e.target.closest('[data-jump]')
+    if (!jump) return
+    e.preventDefault()
+    const row = document.querySelector(`tr.sep[data-week="${jump.dataset.jump}"]`)
+    if (row) row.scrollIntoView({ block: 'start' })
+  })
 
   document.querySelector('.tabs').onclick = (e) => {
     const button = e.target.closest('button[data-view]')

@@ -16,6 +16,7 @@ import argparse
 import io
 import shutil
 import sys
+import re
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -79,6 +80,59 @@ def fetch(url: str) -> bytes:
         return response.read()
 
 
+# the three families the theme is built on, latin subset only. fetched at
+# build time and served from our own origin, so a visitor loading a syllabus
+# makes no request to anyone else. the css is generated rather than taken from
+# the font host, because that css points back at the host.
+FONT_QUERY = (
+    "https://fonts.googleapis.com/css2"
+    "?family=Archivo+Narrow:wght@700"
+    "&family=IBM+Plex+Mono:wght@400;500"
+    "&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400"
+)
+# a desktop chrome string, or the host serves an older format than woff2
+FONT_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+
+def vendor_fonts() -> None:
+    # the sheet sits beside the fonts directory, not inside it, so the
+    # "fonts/name.woff2" it writes resolves from where the sheet is loaded
+    out = VENDOR / "fonts"
+    sheet_path = VENDOR / "fonts.css"
+    if sheet_path.exists():
+        print("fonts already vendored")
+        return
+    out.mkdir(parents=True, exist_ok=True)
+
+    request = urllib.request.Request(FONT_QUERY, headers={"User-Agent": FONT_UA})
+    print(f"fetching {FONT_QUERY}")
+    with urllib.request.urlopen(request) as response:
+        sheet = response.read().decode("utf-8")
+
+    # each @font-face block is preceded by a subset comment. only latin is kept,
+    # which is the difference between about 60 kB and about 900 kB.
+    blocks = re.split(r"/\*\s*([a-z0-9-]+)\s*\*/", sheet)
+    rules: list[str] = []
+    for index in range(1, len(blocks) - 1, 2):
+        if blocks[index] != "latin":
+            continue
+        block = blocks[index + 1]
+        url_match = re.search(r"url\((https://[^)]+\.woff2)\)", block)
+        if not url_match:
+            continue
+        url = url_match.group(1)
+        name = url.rsplit("/", 1)[-1]
+        (out / name).write_bytes(fetch(url))
+        rules.append(block.replace(url, f"fonts/{name}").strip())
+
+    sheet_path.write_text("\n".join(rules) + "\n", encoding="utf-8")
+    total = sum(p.stat().st_size for p in out.glob("*.woff2")) / 1024
+    print(f"fonts vendored  {len(rules)} faces, {total:.0f} kB")
+
+
 def vendor_pdfjs() -> None:
     if (VENDOR / "pdf.mjs").exists():
         print("pdf.js already vendored")
@@ -132,6 +186,7 @@ def main() -> int:
 
     build_bundle()
     if args.vendor:
+        vendor_fonts()
         vendor_pdfjs()
         vendor_pyodide()
     if args.site:

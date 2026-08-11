@@ -100,6 +100,39 @@ Counts are the main test currency. Fixture tests assert exact per-week reading
 counts. A parser that drops one reading in five passes every other kind of
 check.
 
+## The theme
+
+Institutional record: a catalogue, a ledger, an index. Dark by default, warm
+near-black. Hierarchy comes from weight, scale and rule thickness, never from
+colour or ornament.
+
+Rule weights are the structure and are fixed. 6px above the masthead, 3px under
+the course bar, the record header and above the colophon, 2px above every week
+separator, 1px hair between reading rows. Nothing else draws a line, and
+nothing is boxed, rounded, shadowed or animated.
+
+`--flag` marks three conditions and no others: a file not held, an overdue
+item, a restricted AI policy. A row that is held goes `--faint` and stays
+upright, with no strike and no tick. Two things were caught breaking that rule
+while it was built: a week with no reading was flagging its empty status, and
+the withdraw and purge buttons were coloured. Both now carry no accent, the
+buttons being set apart by a 2px border instead.
+
+Three families, self-hosted. Archivo Narrow 700 for display, Source Serif 4 for
+body, IBM Plex Mono for anything numeric, with `tabular-nums` set globally.
+`vendor_fonts()` in scripts/build_app.py fetches the latin subset at build time
+and writes vendor/fonts.css pointing at local files, so a visitor makes no
+request off origin. 209 kB over six faces. The sheet is linked before app.css
+and every family has a system fallback, so an unvendored checkout still works.
+
+The week view is one continuous table, not a stack of blocks. Weeks are
+separator rows inside it, which is the only way every column stays aligned from
+week 1 to week 15. Two things are checked at 1440px: eight or more weeks
+visible without scrolling, and each column resolving to exactly one left
+offset across the whole term. Measured at the time of writing: ten weeks, zero
+misaligned columns. If either fails, rows have grown too tall or the table has
+been broken back into blocks.
+
 ## Editing after the parse
 
 The browser app keeps an edit mode on the week and deadlines views. A reading

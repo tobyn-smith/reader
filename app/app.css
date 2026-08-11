@@ -1,722 +1,714 @@
-/* direction: field notebook. the warm paper version read as a document; this
-   one reads as a reference table, which is what the tool actually is. two
-   deliberate changes carry it:
+/* direction: institutional record.
+   a library catalogue, a ledger, a government index. the page is dense and
+   ruled, and every bit of hierarchy is carried by weight, scale and rule
+   thickness. colour does one job and no other.
 
-   neutral high contrast instead of warm. near black on near white, near white
-   on near black, no tint either way. a reading list is scanned, not savoured,
-   and the warmth was costing contrast for nothing.
+   the rule system is the whole structure, so it is fixed:
+     6px   top of page, above the masthead
+     3px   under the course bar, under the record header, above the colophon
+     2px   above every week separator
+     1px   between reading rows, in --hair
+   nothing else draws a line, and nothing is boxed, rounded or shadowed.
 
-   a second typeface, but only for data. dates, weights, week numbers and
-   course codes set in the system monospace with tabular figures, so columns
-   line up down the page and a date is instantly distinguishable from a title.
-   prose stays in the system sans. the hierarchy comes from the content rather
-   than from decoration.
-
-   the token set, and nothing outside it:
-     --paper / --surface / --sunken   backgrounds
-     --ink / --muted                  text
-     --rule / --rule-strong           hairlines and structural rules
-     --accent / --accent-ink          actions, links, focus
-     --danger                         irreversible actions
-     --flag                           rows needing a decision
-   colour means one of three things: act, destroy, check. nothing else.
-
-   every text token clears wcag aa against its background in both schemes.
-   measured, lowest first: light 5.4:1 (flag) to 18.0:1 (ink), dark 7.4:1
-   (muted) to 16.3:1 (ink). changing a value means re-checking it. */
+   --flag marks three things only: a file not held, an overdue item, a
+   restricted ai policy. a completed row goes --faint and stays upright: no
+   strike, no tick, no green. */
 
 :root {
-  --paper: #fcfcfc;
-  --surface: #ffffff;
-  --sunken: #f4f4f5;
-  --ink: #141414;
-  --muted: #5c5c60;
-  --rule: #e4e4e7;
-  --rule-strong: #a1a1aa;
-  --accent: #1452b8;
-  --accent-ink: #ffffff;
-  --danger: #b3261e;
-  --flag: #8a6100;
+  --paper: #0D0D0B;
+  --ink:   #EDE8DA;
+  --mid:   #A39D8E;
+  --faint: #6E695E;
+  --hair:  #2B2924;
+  --rule:  #EDE8DA;
+  --flag:  #D2704A;
+  --tint:  #191813;
 
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --size: 15px;
-  --small: 12.5px;
+  --display: "Archivo Narrow", "Arial Narrow", Haettenschweiler, sans-serif-condensed, sans-serif;
+  --body: "Source Serif 4", Charter, "Iowan Old Style", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --paper: #101012;
-    --surface: #17171a;
-    --sunken: #1d1d21;
-    --ink: #ededf0;
-    --muted: #a1a1a8;
-    --rule: #2a2a30;
-    --rule-strong: #4a4a52;
-    --accent: #7aa7f5;
-    --accent-ink: #0b0b0d;
-    --danger: #f08a82;
-    --flag: #d9b45c;
+    --paper: #FFFDF8;
+    --ink:   #000000;
+    --mid:   #4A4640;
+    --faint: #8A857C;
+    --hair:  #C9C3B8;
+    --rule:  #000000;
+    --flag:  #7A1F1A;
+    --tint:  #F2EEE4;
   }
 }
 
 * { box-sizing: border-box; }
 
 html {
-  font-family: var(--sans);
-  font-size: var(--size);
-  line-height: 1.5;
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.45;
   color: var(--ink);
   background: var(--paper);
+  font-variant-numeric: tabular-nums;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  margin: 0 auto;
-  padding: 1.5rem 1.5rem 4rem;
-  max-width: 82rem;
+  margin: 0;
+  padding: 0 18px 0;
+  border-top: 6px solid var(--rule);
 }
 
-h1, h2, h3 { margin: 1.5rem 0 0.4rem; line-height: 1.25; }
+/* ---- masthead ---------------------------------------------------------- */
 
-h1 {
-  font-size: 15px;
+.masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 10px 0 9px;
+}
+
+.masthead h1 {
+  margin: 0;
+  font-family: var(--display);
   font-weight: 700;
-  margin-top: 0;
+  font-size: 15px;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.22em;
 }
 
-h2 { font-size: 16px; font-weight: 700; }
-h3 { font-size: var(--size); font-weight: 700; }
-
-p { margin: 0.35rem 0; max-width: 78ch; }
-
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-.statement, .note, .status, .secondary {
-  color: var(--muted);
-  font-size: var(--small);
-}
-
-/* data reads in monospace with tabular figures so columns align down the page */
-.when, .num, header nav a, #review-name {
+.docline {
+  margin: 0;
   font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--mid);
+  text-transform: uppercase;
 }
 
-header {
-  border-bottom: 1px solid var(--ink);
-  padding-bottom: 0.6rem;
-}
+/* ---- course bar -------------------------------------------------------- */
 
-header .statement { margin: 0.15rem 0 0; }
-
-header nav {
-  margin-top: 0.7rem;
+.coursebar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.4rem;
+  gap: 0;
+  border-bottom: 3px solid var(--rule);
+  padding-bottom: 0;
 }
 
-header nav a {
-  font-size: var(--small);
-  padding: 0.12rem 0.45rem;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  background: var(--surface);
-  color: var(--muted);
-}
-
-header nav a:hover { text-decoration: none; border-color: var(--rule-strong); color: var(--ink); }
-
-header nav a[aria-current="page"] {
-  color: var(--accent-ink);
-  background: var(--ink);
-  border-color: var(--ink);
+.coursebar a {
+  font-family: var(--display);
   font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 5px 13px 4px;
+  color: var(--mid);
+  text-decoration: none;
+  border: 1px solid var(--hair);
+  border-bottom: 0;
+  margin-right: -1px;
 }
+
+.coursebar a:hover { color: var(--ink); border-color: var(--rule); }
+
+.coursebar a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+/* ---- record header ----------------------------------------------------- */
+
+.record {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 14px 0 11px;
+  border-bottom: 3px solid var(--rule);
+}
+
+.record-code {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 0.94;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.record-title {
+  margin: 3px 0 0;
+  font-family: var(--body);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--mid);
+  max-width: 46ch;
+}
+
+.record-facts {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 2px 26px;
+  margin: 0;
+  text-align: right;
+}
+
+.record-facts dt {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+}
+
+.record-facts dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.record-facts .is-flag dd { color: var(--flag); }
+
+/* ---- sheet: rail + ledger ---------------------------------------------- */
+
+.sheet {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  align-items: start;
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  border-right: 1px solid var(--rule);
+  padding: 10px 14px 30px 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.rail-sec { padding: 9px 0; border-top: 1px solid var(--hair); }
+.rail-sec:first-child { border-top: 0; padding-top: 2px; }
+
+.rail-sec h3 {
+  margin: 0 0 5px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+}
+
+.rail-index { list-style: none; margin: 0; padding: 0; }
+
+.rail-index a {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 20px;
+  gap: 0 6px;
+  padding: 1px 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mid);
+  text-decoration: none;
+  line-height: 1.5;
+}
+
+.rail-index a:hover { color: var(--ink); background: var(--tint); }
+.rail-index .is-current a { color: var(--ink); font-weight: 500; }
+.rail-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-c { text-align: right; color: var(--faint); }
+.rail-c.is-flag { color: var(--flag); }
+
+.rail-facts { margin: 0; }
+.rail-facts > div { display: flex; justify-content: space-between; gap: 6px; }
+
+.rail-facts dt {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mid);
+}
+
+.rail-facts dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink);
+}
+
+.rail-facts dd.is-flag { color: var(--flag); }
+
+.rail-due { list-style: none; margin: 0; padding: 0; }
+.rail-due li { padding: 2px 0; }
+
+.rail-due-d {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mid);
+}
+
+.rail-due-d.is-flag { color: var(--flag); }
+
+.rail-due-t {
+  display: block;
+  font-family: var(--body);
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.rail-none, .rail-due-t { margin: 0; }
+.rail-none { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+
+/* ---- the ledger -------------------------------------------------------- */
+
+#view { padding-left: 16px; min-width: 0; }
+
+table.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* the single reversed band is the loudest thing on the page, on purpose */
+table.ledger thead th {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-align: left;
+  padding: 4px 8px 3px 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+table.ledger thead th:first-child { padding-left: 8px; }
+
+.c-tick { width: 26px; }
+.c-num  { width: 30px; }
+.c-date { width: 46px; }
+.c-src  { width: 132px; }
+.c-pp   { width: 74px; }
+.c-stat { width: 84px; }
+
+table.ledger td {
+  padding: 4px 8px 4px 0;
+  vertical-align: top;
+  border-bottom: 1px solid var(--hair);
+}
+
+table.ledger td.c-tick { padding-left: 8px; padding-right: 0; }
+
+tr.rec:hover > td { background: var(--tint); }
+
+.c-num, .c-date, .c-pp {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mid);
+}
+
+.c-src {
+  font-family: var(--body);
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c-stat {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--flag);
+}
+
+/* a record held reads quieter, not crossed out */
+tr.struck .c-stat { color: var(--faint); }
+tr.struck .c-title, tr.struck .c-src { color: var(--faint); }
+
+/* a week with nothing assigned is not a file that is missing. only the three
+   named conditions take the accent, so this one stays out of it. */
+.c-stat.is-none { color: var(--faint); }
+
+/* citations wrap; they are never cut off with an ellipsis */
+.c-title {
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.c-title em, tr.empty .c-title { font-style: italic; color: var(--mid); }
+
+.cwarn {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--flag);
+  margin-top: 1px;
+}
+
+/* ---- week separator rows ----------------------------------------------- */
+
+tr.sep > td {
+  border-top: 2px solid var(--rule);
+  border-bottom: 0;
+  padding-top: 9px;
+  padding-bottom: 4px;
+  vertical-align: bottom;
+  background: var(--paper);
+}
+
+tr.sep:hover > td { background: var(--paper); }
+
+.sep-n {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 25px;
+  line-height: 0.9;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+.sep-d {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mid);
+  vertical-align: bottom;
+}
+
+.sep-topic {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  line-height: 1.1;
+}
+
+.sep-sub {
+  display: block;
+  font-family: var(--body);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--mid);
+  line-height: 1.25;
+}
+
+.sep-c {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--mid);
+  text-align: left;
+  vertical-align: bottom;
+}
+
+.sep-c.is-flag { color: var(--flag); }
+tr.sep.current .sep-n { border-left: 3px solid var(--flag); padding-left: 5px; margin-left: -8px; }
+
+/* ---- controls ---------------------------------------------------------- */
+
+button, input, select, textarea { font: inherit; color: var(--ink); background: transparent; }
+
+button {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 4px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+button:hover { background: var(--ink); color: var(--paper); }
+button:disabled { color: var(--faint); border-color: var(--hair); cursor: default; }
+
+#confirm, button.primary { background: var(--ink); color: var(--paper); }
+#confirm:hover, button.primary:hover { background: var(--paper); color: var(--ink); }
+
+/* withdrawing and purging are not one of the three conditions the accent is
+   reserved for, so they carry no colour. they are set apart by rule weight
+   instead, and both sit inside a closed panel. */
+button.danger { border-width: 2px; }
+
+button.quiet {
+  border: 0;
+  padding: 0 0 0 8px;
+  color: var(--mid);
+  text-decoration: underline;
+}
+
+button.quiet:hover { background: none; color: var(--ink); }
+
+select, input[type="text"], input[type="search"], input[type="date"], input[type="number"] {
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0;
+  padding: 1px 2px;
+  font-family: var(--body);
+  font-size: 13px;
+}
+
+select { font-family: var(--mono); font-size: 11px; }
+
+:focus-visible { outline: 2px solid var(--flag); outline-offset: 1px; }
+
+input[type="checkbox"] {
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--mid);
+  border-radius: 0;
+  vertical-align: -1px;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked { background: var(--ink); border-color: var(--ink); }
+
+/* the note stays out of the way until it holds something */
+input.note {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mid);
+  height: 0;
+  opacity: 0;
+}
+
+tr:hover input.note, input.note:focus, input.note:not(:placeholder-shown) {
+  height: auto;
+  opacity: 1;
+  margin-top: 2px;
+}
+
+input.cite { width: 100%; font-size: 13px; }
+
+.rowdel {
+  border: 0;
+  padding: 0;
+  color: var(--flag);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.rowdel:hover { background: none; color: var(--flag); text-decoration: underline; }
+
+.addrow {
+  border: 1px dashed var(--hair);
+  color: var(--mid);
+  width: 100%;
+  text-align: left;
+}
+
+.addrow:hover { background: none; border-color: var(--flag); color: var(--flag); }
+
+/* ---- tabs -------------------------------------------------------------- */
 
 nav.tabs {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 1.25rem;
-  border-bottom: 1px solid var(--rule);
-  margin: 0 0 0.9rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 0 8px;
 }
 
-.tabstrip {
-  display: flex;
-  align-items: baseline;
-  gap: 0 1.25rem;
-  min-width: 0;
-}
+.tabstrip { display: flex; gap: 0; min-width: 0; }
 
 nav.tabs button[data-view] {
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  border-radius: 0;
-  padding: 0.3rem 0 0.4rem;
-  margin-bottom: -1px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: var(--small);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  border: 1px solid var(--hair);
+  margin-right: -1px;
+  color: var(--mid);
+  padding: 4px 12px;
 }
 
-nav.tabs button[data-view]:hover { color: var(--ink); }
+nav.tabs button[data-view]:hover { background: var(--tint); color: var(--ink); }
 
 nav.tabs button[data-view][aria-current="true"] {
-  color: var(--ink);
-  font-weight: 700;
-  border-bottom-color: var(--accent);
-}
-
-nav.tabs .right {
-  margin-left: auto;
-  text-transform: none;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-nav.tabs .right label { color: var(--muted); font-size: var(--small); }
-
-/* edit mode is a state you are in, so the control that turns it on shows
-   that it is on rather than only changing its label */
-#edit-toggle[aria-pressed="true"] {
   background: var(--ink);
+  color: var(--paper);
   border-color: var(--ink);
-  color: var(--accent-ink);
+  position: relative;
+  z-index: 1;
+}
+
+nav.tabs .right { display: flex; align-items: center; gap: 8px; }
+
+nav.tabs .right label {
+  font-family: var(--display);
   font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--faint);
 }
 
-/* a band down the side of the content while editing, so it is obvious the
-   page is in a different mode and typing will change what is saved */
-body.is-editing #view {
-  border-left: 2px solid var(--accent);
-  padding-left: 0.8rem;
-  margin-left: -0.2rem;
-}
+#edit-toggle[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
-/* rows being edited: the field is the row, and remove sits at the end of it */
-.is-editing td { vertical-align: middle; }
+/* ---- other views ------------------------------------------------------- */
 
-.rowdel {
-  border: 0;
-  background: none;
-  padding: 0 0 0 0.5rem;
-  border-radius: 0;
-  color: var(--danger);
-  font-size: var(--small);
-  text-decoration: underline;
-  white-space: nowrap;
-}
-
-.rowdel:hover { border: 0; filter: brightness(0.85); }
-
-.addrow {
-  margin-top: 0.4rem;
-  border: 1px dashed var(--rule-strong);
-  background: none;
-  color: var(--muted);
-  width: 100%;
-  text-align: left;
-  padding: 0.35rem 0.6rem;
-}
-
-.addrow:hover { border-style: solid; border-color: var(--accent); color: var(--ink); }
-
-.is-editing input[type="text"],
-.is-editing input[type="date"],
-.is-editing input[type="number"] { width: 100%; }
-
-input.pct { width: 4.5rem; text-align: right; }
-
-section { margin-top: 1.5rem; }
-
-button, input, select, textarea {
-  font: inherit;
-  color: var(--ink);
-  background: var(--surface);
-}
-
-select, input[type="text"], input[type="search"] {
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  padding: 0.18rem 0.4rem;
-}
-
-select:focus, input:focus, button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-button {
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  padding: 0.26rem 0.8rem;
-  cursor: pointer;
-  font-size: var(--small);
-}
-
-button:hover { border-color: var(--ink); }
-button:disabled { color: var(--muted); border-color: var(--rule); cursor: default; }
-
-button.primary, #confirm {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
+h2 {
+  font-family: var(--display);
   font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin: 14px 0 7px;
 }
 
-button.primary:hover, #confirm:hover { filter: brightness(1.1); border-color: var(--accent); }
+h3 { font-family: var(--display); font-weight: 700; font-size: 12px;
+     text-transform: uppercase; letter-spacing: 0.12em; margin: 14px 0 4px; }
 
-/* only the intake picker is a primary action; a backup import is occasional */
-input[type="file"] { border: 0; background: none; color: var(--muted); font-size: var(--small); }
+p { margin: 4px 0; max-width: 76ch; }
 
-.drop input[type="file"]::file-selector-button {
-  font: inherit;
-  font-size: var(--small);
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  padding: 0.26rem 0.8rem;
-  margin-right: 0.55rem;
-  cursor: pointer;
-  font-weight: 700;
+a { color: var(--ink); }
+
+.secondary, .note, .status, .statement {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mid);
 }
 
-.drop input[type="file"]::file-selector-button:hover { filter: brightness(1.1); }
-
-input[type="file"].plain::file-selector-button {
-  font: inherit;
-  font-size: var(--small);
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  padding: 0.18rem 0.55rem;
-  margin-right: 0.45rem;
-  cursor: pointer;
-}
-
-input[type="file"].plain::file-selector-button:hover { border-color: var(--ink); }
-
-button.quiet {
-  border: 0;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  color: var(--muted);
-  font-size: var(--small);
-  text-decoration: underline;
-}
-
-button.quiet:hover { color: var(--ink); border: 0; }
-
-/* irreversible actions carry their colour at rest, not only on hover */
-button.danger {
-  border: 0;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  color: var(--danger);
-  font-size: var(--small);
-  text-decoration: underline;
-}
-
-button.danger:hover { color: var(--danger); filter: brightness(0.85); border: 0; }
-
-label { display: inline-block; margin-right: 0.45rem; }
-label.inline { margin-left: 0.7rem; }
-
-/* the drop zone: interactive at rest, louder on hover, loudest on drag over */
-.drop {
-  border: 1px dashed var(--rule-strong);
-  border-radius: 3px;
-  background: var(--sunken);
-  padding: 1rem 1.1rem;
-  margin: 0.5rem 0;
-  color: var(--muted);
-  font-size: var(--small);
-}
-
-.drop:hover { border-color: var(--accent); background: var(--surface); }
-.drop label { color: var(--ink); font-size: var(--size); }
-.drop .note { margin: 0.35rem 0 0; }
-
-/* set by the dragenter handler while a file is held over the zone */
-.drop[data-active="true"] {
-  border-style: solid;
-  border-color: var(--accent);
-  background: var(--surface);
-  color: var(--ink);
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.4rem 0 1.1rem;
-}
+table { width: 100%; border-collapse: collapse; }
 
 th {
-  font-size: var(--small);
+  font-family: var(--display);
   font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-bottom: 1px solid var(--ink);
-  padding: 0.2rem 0.7rem 0.3rem 0;
-  text-align: left;
-}
-
-td {
-  text-align: left;
-  vertical-align: top;
-  padding: 0.35rem 0.7rem 0.35rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-td.num, th.num { text-align: right; padding-right: 0.2rem; white-space: nowrap; }
-td.when, th.when { white-space: nowrap; color: var(--muted); font-size: var(--small); }
-
-tr.missing td { color: var(--danger); }
-.flagged { color: var(--flag); font-weight: 700; }
-
-ul { margin: 0.25rem 0; padding-left: 1.15rem; }
-
-table.checklist td { padding: 0.4rem 0.7rem 0.4rem 0; }
-table.checklist td.tick { width: 1.5rem; padding-right: 0.35rem; }
-table.checklist td.when { width: 4.6rem; }
-
-input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
-
-.done { color: var(--muted); text-decoration: line-through; }
-
-input.note {
-  width: 100%;
-  max-width: 34rem;
-  margin-top: 0.2rem;
-  border: 0;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 0;
-  padding: 0.08rem 0;
-  background: transparent;
-  font-size: var(--small);
-  color: var(--ink);
-}
-
-input.note::placeholder { color: var(--rule-strong); }
-input.note:focus { border-bottom-color: var(--accent); outline: none; }
-
-/* the week list.
-   a week was a stacked block: heading, a progress line, then a table, which
-   spent ninety pixels of height and none of the width on a single reading.
-   the label moves into a gutter and the readings sit beside it, so a term
-   reads as a list you can scan instead of a column you scroll. */
-/* three columns: which week, what it is about, what to read. each is a
-   different question, and side by side they answer all three in the height
-   of one line instead of four. */
-#view section.week {
-  display: grid;
-  grid-template-columns: 6.5rem 14rem minmax(0, 1fr);
-  gap: 0 1.5rem;
-  align-items: start;
-  margin: 0;
-  padding: 0.5rem 0 0.55rem;
-  border-top: 1px solid var(--rule);
-}
-
-#view section.week:first-of-type { border-top: 1px solid var(--ink); }
-
-.wmeta { display: flex; align-items: baseline; gap: 0.4rem; }
-
-.wmeta h3 {
-  margin: 0;
-  font-size: var(--small);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.wtopic {
-  margin: 0;
-  font-size: var(--small);
-  color: var(--muted);
-  line-height: 1.35;
-  /* two lines, then the title attribute carries the rest. a long topic must
-     not set the height of the whole row. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.wcount {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  color: var(--rule-strong);
-}
-
-.wcount.all-done { color: var(--accent); }
-
-/* the note is empty on nearly every row, and an empty field still holds a
-   line of height. the wrapper collapses with it. */
-.notewrap { height: 0; overflow: hidden; }
-
-tr:hover .notewrap,
-.notewrap:focus-within,
-tr:has(input.note:not(:placeholder-shown)) .notewrap {
-  height: auto;
-  overflow: visible;
-}
-
-.wbody > table { margin: 0; }
-.wbody > .secondary { margin: 0.15rem 0 0; }
-
-.wdue {
-  margin: 0.35rem 0 0;
-  padding-left: 1rem;
-  font-size: var(--small);
-  color: var(--muted);
-}
-
-/* the week the term is actually in. it is the reason the page was opened. */
-#view section.week.now {
-  border-left: 2px solid var(--accent);
-  margin-left: -0.9rem;
-  padding-left: 0.7rem;
-}
-
-#view section.week.now .wmeta h3::after {
-  content: "now";
-  margin-left: 0.45rem;
-  padding: 0.02rem 0.3rem;
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-radius: 2px;
   font-size: 9.5px;
-  letter-spacing: 0.06em;
-  vertical-align: 0.08em;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-align: left;
+  color: var(--faint);
+  border-bottom: 2px solid var(--rule);
+  padding: 3px 8px 3px 0;
 }
 
-.viewhead {
-  display: flex;
-  align-items: baseline;
-  gap: 0.7rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.5rem;
-}
+td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
 
-.viewhead h2 { margin: 0; }
-.viewhead p { margin: 0; }
+.when, .num { font-family: var(--mono); font-size: 10.5px; color: var(--mid); }
+.num { text-align: right; }
 
-/* a note is empty on almost every row, so it stops taking a line of its own
-   until there is something in it or the row is being worked on */
-table.checklist input.note {
-  opacity: 0;
-  height: 0;
-  padding: 0;
-  border: 0;
-  pointer-events: none;
-}
+.flagged, tr.missing td { color: var(--flag); }
 
-table.checklist tr:hover input.note,
-table.checklist input.note:focus,
-table.checklist input.note:not(:placeholder-shown) {
-  opacity: 1;
-  height: auto;
-  padding: 0.08rem 0;
-  border-bottom: 1px solid var(--rule);
-  pointer-events: auto;
-}
+ol, ul { margin: 4px 0; padding-left: 18px; }
 
-section.course-deadlines { margin-top: 1.4rem; }
-section.course-deadlines h3 .secondary { font-weight: 400; margin-left: 0.45rem; }
+ol.bibliography { list-style: none; padding-left: 0; }
+ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px; font-size: 13px; }
 
-/* deadlines banded by how close they are. sorted by date alone opens a term
-   on things that happened in february. */
+/* deadline bands */
 .band {
   display: flex;
+  gap: 7px;
   align-items: baseline;
-  gap: 0.45rem;
-  margin: 1rem 0 0.15rem;
-  font-size: 11px;
+  margin: 14px 0 2px;
+  font-family: var(--display);
   font-weight: 700;
+  font-size: 9.5px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
+  letter-spacing: 0.14em;
+  color: var(--faint);
 }
 
-.bandcount {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 400;
-  color: var(--rule-strong);
-}
+.bandcount { font-family: var(--mono); font-weight: 400; }
+.band.band-late, .band.band-soon { color: var(--flag); }
+.relday { display: block; font-family: var(--mono); font-size: 9.5px; color: var(--faint); }
+.band-late + table .relday { color: var(--flag); }
 
-.band.band-late { color: var(--danger); }
-.band.band-soon { color: var(--flag); }
-
-.band.band-late + table td:first-child,
-.band.band-soon + table td:first-child { font-weight: 700; }
-
-/* "in 3 days" is what is being asked; the date itself is the smaller half */
-.relday { display: block; font-size: 10.5px; color: var(--muted); }
-.band-late + table .relday { color: var(--danger); }
-
-ol.bibliography { padding-left: 1.4rem; }
-ol.bibliography li { margin-bottom: 0.35rem; }
-
-/* the review list.
-   this is the one page where the tool asks for help, so it is built for a
-   single action repeated: read the parsed line, glance at the source it came
-   from, fix it if it is wrong. everything that is not one of those three
-   things is turned down until it disappears. */
+/* ---- review ------------------------------------------------------------ */
 
 .rstats {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 2.1rem;
-  margin: 0.7rem 0 0.9rem;
-  padding: 0.55rem 0;
-  border-top: 1px solid var(--ink);
-  border-bottom: 1px solid var(--rule);
+  gap: 4px 30px;
+  margin: 8px 0 10px;
+  padding: 7px 0;
+  border-top: 2px solid var(--rule);
+  border-bottom: 1px solid var(--hair);
 }
 
-.rstats > div { display: flex; flex-direction: column; gap: 0.05rem; }
+.rstats > div { display: flex; flex-direction: column; }
 
 .rstats dt {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.rstats dd {
-  margin: 0;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 18px;
+  font-family: var(--display);
   font-weight: 700;
-  line-height: 1.2;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--faint);
 }
 
+.rstats dd { margin: 0; font-family: var(--mono); font-size: 17px; }
 .rstats dd.flagged { color: var(--flag); }
 
-.rlead { font-size: var(--small); color: var(--muted); margin: 0 0 1rem; }
-.rlead .quiet-note { color: var(--rule-strong); }
-.rlead button.quiet { margin-left: 0.3rem; }
-
-.rwarn {
-  margin: 0 0 1rem;
-  padding-left: 1rem;
-  font-size: var(--small);
-  color: var(--flag);
-}
-
-/* the week header stays put while its rows scroll under it, so it is always
-   clear which week is being corrected. the spacing is tight because most weeks
-   contribute one row, and a generous gap turns the page into headings. */
-#review .week { margin-top: 0.9rem; }
+.rlead { font-family: var(--mono); font-size: 10.5px; color: var(--mid); margin: 0 0 10px; }
+.rwarn { margin: 0 0 10px; padding-left: 16px; font-size: 12px; color: var(--flag); }
 
 .whead {
   position: sticky;
   top: 0;
-  z-index: 1;
   display: flex;
   align-items: baseline;
-  gap: 0.55rem;
-  margin: 0 0 0.15rem;
-  padding: 0.35rem 0 0.25rem;
+  gap: 8px;
   background: var(--paper);
-  border-bottom: 1px solid var(--rule-strong);
-  font-size: var(--small);
+  border-bottom: 2px solid var(--rule);
+  padding: 4px 0 2px;
+  margin: 14px 0 0;
 }
 
-.whead .when {
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 700;
-  color: var(--ink);
-  white-space: nowrap;
-}
-
-.whead .wtopic {
-  font-weight: 400;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.whead .when { font-family: var(--display); font-weight: 700; font-size: 11px;
+               text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); }
+.whead .wtopic { font-family: var(--body); font-style: italic; font-size: 12px; color: var(--mid); }
 
 .rlist { list-style: none; margin: 0; padding: 0; }
 
 .rrow {
   display: grid;
-  grid-template-columns: 1.7rem minmax(0, 1fr);
-  gap: 0 0.45rem;
-  padding: 0.4rem 0 0.45rem 0.65rem;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 0 8px;
+  padding: 4px 0 5px 8px;
   border-left: 2px solid transparent;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--hair);
 }
 
 .rrow.needs-check { border-left-color: var(--flag); }
+.rnum { font-family: var(--mono); font-size: 10.5px; color: var(--faint); text-align: right; }
 
-.rnum {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--small);
-  color: var(--rule-strong);
-  text-align: right;
-  padding-top: 0.32rem;
-}
-
-/* a citation reads as text until you go to change it. a page of bordered
-   boxes looks like a form to fill in, when the work is to read what is
-   already there and correct the few that are wrong. */
-input.cite {
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 2px;
-  padding: 0.18rem 0.35rem;
-  background: transparent;
-  font-size: var(--size);
-  line-height: 1.4;
-}
-
-.rrow:hover input.cite { border-color: var(--rule); background: var(--surface); }
-
-input.cite:focus {
-  border-color: var(--accent);
-  background: var(--surface);
-  outline: 1px solid var(--accent);
-  outline-offset: -2px;
-}
-
-/* the source line, kept to two lines so twenty five rows still fit on a
-   screen. the whole thing opens when the row is being worked on, which is
-   the only time all of it matters. */
 .rsource {
-  margin: 0.2rem 0 0 0.35rem;
-  padding-left: 0.6rem;
-  border-left: 1px solid var(--rule);
-  font-size: var(--small);
-  line-height: 1.45;
-  color: var(--muted);
+  margin: 2px 0 0;
+  padding-left: 8px;
+  border-left: 1px solid var(--hair);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -724,140 +716,100 @@ input.cite:focus {
   overflow: hidden;
 }
 
-.rrow:hover .rsource,
-.rrow:focus-within .rsource {
-  -webkit-line-clamp: unset;
-  line-clamp: unset;
-  overflow: visible;
+.rrow:hover .rsource, .rrow:focus-within .rsource {
+  -webkit-line-clamp: unset; line-clamp: unset; overflow: visible;
 }
 
-/* the accuracy note. plain, permanent, and sitting where the decision is made
-   rather than tucked away in a help page. */
-/* the review actions ride along the bottom of the window. twenty five rows is
-   a long way to scroll back down once the last one is fixed. */
 .actions {
   position: sticky;
   bottom: 0;
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-  padding: 0.7rem 0;
+  gap: 8px;
+  padding: 9px 0;
+  margin-top: 14px;
   background: var(--paper);
-  border-top: 1px solid var(--ink);
+  border-top: 3px solid var(--rule);
 }
 
-#tools, #data-tools, #accuracy {
-  margin-top: 2rem;
-  border-top: 1px solid var(--rule);
-  padding-top: 0.5rem;
-}
+/* ---- deposit and management panels ------------------------------------- */
 
-#data-tools { margin-top: 0.5rem; border-top: 0; padding-top: 0; }
+details { margin-top: 16px; border-top: 1px solid var(--hair); padding-top: 6px; }
 
-#tools summary, #data-tools summary, #accuracy summary {
+summary {
   cursor: pointer;
-  color: var(--muted);
-  font-size: var(--small);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 9.5px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.16em;
+  color: var(--faint);
 }
 
-#tools summary:hover, #data-tools summary:hover, #accuracy summary:hover { color: var(--ink); }
-#tools[open] summary, #data-tools[open] summary, #accuracy[open] summary { margin-bottom: 0.6rem; }
+summary:hover { color: var(--ink); }
 
-#accuracy table { max-width: 34rem; }
+.drop { border: 1px dashed var(--hair); padding: 12px 14px; margin: 8px 0; }
+.drop:hover, .drop[data-active="true"] { border-color: var(--flag); border-style: solid; }
+.drop label { font-family: var(--display); font-weight: 700; font-size: 11px;
+              text-transform: uppercase; letter-spacing: 0.12em; }
 
-.controls { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: baseline; }
-#data-tools .controls .danger:first-of-type { margin-left: 0; }
+input[type="file"] { border: 0; font-family: var(--mono); font-size: 10.5px; color: var(--mid); }
 
-#review-name { font-weight: 400; font-size: var(--small); }
+input[type="file"]::file-selector-button {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 4px 11px;
+  margin-right: 9px;
+  cursor: pointer;
+}
 
-footer { margin-top: 2rem; color: var(--muted); font-size: var(--small); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 
-/* phones.
-   this gets used standing in a corridor deciding what to read next, so the
-   narrow layout is the one that has to work, not the one that merely fits. */
+/* ---- colophon ---------------------------------------------------------- */
+
+.colophon {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 26px;
+  padding: 8px 0 20px;
+  border-top: 3px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.colophon p { margin: 0; }
+
+/* ---- narrow ------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .sheet { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; border-right: 0; border-bottom: 1px solid var(--rule);
+          max-height: none; padding: 6px 0 10px; }
+  .rail-index { columns: 2; }
+  #view { padding-left: 0; }
+  .record-facts { grid-template-columns: repeat(2, auto); text-align: left; }
+  .record-code { font-size: 34px; }
+}
+
 @media (max-width: 640px) {
-  body { padding: 1rem 0.85rem 5rem; }
-
-  /* only the views scroll sideways, rather than wrapping onto three rows and
-     pushing the content off the first screen. the controls beside them stay
-     put on their own line, where they can still be found. */
-  .tabstrip {
-    flex: 1 1 100%;
-    overflow-x: auto;
-    gap: 0 1rem;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
+  body { padding: 0 12px; }
+  .c-src, .c-pp, thead .c-src, thead .c-pp { display: none; }
+  .c-stat { width: 62px; }
+  input[type="checkbox"] { width: 15px; height: 15px; }
+  .record-code { font-size: 27px; }
+  .rail-index { columns: 1; }
+  .tabstrip { overflow-x: auto; scrollbar-width: none; }
   .tabstrip::-webkit-scrollbar { display: none; }
-  nav.tabs button[data-view] { white-space: nowrap; padding: 0.45rem 0 0.5rem; }
-
-  nav.tabs .right {
-    margin-left: 0;
-    flex: 1 1 100%;
-    padding: 0.4rem 0 0.15rem;
-  }
-
-  /* a checklist is week, date, reading. on a phone the date column costs more
-     than it gives, so it sits above the reading instead of beside it. */
-  table.checklist, table.checklist tbody, table.checklist tr, table.checklist td {
-    display: block;
-    width: auto;
-  }
-
-  table.checklist tr {
-    position: relative;
-    padding: 0.55rem 0 0.55rem 1.9rem;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  table.checklist td { border: 0; padding: 0; }
-
-  table.checklist td.tick {
-    position: absolute;
-    left: 0;
-    top: 0.6rem;
-    width: auto;
-  }
-
-  table.checklist td.when {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 0.1rem;
-  }
-
-  /* touch targets. a 15px checkbox is a miss as often as a hit. */
-  input[type="checkbox"] { width: 20px; height: 20px; }
-  button { padding: 0.45rem 0.9rem; }
-  .rowdel { padding: 0.35rem 0 0.35rem 0.5rem; }
-
-  /* remaining wide tables scroll inside themselves rather than stretching
-     the page and taking the whole layout sideways with them */
-  #view > table,
-  .course-deadlines table,
-  section.week > table:not(.checklist) {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-
-  /* the columns have nowhere to go on a phone, so week, topic and readings
-     go back to stacking, with week and topic sharing the first line */
-  #view section.week {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.1rem 0.6rem;
-  }
-
-  .wbody { grid-column: 1 / -1; }
-  .wtopic { -webkit-line-clamp: 1; line-clamp: 1; }
-  #view section.week.now { margin-left: -0.5rem; padding-left: 0.4rem; }
-
-  .rrow { grid-template-columns: 1.4rem minmax(0, 1fr); padding-left: 0.5rem; }
-  .rstats { gap: 0.5rem 1.4rem; }
-  .rstats dd { font-size: 16px; }
-  .whead { flex-wrap: wrap; gap: 0 0.4rem; }
-  .whead .wtopic { white-space: normal; }
+  nav.tabs button[data-view] { white-space: nowrap; }
 }

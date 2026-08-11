@@ -1,32 +1,32 @@
-/* print output is read on paper, away from a screen, so it is designed for
-   that rather than being the screen page sent through a printer. it is the
-   same quiet-paper design in its print form: serif body for sustained reading,
-   the same table treatment as the screen, black and white safe throughout.
-   assume no colour. */
+/* print inverts: black on white, whatever the screen was set to. the reversed
+   table header is the one thing that keeps its ink, because it is the element
+   the whole layout is built around and a hollow header reads as a mistake. */
 
 @page {
   size: letter;
-  /* wider inside margin so a staple or three holes do not eat the text */
-  margin: 18mm 16mm 18mm 22mm;
+  margin: 16mm 14mm 15mm 18mm;
 }
 
 @media print {
-  html {
-    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
-    font-size: 11pt;
-    line-height: 1.5;
-    color: #000;
-    background: #fff;
+  :root {
+    --paper: #FFFFFF;
+    --ink:   #000000;
+    --mid:   #333333;
+    --faint: #666666;
+    --hair:  #BBBBBB;
+    --rule:  #000000;
+    --flag:  #000000;
+    --tint:  transparent;
   }
 
-  body { max-width: none; margin: 0; padding: 0; }
+  html { font-size: 10pt; background: #fff; color: #000; }
+  body { padding: 0; border-top: 3pt solid #000; }
 
-  /* the first line of the first page is the course code, nothing above it.
-     the panels that explain the tool, or let you export from it, belong to
-     the screen and were printing into the middle of the document. */
-  header .statement,
-  header nav,
+  /* the apparatus of the screen has no job on paper */
+  .masthead,
+  .coursebar,
   nav.tabs,
+  .rail,
   #review,
   #tools,
   #accuracy,
@@ -35,84 +35,57 @@
   #unmatched,
   button,
   .drop,
+  input.note,
   .no-print {
     display: none !important;
   }
 
-  h1 { font-size: 13pt; margin: 0 0 0.5em; letter-spacing: 0; }
-  h2 { font-size: 12pt; margin: 1em 0 0.3em; }
-  h3 { font-size: 11pt; margin: 0.9em 0 0.2em; }
+  .sheet { display: block; }
+  #view { padding-left: 0; }
 
-  /* a heading never sits alone at the foot of a page, and no paragraph
-     leaves a single line behind on either side of a break */
-  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+  .record { border-bottom: 3pt solid #000; padding-top: 0; }
+  .record-code { font-size: 30pt; }
+
+  table.ledger thead th {
+    background: #000 !important;
+    color: #fff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    position: static;
+  }
+
+  /* a heading row repeats when the ledger runs over a page, so a column of
+     dates on sheet three is still labelled */
+  thead { display: table-header-group; }
+
+  /* no record and no week heading may be split across two sheets */
+  tr.sep, tr.rec, .entry, li { break-inside: avoid; page-break-inside: avoid; }
+  tr.sep > td { border-top: 1.5pt solid #000; }
+  table.ledger td { border-bottom: 0.25pt solid #999; }
+
+  /* status carries no colour on paper, so it carries weight instead */
+  .c-stat { font-weight: 700; }
+  tr.struck .c-stat, tr.struck .c-title, tr.struck .c-src { color: #666; font-weight: 400; }
+  .cwarn { color: #000; font-weight: 700; }
+
   p, li, td { orphans: 2; widows: 2; }
+  h2, h3 { break-after: avoid; page-break-after: avoid; }
 
-  .secondary, .note, .status { color: #000; font-size: 9pt; }
-
+  /* a link is useless underlined on paper, so the address is printed */
   a { color: #000; text-decoration: none; }
-
-  /* a blue underlined word is useless on paper, so the address is printed.
-     breaking anywhere beats a url pushing the margin out, but it is allowed
-     to keep whole words together where it can. */
   a[href^="http"]::after {
     content: " " attr(href);
-    font-size: 8pt;
-    color: #000;
+    font-family: var(--mono);
+    font-size: 7.5pt;
     overflow-wrap: anywhere;
   }
 
-  /* tables match the screen: quiet uppercase heads over a strong rule */
-  table { width: 100%; border-collapse: collapse; }
-  th {
-    font-size: 8.5pt;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1pt solid #000;
-    padding: 3pt 8pt 3pt 0;
-  }
-  td { border-bottom: 0.5pt solid #777; padding: 3pt 8pt 3pt 0; }
-  thead { display: table-header-group; }
-  td.when { color: #000; }
+  ol.bibliography li { padding-left: 1.4em; text-indent: -1.4em; margin-bottom: 4pt; }
 
-  /* no citation may split across a page */
-  .entry, tr, li { page-break-inside: avoid; break-inside: avoid; }
-  section.week, section.course-deadlines { page-break-inside: avoid; break-inside: avoid; }
-
-  /* a bibliography hangs its turn lines, which is how one is set and what
-     makes the surnames findable running a finger down the margin */
-  ol.bibliography {
-    padding-left: 0;
-    list-style: none;
-  }
-
-  ol.bibliography li {
-    padding-left: 1.4em;
-    text-indent: -1.4em;
-    margin-bottom: 4pt;
-  }
-
-  /* missing and overdue read as weight, not colour */
-  tr.missing td { font-weight: 700; color: #000; }
-  tr.missing td:first-child::before { content: "MISSING  "; }
-
-  /* the checklist prints as a checklist: a box to tick with a pen */
-  table.checklist input[type="checkbox"] { display: none; }
-  table.checklist td.tick { width: 14pt; }
-  table.checklist td.tick::before { content: "\2610"; font-size: 12pt; }
-  table.checklist tr:has(input:checked) td.tick::before { content: "\2611"; }
-  .done { text-decoration: none; color: #000; }
-
-  /* an empty note prints as nothing; a written one prints under its reading */
-  input.note { border: 0; background: none; font-size: 9pt; font-style: italic; width: auto; color: #000; }
-  input.note:placeholder-shown { display: none; }
-
-  #print-meta {
-    display: block;
-    font-size: 8pt;
-    margin-top: 10pt;
-    border-top: 0.5pt solid #000;
-    padding-top: 3pt;
+  .colophon {
+    border-top: 3pt solid #000;
+    margin-top: 12pt;
+    padding-bottom: 0;
   }
 
   .page-break { page-break-before: always; }

@@ -112,110 +112,226 @@ export function weekView(course, progress, editing = false) {
     groups.get(key).push({ session, si })
   })
 
-  const blocks = []
-  const weekStamps = []
-  for (const [key, entries] of groups) {
-    const rows = []
+  const stamps = []
+  const rows = []
+  let held = 0
+  let heldTotal = 0
+  let pagesDone = 0
+  let pagesTotal = 0
+  const index = []
+
+  for (const [, entries] of groups) {
+    const sessions = entries.map((e) => e.session)
+    const first = sessions[0]
+    const start = sessions.map((s) => s.meeting_date).filter(Boolean).sort()[0] || null
+    const days = daysUntil(start)
+    const title = first.week_number
+      ? String(first.week_number).padStart(2, '0')
+      : '\u2014'
+    const topic = first.topic || first.section_heading || ''
+
+    const due = course.parse.deliverables.items.filter((d) =>
+      sessions.some((s) => s.meeting_date && d.due_date === s.meeting_date))
+
+    let count = 0
+    let doneHere = 0
+    const body = []
     for (const { session, si } of entries) {
       session.readings.forEach((reading, ri) => {
         const id = readingKey(course, session, reading)
         const saved = progress.get(id) || {}
-        const label = session.sub_session_label ? ` ${session.sub_session_label}` : ''
+        count += 1
+        heldTotal += 1
+        const pages = pageCount(reading.page_range)
+        pagesTotal += pages
+        if (saved.read) { doneHere += 1; held += 1; pagesDone += pages }
 
-        // in edit mode the reading itself becomes the field. a parser gets
-        // things wrong and professors change their minds, so anything shown
-        // here has to be fixable without reparsing the pdf.
-        const body = editing
+        const cited = editing
           ? `<input type="text" class="cite" data-edit-reading="${si}.${ri}"
-               value="${esc(citation(reading.work))}" aria-label="Reading">
-             <button type="button" class="rowdel" data-remove-reading="${si}.${ri}"
-               aria-label="Remove this reading">Remove</button>`
-          : `<div class="${saved.read ? 'done' : ''}">${esc(cite.short(reading.work))}</div>
-             ${reading.requirement_level !== 'required'
-               ? `<span class="secondary">${esc(reading.requirement_level)}</span> ` : ''}
-             ${reading.page_range ? `<span class="secondary">pp. ${esc(reading.page_range)}</span> ` : ''}
-             ${reading.access_note ? `<span class="secondary">${esc(reading.access_note)}</span>` : ''}
+               value="${esc(citation(reading.work))}" aria-label="Entry">`
+          : `${esc(cite.short(reading.work, 400))}
              ${reading.content_warning
-               ? `<div class="secondary">Content warning: ${esc(reading.content_warning)}</div>` : ''}
-             <div class="notewrap"><input type="text" class="note" data-note="${esc(id)}"
-               value="${esc(saved.note || '')}" placeholder="note"></div>`
+               ? `<span class="cwarn">Content warning \u00b7 ${esc(reading.content_warning)}</span>`
+               : ''}
+             <input type="text" class="note" data-note="${esc(id)}"
+               value="${esc(saved.note || '')}" placeholder="\u2014">`
 
-        rows.push(`<tr class="entry">
-          <td class="tick">${editing ? '' : `<input type="checkbox" data-progress="${esc(id)}"
-            ${saved.read ? 'checked' : ''} aria-label="read">`}</td>
-          <td class="when">${esc(shortDate(session.meeting_date))}${esc(label)}</td>
-          <td>${body}</td>
+        rows.push(`<tr class="rec${saved.read ? ' struck' : ''}">
+          <td class="c-tick">${editing
+            ? `<button type="button" class="rowdel" data-remove-reading="${si}.${ri}"
+                 aria-label="Strike this entry">\u00d7</button>`
+            : `<input type="checkbox" data-progress="${esc(id)}"
+                 ${saved.read ? 'checked' : ''} aria-label="Held">`}</td>
+          <td class="c-num">${String(rows.length + 1).padStart(3, '0')}</td>
+          <td class="c-date">${esc(shortDate(session.meeting_date))}</td>
+          <td class="c-title">${cited}</td>
+          <td class="c-src">${esc(sourceOf(reading))}</td>
+          <td class="c-pp">${esc(reading.page_range || '')}</td>
+          <td class="c-stat">${saved.read ? 'Held' : 'Not held'}</td>
         </tr>`)
       })
     }
-    const sessions = entries.map((e) => e.session)
-    const firstIndex = entries[0].si
 
-    const due = course.parse.deliverables.items
-      .filter((d) => sessions.some((s) => s.meeting_date && d.due_date === s.meeting_date))
-      .map((d) => `<li>${esc(d.title)}${d.weight_percent ? ` (${d.weight_percent}%)` : ''}</li>`)
-      .join('')
+    const flagged = due.length > 0 || (days !== null && days >= -6 && days <= 7)
+    index.push({ n: title, topic, count, flagged })
+    stamps.push({ row: rows.length, days })
 
-    const heading = sessions[0].topic || sessions[0].section_heading || ''
-    const total = rows.length
-    const done = rows.filter((r) => r.includes('checked')).length
-    // a break or a cancelled class has no week number, so it is titled by its
-    // date rather than by an invented one
-    const title = sessions[0].week_number
-      ? `Week ${sessions[0].week_number}`
-      : shortDate(sessions[0].meeting_date) || 'Unscheduled'
+    const sep = `<tr class="sep" data-week="${index.length - 1}">
+        <td class="c-tick"></td>
+        <td class="c-num sep-n">${esc(title)}</td>
+        <td class="c-date sep-d">${esc(shortDate(start))}</td>
+        <td class="c-title sep-t" colspan="3">
+          <span class="sep-topic">${esc(topic || 'No topic recorded')}</span>
+          ${due.length
+            ? `<span class="sep-sub">${due.map((d) => esc(d.title)).join('; ')} due</span>`
+            : ''}
+        </td>
+        <td class="c-stat sep-c${flagged ? ' is-flag' : ''}">${count || '\u2014'}</td>
+      </tr>`
 
-    const start = sessions.map((s) => s.meeting_date).filter(Boolean).sort()[0] || null
-    const days = daysUntil(start)
-    weekStamps.push({ index: blocks.length, days })
+    // the separator has to precede this week's records, which are already in
+    // the list, so it is spliced in ahead of them
+    rows.splice(rows.length - count, 0, sep)
 
-    blocks.push(`<section class="week" data-week="${blocks.length}">
-      <div class="wmeta">
-        <h3>${esc(title)}</h3>
-        ${total && !editing
-          ? `<span class="wcount${done === total ? ' all-done' : ''}">${done}/${total}</span>`
-          : ''}
-      </div>
-      <p class="wtopic" title="${esc(heading)}">${esc(heading)}</p>
-      <div class="wbody">
-        ${rows.length
-          ? `<table class="checklist"><tbody>${rows.join('')}</tbody></table>`
-          : editing
-            ? ''
-            : `<p class="secondary">${esc(sessions[0].session_type.replace('_', ' '))}</p>`}
-        ${editing
-          ? `<button type="button" class="addrow" data-add-reading="${firstIndex}">
-               Add a reading</button>`
-          : ''}
-        ${due ? `<ul class="wdue">${due}</ul>` : ''}
-      </div>
-    </section>`)
+    if (!count) {
+      rows.push(`<tr class="rec empty"><td class="c-tick"></td><td class="c-num"></td>
+        <td class="c-date"></td>
+        <td class="c-title"><em>No reading recorded for this week.</em></td>
+        <td class="c-src"></td><td class="c-pp"></td>
+        <td class="c-stat is-none">\u2014</td></tr>`)
+    }
+
+    if (editing) {
+      rows.push(`<tr class="rec addrow-row"><td class="c-tick"></td><td class="c-num"></td>
+        <td class="c-date"></td>
+        <td class="c-title" colspan="4"><button type="button" class="addrow"
+          data-add-reading="${entries[0].si}">Add entry</button></td></tr>`)
+    }
   }
 
-  // "now" is the week whose meetings are nearest ahead, counting a week as
-  // still current for six days after it starts. a term that has finished gets
-  // no marker at all, because pointing at the last week of a course that ended
-  // in May is worse than pointing at nothing.
-  const upcoming = weekStamps.filter((w) => w.days !== null && w.days >= -6)
-  const current = upcoming.length
-    ? upcoming.reduce((best, w) => (w.days < best.days ? w : best))
-    : null
+  const upcoming = stamps.filter((s) => s.days !== null && s.days >= -6)
+  const currentIdx = upcoming.length
+    ? stamps.indexOf(upcoming.reduce((b, s) => (s.days < b.days ? s : b)))
+    : -1
 
-  let html = blocks.join('')
-  if (current) {
-    html = html.replace(
-      `<section class="week" data-week="${current.index}">`,
-      `<section class="week now" data-week="${current.index}">`
-    )
+  let html = rows.join('')
+  if (currentIdx >= 0) {
+    html = html.replace(`<tr class="sep" data-week="${currentIdx}">`,
+      `<tr class="sep current" data-week="${currentIdx}">`)
   }
 
-  const totals = course.parse.sessions.reduce((n, s) => n + s.readings.length, 0)
-  return `<div class="viewhead">
-      <h2>${esc(course.code)} by week</h2>
-      <p class="secondary">${course.parse.sessions.length} weeks, ${totals} readings</p>
-    </div>${html}`
+  return {
+    html: `<table class="ledger">
+      <thead><tr>
+        <th class="c-tick"></th>
+        <th class="c-num">\u2116</th>
+        <th class="c-date">Date</th>
+        <th class="c-title">Author / Title</th>
+        <th class="c-src">Source</th>
+        <th class="c-pp">Pages</th>
+        <th class="c-stat">Status</th>
+      </tr></thead>
+      <tbody>${html}</tbody>
+    </table>`,
+    index,
+    current: currentIdx,
+    holdings: { held, heldTotal, pagesDone, pagesTotal },
+  }
 }
 
+// a page range as a number of pages, for the holdings count. an unparseable
+// range contributes nothing rather than a guess.
+function pageCount(range) {
+  if (!range) return 0
+  const m = String(range).match(/(\d+)\s*[-\u2013]\s*(\d+)/)
+  if (m) return Math.max(0, Number(m[2]) - Number(m[1]) + 1)
+  return /^\d+$/.test(String(range).trim()) ? 1 : 0
+}
+
+// where the thing lives: the journal, the book, or the note the syllabus gave
+function sourceOf(reading) {
+  const w = reading.work || {}
+  return w.container || w.publisher || reading.access_note || ''
+}
+
+
+// the catalogue card above the ledger: what this record is, and its facts in
+// a fixed grid so two courses read the same way.
+export function recordHeader(course) {
+  const p = course.parse
+  const readings = p.sessions.reduce((n, s) => n + s.readings.length, 0)
+  const policy = (p.ai_stance || 'not stated').replace(/_/g, ' ')
+  const restricted = /prohibit|restrict|ban|not permitted/i.test(policy)
+  const facts = [
+    ['Term', course.term || p.course?.term || '—'],
+    ['Instructor', p.course?.instructor || '—'],
+    ['Meets', p.course?.meeting_pattern || '—'],
+    ['Weeks', String(p.sessions.length)],
+    ['Readings', String(readings)],
+    ['AI policy', policy],
+  ]
+  return `<header class="record">
+    <div class="record-id">
+      <h2 class="record-code">${esc(course.code || 'Untitled')}</h2>
+      <p class="record-title">${esc(course.title || p.course?.title || '')}</p>
+    </div>
+    <dl class="record-facts">
+      ${facts.map(([k, v], i) => `<div${i === 5 && restricted ? ' class="is-flag"' : ''}>
+        <dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}
+    </dl>
+  </header>`
+}
+
+// the left rail: where you are, what you hold, what falls next.
+export function railView(course, ledger, courses) {
+  const { index, current, holdings } = ledger
+  const entries = index.map((w, i) => `<li class="${i === current ? 'is-current' : ''}">
+      <a href="#w${i}" data-jump="${i}">
+        <span class="rail-n">${esc(w.n)}</span>
+        <span class="rail-t">${esc(w.topic || '—')}</span>
+        <span class="rail-c${w.flagged ? ' is-flag' : ''}">${w.count || '—'}</span>
+      </a></li>`).join('')
+
+  const notHeld = holdings.heldTotal - holdings.held
+  const rows = [
+    ['Readings', `${holdings.held}/${holdings.heldTotal}`, false],
+    ['Pages', `${holdings.pagesDone}/${holdings.pagesTotal}`, false],
+    ['Held', String(holdings.held), false],
+    ['Not held', String(notHeld), notHeld > 0],
+  ]
+
+  const upcoming = []
+  for (const c of courses) {
+    for (const d of c.parse.deliverables.items) {
+      const days = daysUntil(d.due_date)
+      if (days === null || days < 0) continue
+      upcoming.push({ days, title: d.title, code: c.code, date: d.due_date })
+    }
+  }
+  upcoming.sort((a, b) => a.days - b.days)
+
+  return `<nav class="rail" aria-label="Index">
+    <section class="rail-sec">
+      <h3>Index</h3>
+      <ol class="rail-index">${entries}</ol>
+    </section>
+    <section class="rail-sec">
+      <h3>Holdings</h3>
+      <dl class="rail-facts">
+        ${rows.map(([k, v, flag]) => `<div><dt>${esc(k)}</dt>
+          <dd${flag ? ' class="is-flag"' : ''}>${esc(v)}</dd></div>`).join('')}
+      </dl>
+    </section>
+    <section class="rail-sec">
+      <h3>Next due</h3>
+      ${upcoming.length
+        ? `<ul class="rail-due">${upcoming.slice(0, 2).map((d) => `<li>
+            <span class="rail-due-d${d.days <= 7 ? ' is-flag' : ''}">${esc(shortDate(d.date))}</span>
+            <span class="rail-due-t">${esc(d.title)}</span></li>`).join('')}</ul>`
+        : '<p class="rail-none">None recorded</p>'}
+    </section>
+  </nav>`
+}
 
 export function courseTag(course) {
   const meta = course.parse.course
