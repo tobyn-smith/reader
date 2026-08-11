@@ -450,10 +450,10 @@ function draw() {
 
   // the document line and the sheet number: a record identifies itself
   const stamp = new Date().toISOString().slice(0, 10)
-  const ref = (course.code || 'UNFILED').replace(/\s+/g, '-').toUpperCase()
-  $('docline').textContent = `Rec. ${ref} · ${course.term || '—'} · Compiled ${stamp}`
+  $('docline').textContent =
+    `${course.code || 'Untitled'} · ${course.term || '—'} · ${stamp}`
   $('print-meta').textContent =
-    `Sheet ${state.courses.indexOf(course) + 1} of ${state.courses.length} · ${stamp}`
+    `${state.courses.indexOf(course) + 1} of ${state.courses.length} · ${stamp}`
 }
 
 function drawSearch(target) {

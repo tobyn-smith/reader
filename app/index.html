@@ -25,8 +25,8 @@
   <!-- the actions follow you down the page. a long review otherwise means
        scrolling back to the bottom to commit it -->
   <div class="actions">
-    <button type="button" id="confirm">Accession</button>
-    <button type="button" id="discard">Reject</button>
+    <button type="button" id="confirm">Save</button>
+    <button type="button" id="discard">Discard</button>
   </div>
 </section>
 
@@ -42,7 +42,7 @@
       <button type="button" data-view="search">Search</button>
     </div>
     <span class="right">
-      <button type="button" id="edit-toggle" aria-pressed="false" hidden>Amend</button>
+      <button type="button" id="edit-toggle" aria-pressed="false" hidden>Edit</button>
       <label for="style-select">Style</label>
       <select id="style-select"></select>
     </span>
@@ -55,12 +55,12 @@
 </section>
 
 <details id="tools">
-  <summary>Accession</summary>
+  <summary>Add files</summary>
 
   <div id="file-drop" class="drop">
-    <label for="file-input">Deposit syllabi and readings, or</label>
+    <label for="file-input">Drop syllabi and readings here, or</label>
     <input type="file" id="file-input" accept="application/pdf" multiple>
-    <p class="note">Each file is classed as a syllabus or a reading on deposit.</p>
+    <p class="note">Each file is sorted into a syllabus or a reading for you.</p>
   </div>
   <p id="intake-status" class="status" role="status"></p>
   <div id="queue"></div>
@@ -70,11 +70,11 @@
 <!-- nothing here does anything until a course exists, so it stays hidden
      until one does -->
 <details id="data-tools" hidden>
-  <summary>Record management</summary>
+  <summary>Export and backup</summary>
   <p class="controls">
-    <button type="button" id="print">Print sheet</button>
-    <button type="button" id="export">Export record</button>
-    <label class="inline" for="import-input">Restore</label>
+    <button type="button" id="print">Print</button>
+    <button type="button" id="export">Export a backup</button>
+    <label class="inline" for="import-input">Restore a backup</label>
     <input type="file" id="import-input" accept="application/json" class="plain">
   </p>
   <p class="note">
@@ -82,13 +82,13 @@
     clearing browser data removes it.
   </p>
   <p class="controls">
-    <button type="button" id="remove-course" class="danger">Withdraw this record</button>
-    <button type="button" id="clear" class="danger">Purge all records</button>
+    <button type="button" id="remove-course" class="danger">Remove this course</button>
+    <button type="button" id="clear" class="danger">Delete everything</button>
   </p>
 </details>
 
 <details id="accuracy">
-  <summary>Accuracy of record</summary>
+  <summary>How accurate is this</summary>
   <p class="note">24 real syllabi, checked by hand:</p>
   <table>
     <thead>

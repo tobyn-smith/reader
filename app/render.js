@@ -181,7 +181,7 @@ export function weekView(course, progress, editing = false) {
         <td class="c-num sep-n">${esc(title)}</td>
         <td class="c-date sep-d">${esc(shortDate(start))}</td>
         <td class="c-title sep-t" colspan="3">
-          <span class="sep-topic">${esc(topic || 'No topic recorded')}</span>
+          <span class="sep-topic">${esc(topic || 'No topic listed')}</span>
           ${due.length
             ? `<span class="sep-sub">${due.map((d) => esc(d.title)).join('; ')} due</span>`
             : ''}
@@ -196,7 +196,7 @@ export function weekView(course, progress, editing = false) {
     if (!count) {
       rows.push(`<tr class="rec empty"><td class="c-tick"></td><td class="c-num"></td>
         <td class="c-date"></td>
-        <td class="c-title"><em>No reading recorded for this week.</em></td>
+        <td class="c-title"><em>No reading listed for this week.</em></td>
         <td class="c-src"></td><td class="c-pp"></td>
         <td class="c-stat is-none">\u2014</td></tr>`)
     }
@@ -295,7 +295,9 @@ export function railView(course, ledger, courses) {
   const notHeld = holdings.heldTotal - holdings.held
   const rows = [
     ['Readings', `${holdings.held}/${holdings.heldTotal}`, false],
-    ['Pages', `${holdings.pagesDone}/${holdings.pagesTotal}`, false],
+    // plenty of syllabi record no page ranges at all. "0/0" states a total
+    // that was never counted, so an em dash says so instead.
+    ['Pages', holdings.pagesTotal ? `${holdings.pagesDone}/${holdings.pagesTotal}` : '—', false],
     ['Held', String(holdings.held), false],
     ['Not held', String(notHeld), notHeld > 0],
   ]
@@ -328,7 +330,7 @@ export function railView(course, ledger, courses) {
         ? `<ul class="rail-due">${upcoming.slice(0, 2).map((d) => `<li>
             <span class="rail-due-d${d.days <= 7 ? ' is-flag' : ''}">${esc(shortDate(d.date))}</span>
             <span class="rail-due-t">${esc(d.title)}</span></li>`).join('')}</ul>`
-        : '<p class="rail-none">None recorded</p>'}
+        : '<p class="rail-none">None</p>'}
     </section>
   </nav>`
 }
