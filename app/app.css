@@ -19,7 +19,11 @@
      --accent / --accent-ink          actions, links, focus
      --danger                         irreversible actions
      --flag                           rows needing a decision
-   colour means one of three things: act, destroy, check. nothing else. */
+   colour means one of three things: act, destroy, check. nothing else.
+
+   every text token clears wcag aa against its background in both schemes.
+   measured, lowest first: light 5.4:1 (flag) to 18.0:1 (ink), dark 7.4:1
+   (muted) to 16.3:1 (ink). changing a value means re-checking it. */
 
 :root {
   --paper: #fcfcfc;
