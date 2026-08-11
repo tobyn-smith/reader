@@ -137,11 +137,25 @@ def is_session_head(text: str, *, starts_block: bool = True) -> bool:
         return True
     return starts_block and date_heading(text) is not None
 
-# a keyword block label, as used by the labelled layout
+# a keyword block label, as used by the labelled layout. the blocks that are
+# not reading lists are named here too, so their content can be skipped rather
+# than swept into whichever list was open above them.
 LABEL_RE = re.compile(
     r"^\s*(?P<label>topic|readings?|review(?:\s*\([^)]*\))?|presentations?|due|"
     r"sign[\s-]?up|terms and key concepts|assignments?|watch|listen|optional|"
-    r"recommended|required)\s*:\s*(?P<rest>.*)$",
+    r"recommended|required|"
+    r"goals?|learning objectives?|objectives?|aims?|"
+    r"discussion questions?|key concepts?|key terms?|terms|"
+    r"in[\s-]class(?:\s+\w+)?|activit(?:y|ies)|notes?|reminders?)"
+    r"\s*:\s*(?P<rest>.*)$",
+    re.IGNORECASE,
+)
+
+# blocks whose content is never a reading
+_SKIP_LABELS = re.compile(
+    r"^(?:goals?|learning objectives?|objectives?|aims?|discussion questions?|"
+    r"key concepts?|key terms?|terms|terms and key concepts|"
+    r"in[\s-]class|activit(?:y|ies)|notes?|reminders?)$",
     re.IGNORECASE,
 )
 
@@ -667,6 +681,11 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
 def _finish_labelled(session: SessionEntry, tagged: list[tuple[str, str]]) -> None:
     ordinal = 0
     for label, raw in tagged:
+        # a terms and key concepts block is a glossary, not a reading list.
+        # "De minimus calculations" is a thing to know, not a thing to read,
+        # and listing it on a reading checklist makes the checklist useless.
+        if _requirement_level(label) == "reference":
+            continue
         entry = _build_reading(raw, ordinal)
         if entry is None:
             continue
@@ -679,15 +698,15 @@ def _finish_labelled(session: SessionEntry, tagged: list[tuple[str, str]]) -> No
 
 
 def _requirement_level(label: str) -> str:
-    label = label.lower()
+    label = label.strip().lower()
+    if _SKIP_LABELS.match(label):
+        return "reference"
     if "inspectional" in label:
         return "inspectional"
     if label.startswith("review"):
         return "review"
     if label.startswith("recommend") or label.startswith("optional"):
         return "recommended"
-    if label.startswith("terms"):
-        return "reference"
     return "required"
 
 

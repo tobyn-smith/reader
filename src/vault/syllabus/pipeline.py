@@ -324,8 +324,11 @@ def _sanity_warnings(parsed: ParsedSyllabus) -> list[str]:
     if not parsed.sessions:
         notes.append("no sessions found, so the schedule zone was probably missed")
 
+    # a gap in the week numbers is worth reporting, but only when the numbers
+    # really are weeks. a syllabus that numbers every meeting runs past twenty,
+    # and a break in that sequence is a cancelled class, not a missing parse.
     weeks = [s.week_number for s in parsed.sessions if s.week_number]
-    if weeks:
+    if weeks and max(weeks) <= 17:
         missing = sorted(set(range(min(weeks), max(weeks) + 1)) - set(weeks))
         if missing:
             notes.append(f"no session found for week {', '.join(str(w) for w in missing)}")

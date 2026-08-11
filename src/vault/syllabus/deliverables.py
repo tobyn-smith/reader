@@ -463,6 +463,11 @@ _TITLE_STOP = {
     "and", "the", "for", "with", "from", "into", "your", "our", "its",
     "report", "reports", "paper", "papers", "assignment", "assignments",
     "presentation", "presentations", "project", "projects", "study", "studies",
+    # the kind of thing it is says nothing about which one it is. a midterm and
+    # a final are both exams, often for the same weight, and merging them loses
+    # a whole assignment from the total.
+    "exam", "exams", "quiz", "quizzes", "test", "tests", "essay", "essays",
+    "memo", "memos", "response", "responses",
 }
 
 
@@ -484,8 +489,12 @@ def _same_assignment(a: Deliverable, b: Deliverable) -> bool:
     left, right = _significant_words(a.title), _significant_words(b.title)
     if not left or not right:
         return False
-    overlap = len(left & right) / min(len(left), len(right))
-    return overlap >= 0.5
+    shared = left & right
+    # two shared words at minimum. one word in common is how "Midterm Exam" and
+    # "Final Exam", both worth thirty, ended up as a single row.
+    if len(shared) < 2 and shared != left and shared != right:
+        return False
+    return len(shared) / min(len(left), len(right)) >= 0.6
 
 
 def _merge(seen: dict[str, Deliverable], item: Deliverable) -> None:

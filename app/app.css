@@ -360,3 +360,5 @@ table.review input[type="text"] { width: 100%; max-width: 46rem; }
 #review-name { font-weight: 400; }
 
 footer { margin-top: 2rem; color: var(--muted); font-size: var(--small); }
+
+.flagged { color: var(--flag); font-weight: 700; }

@@ -151,7 +151,9 @@ _MONTH = (
     r"November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)"
 )
 _QUOTED = r"[\"“‘]\s*(?P<title>.+?)\s*[\"”’]"
-_PAGES = r"(?P<pages>\d+\s*[-‐-―]\s*\d+|\d+)"
+# pages are not always digits. supplements run "S1-S31" and online-first
+# articles carry an id like "sqad032" where the page range would be.
+_PAGES = r"(?P<pages>[A-Za-z]?\d+\s*[-‐-―]\s*[A-Za-z]?\d+|[A-Za-z]{0,6}\d+)"
 _REPORT_NUMBER = r"(?P<report>(?:[A-Z]{1,3}\d{4,6}|[A-Z]{2,4}-\d{2,6}|Report\s+\d+))"
 
 DOI_RE = re.compile(r"\b(10\.\d{4,9}/[^\s,;\"'<>]+)", re.IGNORECASE)
@@ -174,29 +176,6 @@ class Pattern:
 # order matters. the more structure a pattern demands, the earlier it sits, so a
 # specific match is never stolen by a looser one.
 PATTERNS: list[Pattern] = [
-    Pattern(
-        "author_date_journal",
-        re.compile(
-            r"^(?P<authors>.+?)\.?\s+" + _YEAR + r"\.\s*" + _QUOTED +
-            r"[.,]?\s*(?P<container>[^,\d]+?)\s*"
-            r"(?P<volume>\d+)\s*(?:\((?P<issue>[^)]+)\))?\s*[:,]\s*" + _PAGES,
-            re.IGNORECASE | re.DOTALL,
-        ),
-        JOURNAL_ARTICLE,
-        0.95,
-    ),
-    Pattern(
-        "author_date_chapter",
-        re.compile(
-            r"^(?P<authors>.+?)\.?\s+" + _YEAR + r"\.\s*" + _QUOTED +
-            r"[.,]?\s*In\s+(?P<container>.+?)[.,]\s*"
-            r"(?:(?P<chapters>Chapters?\s+[\d‐-―\s-]+)[.,]\s*)?"
-            r"(?:(?P<city>[A-Z][A-Za-z .]+):\s*(?P<publisher>[^.]+))?\.?\s*$",
-            re.IGNORECASE | re.DOTALL,
-        ),
-        BOOK_CHAPTER,
-        0.9,
-    ),
     Pattern(
         "dated_report_with_number",
         re.compile(
@@ -226,6 +205,43 @@ PATTERNS: list[Pattern] = [
         ),
         REPORT,
         0.75,
+    ),
+    Pattern(
+        "author_date_chapter",
+        re.compile(
+            r"^(?P<authors>.+?)\.?\s+" + _YEAR + r"\.\s*" + _QUOTED +
+            r"[.,]?\s*In\s+(?P<container>.+?)[.,]\s*"
+            r"(?:(?P<chapters>Chapters?\s+[\d‐-―\s-]+)[.,]\s*)?"
+            r"(?:(?P<city>[A-Z][A-Za-z .]+):\s*(?P<publisher>[^.]+))?\.?\s*$",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        BOOK_CHAPTER,
+        0.9,
+    ),
+    Pattern(
+        "author_date_journal",
+        re.compile(
+            r"^(?P<authors>.+?)\.?\s+" + _YEAR + r"\.\s*" + _QUOTED +
+            # a comma between the journal name and its volume is as common as
+            # no comma, and the page range is often absent entirely
+            r"[.,]?\s*(?!In\s)(?P<container>[A-Za-z][^\d]*?)\s*,?\s*"
+            r"(?P<volume>\d+)\s*(?:\((?P<issue>[^)]+)\))?"
+            r"(?:\s*[:,]\s*" + _PAGES + r")?",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        JOURNAL_ARTICLE,
+        0.95,
+    ),
+    Pattern(
+        "author_date_unquoted_journal",
+        re.compile(
+            r"^(?P<authors>.+?)\.?\s+" + _YEAR + r"\.\s*(?P<title>[^\"“]{6,140}?)\.\s*"
+            r"(?P<container>[A-Z][^\d]*?)\s*,?\s*"
+            r"(?P<volume>\d+)\s*(?:\((?P<issue>[^)]+)\))?\s*[:,]\s*" + _PAGES,
+            re.DOTALL,
+        ),
+        JOURNAL_ARTICLE,
+        0.8,
     ),
     Pattern(
         "series_entry_open_ended",
@@ -283,6 +299,25 @@ PATTERNS: list[Pattern] = [
         expects_author=False,
         expects_year=False,
         expects_title=False,
+    ),
+    Pattern(
+        # the long tail: a quoted title, whatever came before it read as the
+        # author, whatever follows read as where it appeared. museum timelines,
+        # teaching sites and magazine pieces all land here. it sits last and
+        # scores low, so anything with real structure is claimed first and
+        # these still reach review, but with a title and an author rather than
+        # a wall of raw text.
+        "quoted_title_loose",
+        re.compile(
+            r"^(?:(?P<authors>[^\"“]{0,90}?)[,.]?\s*)?"
+            + _QUOTED
+            + r"[,.]?\s*(?:in\s+)?(?P<container>[^,.]{0,70})?",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        WEB_PAGE,
+        0.55,
+        expects_author=False,
+        expects_year=False,
     ),
     Pattern(
         "titled_with_bare_url",
