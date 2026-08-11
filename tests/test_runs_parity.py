@@ -153,3 +153,36 @@ class TestWebEntryPoints:
         result = json.loads(web.match_reading("An essay about something else", candidates))
         assert result["id"] is None
         assert result["method"] == "below threshold"
+
+
+class TestHeaderGatedGrids:
+    """one-line-per-row grids have no ruled lines the runs path can see, so
+    they are admitted only when a header row names a time column and a content
+    column. a hanging-indent citation list must never pass that gate."""
+
+    def _payload(self, page_lines):
+        runs = []
+        for y, cells in page_lines:
+            for x, text in cells:
+                runs.append({"text": text, "x": x, "y": y, "w": 8.0 * len(text), "h": 11, "size": 11})
+        return {"pages": [{"number": 1, "width": 612, "height": 792, "runs": runs}],
+                "filename": "t.pdf", "sha256": "t"}
+
+    def test_single_line_grid_with_header_is_found(self):
+        rows = [(72, [(72, "Week"), (150, "Date"), (280, "Topic"), (430, "Readings")])]
+        for i in range(1, 9):
+            y = 72 + i * 16
+            rows.append((y, [(72, str(i)), (150, f"1/{i + 6}"), (280, "A Topic"), (430, "Chapter " + str(i))]))
+        doc = document_from_runs(self._payload(rows))
+        assert doc.pages[0].tables, "header-gated grid was not reconstructed"
+        grid = doc.pages[0].tables[0]
+        assert len(grid) >= 8
+
+    def test_hanging_indent_citations_are_not_a_table(self):
+        rows = []
+        for i in range(12):
+            y = 72 + i * 26
+            rows.append((y, [(72, f"Surname{i}, Given. 2020. \"A Title That Wraps\"")]))
+            rows.append((y + 13, [(108, "Journal of Examples 1(2): 10-20.")]))
+        doc = document_from_runs(self._payload(rows))
+        assert doc.pages[0].tables == []

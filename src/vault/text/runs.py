@@ -30,6 +30,17 @@ MIN_CHARS_FOR_TEXT_LAYER = 40
 # imported because text/ sits below syllabus/ and must not depend on it.
 _WEEK_MARK_RE = re.compile(r"^\s*(?:week|session|module|unit)\s*#?\s*\d{1,2}\b", re.IGNORECASE)
 
+# schedule table header vocabulary, split into the column that carries time and
+# the columns that carry content. same layering note as above.
+_TIME_HEADER_RE = re.compile(
+    r"^(?:week|wk|date|dates|day|days|meetings?|class(?:es)?|session)\b", re.IGNORECASE
+)
+_CONTENT_HEADER_RE = re.compile(
+    r"^(?:topic|theme|subject|unit|readings?|assignments?|homework|materials?|"
+    r"due|deliverables?|notes?|other\s*due|material\s*due)\b",
+    re.IGNORECASE,
+)
+
 
 @dataclass
 class Run:
@@ -162,6 +173,77 @@ def _blocks_from_lines(lines: list[Line]) -> list[Block]:
     return blocks
 
 
+def _run_edges_behind_header(lines: list[Line]) -> tuple[list[float], float, int] | None:
+    """find a grid that fits each row on one line, gated by its header.
+
+    line-start clustering cannot see these grids: every line begins at the left
+    margin. run-start clustering can, but it also sees phantom tables in
+    hanging-indent citation lists, which is worse than missing a grid. the gate
+    is the header row: a real schedule grid names its columns, and a line whose
+    fragments include a time word and a content word in different columns is
+    accepted as that header. citation lists have no such line.
+
+    returns (edges, header line y, time column index) or None.
+    """
+    xs = sorted(run.x for line in lines for run in line.runs if run.text.strip())
+    if len(xs) < 12:
+        return None
+
+    clusters: list[list[float]] = []
+    for x in xs:
+        if clusters and x - clusters[-1][-1] <= 14:
+            clusters[-1].append(x)
+        else:
+            clusters.append([x])
+    edges = [statistics.median(c) for c in clusters if len(c) >= 3]
+    if len(edges) < 3 or len(edges) > 7:
+        return None
+    if max(edges) - min(edges) < 160:
+        return None
+
+    bounds = [(edges[i] + edges[i + 1]) / 2 for i in range(len(edges) - 1)]
+
+    def column_of(x: float) -> int:
+        for index, boundary in enumerate(bounds):
+            if x < boundary:
+                return index
+        return len(edges) - 1
+
+    for line in lines[:20]:
+        by_column: dict[int, list[Run]] = {}
+        for run in line.runs:
+            by_column.setdefault(column_of(run.x), []).append(run)
+        if len(by_column) < 2:
+            continue
+        time_cols = []
+        content_cols = []
+        for column, runs in sorted(by_column.items()):
+            text = Line(runs).text.strip()
+            if len(text) > 40:
+                continue
+            # run joining loses spaces in tight headers, so split the camel
+            probe = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", text)
+            if _TIME_HEADER_RE.match(probe):
+                time_cols.append(column)
+            elif _CONTENT_HEADER_RE.match(probe):
+                content_cols.append(column)
+        if time_cols and content_cols and len(time_cols) + len(content_cols) >= 2:
+            # a grid with both a week and a date column keys its rows on the
+            # denser one: weeks repeat across two meetings, dates do not
+            def density(column: int) -> int:
+                return sum(
+                    1
+                    for other in lines
+                    if other.y0 > line.y0 + 3.0
+                    and any(column_of(r.x) == column for r in other.runs)
+                )
+
+            best = max(time_cols, key=density)
+            return edges, line.y0, best
+
+    return None
+
+
 def _tables_from_lines(lines: list[Line], page_width: float) -> list[list[list[str]]]:
     """rebuild a ruled table from run positions alone.
 
@@ -176,7 +258,10 @@ def _tables_from_lines(lines: list[Line], page_width: float) -> list[list[list[s
 
     edges = _column_edges(lines)
     if len(edges) < 2:
-        return []
+        gated = _run_edges_behind_header(lines)
+        if gated is None:
+            return []
+        return _grid_from_header_gate(lines, *gated)
 
     # boundaries midway between edges. a run belongs to the column whose band
     # holds its start, wrapped continuation indents included.
@@ -261,6 +346,60 @@ def _tables_from_lines(lines: list[Line], page_width: float) -> list[list[list[s
     table = [row for row in table if any(row)]
     filled = sum(1 for row in table for cell in row if cell)
     if len(table) < 2 or filled < 4:
+        return []
+    return [table]
+
+
+def _grid_from_header_gate(
+    lines: list[Line], edges: list[float], header_y: float, time_col: int
+) -> list[list[list[str]]]:
+    """build the grid for a header-gated one-line-per-row table.
+
+    rows start at the header and at every fragment in the time column below it.
+    lines without time-column content fold into the row above, which is what a
+    wrapped cell looks like. everything above the header is page furniture.
+    """
+    bounds = [(edges[i] + edges[i + 1]) / 2 for i in range(len(edges) - 1)]
+
+    def column_of(x: float) -> int:
+        for index, boundary in enumerate(bounds):
+            if x < boundary:
+                return index
+        return len(edges) - 1
+
+    fragments: list[tuple[float, int, str]] = []
+    for line in lines:
+        by_column: dict[int, list[Run]] = {}
+        for run in line.runs:
+            by_column.setdefault(column_of(run.x), []).append(run)
+        for column, runs in by_column.items():
+            text = Line(runs).text.strip()
+            if text:
+                fragments.append((line.y0, column, text))
+
+    rows = [header_y] + sorted(
+        y for y, column, _ in fragments if column == time_col and y > header_y + 3.0
+    )
+
+    def row_of(y: float) -> int:
+        if y < rows[0] - 3.0:
+            return -1
+        row = 0
+        for index, top in enumerate(rows):
+            if y >= top - 3.0:
+                row = index
+        return row
+
+    grid: list[list[list[str]]] = [[[] for _ in edges] for _ in rows]
+    for y, column, text in sorted(fragments):
+        target = row_of(y)
+        if target >= 0:
+            grid[target][column].append(text)
+
+    table = [["\n".join(cell).strip() for cell in row] for row in grid]
+    table = [row for row in table if any(row)]
+    filled = sum(1 for row in table for cell in row if cell)
+    if len(table) < 3 or filled < 6:
         return []
     return [table]
 
