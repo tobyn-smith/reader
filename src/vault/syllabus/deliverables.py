@@ -57,6 +57,10 @@ TITLED_WEIGHT_RE = re.compile(
 TABLE_WEIGHT_RE = re.compile(
     r"^(?P<title>[A-Za-z][\w&''’/,. ()-]{2,70}?)\s{2,}(?P<weight>\d{1,3}(?:\.\d+)?)\s*%",
 )
+
+# a grading scale sits in the same column layout as the weights table, so its
+# last row bleeds into the first assignment title as a stray "=F" or "F".
+GRADE_LETTER_PREFIX_RE = re.compile(r"^=?\s*[A-F][+-]?\s+(?=[A-Z])")
 ORPHAN_WEIGHT_RE = re.compile(r"^\s*=?\s*(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*$")
 EXTRA_CREDIT_RE = re.compile(
     r"(?P<title>[\w ]*extra credit[\w ]*)\s*\+?\s*(?P<weight>\d{1,3})\s*%", re.IGNORECASE
@@ -190,7 +194,7 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
         raw = line.text.rstrip()
         m = TABLE_WEIGHT_RE.match(raw)
         if m:
-            title = collapse_whitespace(m.group("title")).strip(" .,:-")
+            title = _clean_title(m.group("title"))
             weight = float(m.group("weight"))
             page = line.page
         elif ORPHAN_WEIGHT_RE.match(raw) and previous_title:
@@ -444,16 +448,66 @@ def _fill_missing(target: Deliverable, source: Deliverable) -> None:
     target.confidence = max(target.confidence, source.confidence)
 
 
+def _clean_title(raw: str) -> str:
+    title = collapse_whitespace(raw).strip(" .,:-")
+    return GRADE_LETTER_PREFIX_RE.sub("", title).strip()
+
+
+def _significant_words(title: str) -> set[str]:
+    bare = re.sub(r"\([^)]*\)", " ", title.lower())
+    words = re.findall(r"[a-z]{3,}", bare)
+    return {w for w in words if w not in _TITLE_STOP}
+
+
+_TITLE_STOP = {
+    "and", "the", "for", "with", "from", "into", "your", "our", "its",
+    "report", "reports", "paper", "papers", "assignment", "assignments",
+    "presentation", "presentations", "project", "projects", "study", "studies",
+}
+
+
+def _same_assignment(a: Deliverable, b: Deliverable) -> bool:
+    """decide whether two rows describe one piece of work.
+
+    a grade summary and the paragraph that explains the same assignment rarely
+    use the same words: one says "MECR and International Assistance Reports"
+    and the other "Export Control Regime (MECR) and International Assistance".
+    matching on the exact string leaves both rows in place and the weights then
+    add up to well over a hundred, which is how this shows up.
+
+    an identical stated weight plus real overlap in the distinctive words is
+    strong evidence, because one course almost never has two different
+    assignments worth exactly the same amount and named almost the same.
+    """
+    if a.weight_percent is None or a.weight_percent != b.weight_percent:
+        return False
+    left, right = _significant_words(a.title), _significant_words(b.title)
+    if not left or not right:
+        return False
+    overlap = len(left & right) / min(len(left), len(right))
+    return overlap >= 0.5
+
+
 def _merge(seen: dict[str, Deliverable], item: Deliverable) -> None:
     """same assignment described twice keeps the more complete description."""
     key = merge_key(item.title)
     if not key:
         return
     existing = seen.get(key)
-    if existing is None:
-        seen[key] = item
+    if existing is not None:
+        _fill_missing(existing, item)
         return
-    _fill_missing(existing, item)
+
+    for other in seen.values():
+        if _same_assignment(other, item):
+            _fill_missing(other, item)
+            # keep whichever title reads better: the longer one usually carries
+            # the qualifier that makes it findable
+            if len(item.title) > len(other.title):
+                other.title = item.title
+            return
+
+    seen[key] = item
 
 
 def _drop_recurrence_bleed(seen: dict[str, Deliverable]) -> None:

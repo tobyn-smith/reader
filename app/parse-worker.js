@@ -60,6 +60,14 @@ self.onmessage = async (event) => {
 
     await boot()
 
+    if (type === 'ingest') {
+      // one call works out whether this is a syllabus or a reading and returns
+      // whichever is appropriate, so the page never has to ask the visitor
+      const json = call('ingest_pdf', [JSON.stringify(payload), threshold ?? 0.75])
+      self.postMessage({ type: 'ingested', id, result: JSON.parse(json) })
+      return
+    }
+
     if (type === 'parse') {
       const json = call('parse_runs', [JSON.stringify(payload), threshold ?? 0.75])
       self.postMessage({ type: 'parsed', id, result: JSON.parse(json) })
@@ -73,7 +81,7 @@ self.onmessage = async (event) => {
     }
 
     if (type === 'match') {
-      const json = call('match_reading', [head, JSON.stringify(candidates)])
+      const json = call('match_reading', [head, JSON.stringify(candidates), event.data.filename || ''])
       self.postMessage({ type: 'matched', id, result: JSON.parse(json) })
     }
   } catch (error) {

@@ -102,7 +102,7 @@ def match_to_reading(
         )
         for row in conn.execute("select id, title, year, authors, doi from work")
     ]
-    result = match_document(head, candidates)
+    result = match_document(head, candidates, filename=doc.path.name)
     return result.id, result.score, result.method
 
 

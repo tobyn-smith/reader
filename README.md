@@ -1,4 +1,4 @@
-# seminar vault
+# schedule reader
 
 Keep track of coursework readings. Give it your syllabi at the start of term
 and your reading PDFs each week. It keeps the schedule, the citations, the

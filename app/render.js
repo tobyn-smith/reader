@@ -1,7 +1,15 @@
 // views. tables for anything tabular, labels rather than sentences, and colour
 // only where it says something actionable.
 
-const NBSP = ' '
+import * as cite from './cite.js'
+
+// which reference style citations render in. a course that states its own
+// required style wins, otherwise this is the visitor's choice.
+export let style = 'chicago'
+
+export function setStyle(next) {
+  style = next
+}
 
 export function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({
@@ -15,53 +23,15 @@ export function shortDate(iso) {
   return `${Number(month)}/${Number(day)}`
 }
 
-export function authorList(authors) {
-  if (!authors || !authors.length) return ''
-  const names = authors.map((a) => (a.literal ? a.literal : [a.surname, a.given].filter(Boolean).join(', ')))
-  if (names.length === 1) return names[0]
-  if (names.length === 2) return `${names[0]} and ${names[1]}`
-  return `${names[0]} et al.`
-}
-
-// a title already carries its closing period inside the quotes, so the joiner
-// has to notice that rather than adding a second one
-function joinParts(bits) {
-  let out = ''
-  for (const bit of bits) {
-    if (!bit) continue
-    if (out) out += /[.?!]["'”’]?$/.test(out) ? ' ' : '. '
-    out += bit
-  }
-  if (!out) return ''
-  return /[.?!]["'”’]?$/.test(out) ? out : `${out}.`
+export function sortKey(work) {
+  const first = (work.authors || [])[0]
+  return ((first && (first.surname || first.literal)) || work.title || '').toLowerCase()
 }
 
 export function citation(work) {
-  if (work.rendered_override) return work.rendered_override
-  const bits = []
-  const authors = authorList(work.authors)
-  if (authors) bits.push(authors)
-  if (work.year) {
-    let year = String(work.year)
-    if (work.year_is_open) year += '-'
-    else if (work.year_end) year += `-${work.year_end}`
-    bits.push(year)
-  }
-  if (work.title) bits.push(`"${work.title}."`)
-  if (work.container) {
-    let container = work.container
-    if (work.volume) {
-      container += ` ${work.volume}`
-      if (work.issue) container += `(${work.issue})`
-    }
-    if (work.pages) container += `: ${work.pages}`
-    bits.push(container)
-  } else if (work.pages) {
-    bits.push(work.pages)
-  }
-  if (work.report_number) bits.push(work.report_number)
-  return joinParts(bits) || work.raw_source_text || ''
+  return cite.format(work, style)
 }
+
 
 function weekLabel(session) {
   const parts = []
@@ -100,8 +70,7 @@ export function scheduleView(course) {
     </table>`
 }
 
-export function weekView(course, documents) {
-  const matched = new Set(documents.filter((d) => d.courseId === course.id).map((d) => d.workKey))
+export function weekView(course, progress) {
   const groups = new Map()
   for (const session of course.parse.sessions) {
     const key = session.week_number ?? `x${session.ordinal}`
@@ -114,55 +83,100 @@ export function weekView(course, documents) {
     const rows = []
     for (const session of sessions) {
       for (const reading of session.readings) {
-        const workKey = reading.work.signature
-        const present = matched.has(workKey)
-        rows.push(`<tr class="${present ? '' : 'missing'}">
-          <td>${present ? 'have' : 'MISSING'}</td>
-          <td>${esc(shortDate(session.meeting_date))}</td>
-          <td class="entry">${esc(citation(reading.work))}</td>
+        const id = `${course.id}::${reading.work.signature}`
+        const saved = progress.get(id) || {}
+        const label = session.sub_session_label ? ` ${session.sub_session_label}` : ''
+        rows.push(`<tr class="entry">
+          <td class="tick"><input type="checkbox" data-progress="${esc(id)}"
+            ${saved.read ? 'checked' : ''} aria-label="read"></td>
+          <td class="when">${esc(shortDate(session.meeting_date))}${esc(label)}</td>
+          <td>
+            <div class="${saved.read ? 'done' : ''}">${esc(cite.short(reading.work))}</div>
+            ${reading.requirement_level !== 'required'
+              ? `<span class="secondary">${esc(reading.requirement_level)}</span> ` : ''}
+            ${reading.page_range ? `<span class="secondary">pp. ${esc(reading.page_range)}</span> ` : ''}
+            ${reading.access_note ? `<span class="secondary">${esc(reading.access_note)}</span>` : ''}
+            ${reading.content_warning
+              ? `<div class="secondary">Content warning: ${esc(reading.content_warning)}</div>` : ''}
+            <div><input type="text" class="note" data-note="${esc(id)}"
+              value="${esc(saved.note || '')}" placeholder="note"></div>
+          </td>
         </tr>`)
       }
     }
+
     const due = course.parse.deliverables.items
       .filter((d) => sessions.some((s) => s.meeting_date && d.due_date === s.meeting_date))
-      .map((d) => `<li>${esc(d.title)} due ${esc(shortDate(d.due_date))}</li>`)
+      .map((d) => `<li>${esc(d.title)}${d.weight_percent ? ` (${d.weight_percent}%)` : ''}</li>`)
       .join('')
 
-    blocks.push(`<h3>Week ${esc(key)}${NBSP}${esc(sessions[0].topic || '')}</h3>
-      ${rows.length ? `<table><tbody>${rows.join('')}</tbody></table>`
-        : '<p class="secondary">No readings.</p>'}
-      ${due ? `<ul>${due}</ul>` : ''}`)
+    const heading = sessions[0].topic || sessions[0].section_heading || ''
+    const done = rows.filter((r) => r.includes('checked')).length
+    blocks.push(`<section class="week">
+      <h3>Week ${esc(key)} <span class="secondary">${esc(heading)}</span></h3>
+      ${rows.length
+        ? `<p class="secondary">${done} of ${rows.length} read</p>
+           <table class="checklist"><tbody>${rows.join('')}</tbody></table>`
+        : `<p class="secondary">${esc(sessions[0].session_type.replace('_', ' '))}</p>`}
+      ${due ? `<p class="secondary">Due this week</p><ul>${due}</ul>` : ''}
+    </section>`)
   }
 
   return `<h2>${esc(course.code)} by week</h2>${blocks.join('')}`
 }
 
+
 export function deadlinesView(courses) {
-  const rows = []
+  const graded = []
+  const events = []
+
   for (const course of courses) {
     for (const item of course.parse.deliverables.items) {
-      if (!item.due_date && !item.recurrence && !item.weight_percent) continue
       const when = item.due_date
         ? shortDate(item.due_date)
-        : item.recurrence || ''
-      rows.push({
-        sort: item.due_date || (item.recurrence === 'see schedule' ? '9998' : '9999'),
+        : item.recurrence === 'see schedule'
+          ? 'see schedule'
+          : item.recurrence || ''
+      const row = {
+        sort: item.due_date || '9999-99-99',
         html: `<tr>
-          <td>${esc(when)}</td>
+          <td class="when">${esc(when)}</td>
           <td>${esc(course.code)}</td>
           <td>${esc(item.title)}</td>
           <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
         </tr>`,
-      })
+      }
+      // graded work is what the term is actually assessed on. presentation
+      // slots and sign-ups are real dates but they are not deadlines, and
+      // mixing them buries the four things that carry the grade.
+      if (item.weight_percent) graded.push(row)
+      else if (item.due_date) events.push(row)
     }
   }
-  rows.sort((a, b) => a.sort.localeCompare(b.sort))
-  return `<h2>Deadlines</h2>
-    <table>
+
+  graded.sort((a, b) => a.sort.localeCompare(b.sort))
+  events.sort((a, b) => a.sort.localeCompare(b.sort))
+
+  const table = (rows) => `<table>
       <thead><tr><th>Due</th><th>Course</th><th>Item</th><th class="num">Weight</th></tr></thead>
       <tbody>${rows.map((r) => r.html).join('')}</tbody>
     </table>`
+
+  const total = courses
+    .map((c) => c.parse.deliverables.weight_total)
+    .filter((t) => t)
+    .reduce((a, b) => a + b, 0)
+
+  return `<h2>Graded work</h2>
+    ${graded.length ? table(graded) : '<p class="secondary">None found.</p>'}
+    ${courses.length === 1 && total
+      ? `<p class="secondary">Weights total ${total}%</p>` : ''}
+    ${events.length
+      ? `<h2>On the schedule</h2>
+         <p class="secondary">Dated, but not separately weighted.</p>${table(events)}`
+      : ''}`
 }
+
 
 export function bibliographyView(course) {
   const seen = new Map()
@@ -173,47 +187,67 @@ export function bibliographyView(course) {
     }
   }
   const entries = [...seen.values()]
-    .map((work) => ({ work, sort: (authorList(work.authors) || work.title || '').toLowerCase() }))
+    .map((work) => ({ work, sort: sortKey(work) }))
     .sort((a, b) => a.sort.localeCompare(b.sort))
     .map(({ work }) => `<li class="entry">${esc(citation(work))}</li>`)
 
-  const style = course.parse.course.citation_style
+  const required = course.parse.course.citation_style
   return `<h2>${esc(course.code)} bibliography</h2>
-    ${style ? `<p class="secondary">Required style: ${esc(style)}</p>` : ''}
-    <ul>${entries.join('')}</ul>`
+    ${required
+      ? `<p class="secondary">This course requires ${esc(required.toUpperCase())}.</p>`
+      : ''}
+    <ol class="bibliography">${entries.join('')}</ol>`
 }
 
 export function reviewTable(parse) {
   const flagged = new Set(parse.review.map((r) => r.source_text))
-  const rows = []
+  const blocks = []
+
   parse.sessions.forEach((session, si) => {
-    session.readings.forEach((reading, ri) => {
+    if (!session.readings.length) return
+    const rows = session.readings.map((reading, ri) => {
+      // the source text only earns its space where the parse is doubtful.
+      // printing it under every row buries the rows that need attention.
       const low = flagged.has(reading.raw_source_text) || reading.confidence < 0.75
-      rows.push(`<tr class="${low ? 'review-row' : ''}">
-        <td>${esc(weekLabel(session))}</td>
-        <td><input type="text" size="46" data-session="${si}" data-reading="${ri}"
-             value="${esc(citation(reading.work))}"></td>
-        <td class="num">${reading.confidence.toFixed(2)}</td>
-        <td class="secondary">${esc(reading.work.matched_pattern || 'no pattern matched')}</td>
-      </tr>
-      <tr class="${low ? 'review-row' : ''}">
-        <td></td><td colspan="3" class="secondary">from: ${esc(reading.raw_source_text)}</td>
-      </tr>`)
+      const source = low
+        ? `<div class="secondary source">${esc(reading.raw_source_text)}</div>`
+        : ''
+      return `<tr class="${low ? 'review-row' : ''}">
+        <td class="flagcol">${low ? 'check' : ''}</td>
+        <td>
+          <input type="text" data-session="${si}" data-reading="${ri}"
+            value="${esc(citation(reading.work))}">
+          ${source}
+        </td>
+        <td class="num secondary">${reading.confidence.toFixed(2)}</td>
+      </tr>`
     })
+
+    const when = [
+      session.week_number ? `Week ${session.week_number}` : '',
+      shortDate(session.meeting_date),
+      session.sub_session_label || '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+
+    blocks.push(`<section class="week">
+      <h3>${esc(when || 'Unscheduled')} <span class="secondary">${esc(session.topic || '')}</span></h3>
+      <table class="review"><tbody>${rows.join('')}</tbody></table>
+    </section>`)
   })
 
-  const unresolved = parse.review.filter((r) => r.entity_type !== 'assigned_reading')
-  const other = unresolved.length
-    ? `<p class="secondary">${unresolved.length} other row(s) flagged: ${
-        esc(unresolved.map((r) => r.reason).join('; '))}</p>`
-    : ''
+  const empty = parse.sessions.filter((s) => !s.readings.length)
+  const notes = []
+  if (empty.length) {
+    notes.push(`${empty.length} session(s) with no readings: ${
+      esc([...new Set(empty.map((s) => s.session_type.replace('_', ' ')))].join(', '))}`)
+  }
+  for (const warning of parse.warnings || []) notes.push(esc(warning))
 
   return `<p class="secondary">${parse.sessions.length} sessions,
     ${parse.sessions.reduce((n, s) => n + s.readings.length, 0)} readings,
-    ${parse.review.length} flagged</p>
-    ${other}
-    <table>
-      <thead><tr><th>Week</th><th>Citation</th><th class="num">Score</th><th>Pattern</th></tr></thead>
-      <tbody>${rows.join('')}</tbody>
-    </table>`
+    ${parse.review.length} to check</p>
+    ${notes.length ? `<ul class="secondary">${notes.map((n) => `<li>${n}</li>`).join('')}</ul>` : ''}
+    ${blocks.join('')}`
 }

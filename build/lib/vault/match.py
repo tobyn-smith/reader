@@ -42,38 +42,19 @@ def tokens(text: str) -> set[str]:
     return {w for w in words if len(w) > 2 and w not in _STOP}
 
 
-def filename_words(filename: str | None) -> str:
-    """turn a file name into searchable words.
+def match_document(head: str, candidates: list[Candidate]) -> Match:
+    """score a document's opening pages against every known work.
 
-    library and reference manager exports are named things like
-    "Surname - 2006 - Title of the article.pdf", which identifies the work more
-    reliably than a scanned first page does. ignoring it throws away the best
-    signal on the file.
-    """
-    if not filename:
-        return ""
-    stem = re.sub(r"\.pdf$", "", filename, flags=re.IGNORECASE)
-    stem = re.sub(r"[_\-()\[\]]+", " ", stem)
-    return re.sub(r"\s+", " ", stem).strip()
-
-
-def match_document(
-    head: str, candidates: list[Candidate], *, filename: str | None = None
-) -> Match:
-    """score a document against every known work.
-
-    the opening pages are where a title block sits, and the file name often
-    repeats the same information in cleaner form, so both are searched. a doi
+    the opening pages are where a title block sits. a doi found anywhere in them
     is decisive; otherwise title overlap carries most of the weight, with the
     author surname and the year as corroboration.
     """
-    probe = f"{filename_words(filename)}\n{head}".strip()
-    if not probe:
+    if not head.strip():
         return Match(None, 0.0, "no text")
 
-    head_lower = probe.lower()
-    head_tokens = tokens(probe)
-    years = set(re.findall(r"\b(1[89]\d{2}|20\d{2})\b", probe))
+    head_lower = head.lower()
+    head_tokens = tokens(head)
+    years = set(re.findall(r"\b(1[89]\d{2}|20\d{2})\b", head))
 
     best: object | None = None
     best_score = 0.0

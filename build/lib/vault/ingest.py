@@ -8,6 +8,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
+from .match import Candidate, match_document
 from .syllabus.citations import Author, parse_authors
 from .text.chunk import chunk_document
 from .text.extract import ExtractedDoc, extract_document, file_hash
@@ -86,62 +87,23 @@ def ingest_file(conn: sqlite3.Connection, path: Path, *, ocr: str = "auto") -> I
     )
 
 
-_STOP = {"the", "a", "an", "of", "and", "in", "on", "for", "to", "is", "as"}
-
-
-def _tokens(text: str) -> set[str]:
-    words = re.findall(r"[a-z0-9]+", (text or "").lower())
-    return {w for w in words if len(w) > 2 and w not in _STOP}
-
-
 def match_to_reading(
     conn: sqlite3.Connection, doc: ExtractedDoc
 ) -> tuple[int | None, float, str]:
-    """guess which assigned reading a pdf satisfies.
-
-    scored on surname, year and title overlap taken from the first two pages,
-    which is where a title block sits. the score is stored so a weak match can be
-    corrected rather than silently trusted.
-    """
-    head = "\n".join(page.text for page in doc.pages[:2])
-    if not head.strip():
-        return None, 0.0, "no text"
-
-    head_tokens = _tokens(head)
-    years = set(re.findall(r"\b(1[89]\d{2}|20\d{2})\b", head))
-
-    best_id: int | None = None
-    best_score = 0.0
-    for row in conn.execute(
-        "select id, title, year, authors, doi from work"
-    ):
-        score = 0.0
-        if row["doi"] and row["doi"].lower() in head.lower():
-            best_id, best_score = row["id"], 1.0
-            break
-
-        title_tokens = _tokens(row["title"])
-        if title_tokens:
-            overlap = len(title_tokens & head_tokens) / len(title_tokens)
-            score += 0.6 * overlap
-
-        surnames = {
-            (a.get("surname") or a.get("literal") or "").lower()
-            for a in json.loads(row["authors"] or "[]")
-        }
-        surnames.discard("")
-        if surnames and any(s in head_tokens for s in surnames):
-            score += 0.25
-
-        if row["year"] and str(row["year"]) in years:
-            score += 0.15
-
-        if score > best_score:
-            best_id, best_score = row["id"], score
-
-    if best_score < 0.45:
-        return None, round(best_score, 3), "below threshold"
-    return best_id, round(min(best_score, 1.0), 3), "author, title and year overlap"
+    head = "
+".join(page.text for page in doc.pages[:2])
+    candidates = [
+        Candidate(
+            id=row["id"],
+            title=row["title"],
+            year=row["year"],
+            authors=json.loads(row["authors"] or "[]"),
+            doi=row["doi"],
+        )
+        for row in conn.execute("select id, title, year, authors, doi from work")
+    ]
+    result = match_document(head, candidates)
+    return result.id, result.score, result.method
 
 
 def set_document_work(conn: sqlite3.Connection, document_id: int, work_id: int | None) -> None:

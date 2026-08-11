@@ -382,8 +382,17 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
     return result
 
 
+# "Section II: Historical and International Perspectives" groups the weeks that
+# follow. it is a heading, not an assignment, and not part of whatever label it
+# happens to sit under.
+UNIT_HEADING_RE = re.compile(
+    r"^\s*(?:unit|part|module|section)\s+(?:[IVXLC]+|\d{1,2}|[A-Z])\s*[:.–-]",
+    re.IGNORECASE,
+)
+
+
 def _looks_like_unit_heading(text: str) -> bool:
-    return bool(re.match(r"^\s*(unit|part|module|section)\b", text, re.IGNORECASE))
+    return bool(UNIT_HEADING_RE.match(text))
 
 
 def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
@@ -393,6 +402,7 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
     entries: list[tuple[str, str]] = []
     current: list[str] = []
     label = "readings"
+    section_heading: str | None = None
 
     def flush_entry() -> None:
         if current:
@@ -434,8 +444,20 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
             result.sessions.append(standalone)
             continue
 
+        # a unit heading ends whatever block is open. without this it is
+        # swallowed by the label above it and surfaces as a phantom deadline.
+        if _looks_like_unit_heading(text):
+            flush_entry()
+            section_heading = text.strip(" :")
+            if session is not None:
+                label = "readings"
+            continue
+
         if session is None:
             continue
+
+        if session.section_heading is None:
+            session.section_heading = section_heading
 
         m = LABEL_RE.match(text)
         if m:

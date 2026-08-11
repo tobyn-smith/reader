@@ -1,7 +1,7 @@
 // everything the visitor has parsed, kept in this browser and nowhere else.
 
 const DB_NAME = 'seminar-vault'
-const VERSION = 1
+const VERSION = 2
 
 function open() {
   return new Promise((resolve, reject) => {
@@ -17,10 +17,41 @@ function open() {
       if (!db.objectStoreNames.contains('notes')) {
         db.createObjectStore('notes', { keyPath: 'id', autoIncrement: true })
       }
+      // ticking a reading off and jotting a line about it. the point of the
+      // tool is knowing what you have read, and that should not require
+      // producing the pdf as evidence.
+      if (!db.objectStoreNames.contains('progress')) {
+        db.createObjectStore('progress', { keyPath: 'id' })
+      }
     }
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
   })
+}
+
+function readAll(store) {
+  return open().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const request = db.transaction(store).objectStore(store).getAll()
+        request.onsuccess = () => {
+          db.close()
+          resolve(request.result)
+        }
+        request.onerror = () => {
+          db.close()
+          reject(request.error)
+        }
+      })
+  )
+}
+
+export async function putProgress(entry) {
+  await transact(['progress'], 'readwrite', (tx) => tx.objectStore('progress').put(entry))
+}
+
+export function listProgress() {
+  return readAll('progress')
 }
 
 async function transact(names, mode, run) {
@@ -86,10 +117,11 @@ export async function removeCourse(id) {
 }
 
 export async function clearAll() {
-  await transact(['courses', 'documents', 'notes'], 'readwrite', (tx) => {
+  await transact(['courses', 'documents', 'notes', 'progress'], 'readwrite', (tx) => {
     tx.objectStore('courses').clear()
     tx.objectStore('documents').clear()
     tx.objectStore('notes').clear()
+    tx.objectStore('progress').clear()
   })
   if (navigator.storage && navigator.storage.getDirectory) {
     try {
@@ -110,13 +142,15 @@ export async function exportAll() {
     exported: new Date().toISOString(),
     courses: await listCourses(),
     documents: await listDocuments(),
+    progress: await listProgress(),
   }
 }
 
 export async function importAll(data) {
   if (!data || data.format !== 'seminar-vault') {
-    throw new Error('not a seminar vault export')
+    throw new Error('not a schedule reader export')
   }
   for (const course of data.courses || []) await putCourse(course)
   for (const record of data.documents || []) await putDocument(record)
+  for (const entry of data.progress || []) await putProgress(entry)
 }

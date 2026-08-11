@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 
 from . import __version__
-from .classify import SYLLABUS, classify
 from .match import Candidate, match_document
 from .syllabus.pipeline import parse_extracted
 from .text.model import ExtractedDoc
@@ -20,29 +19,6 @@ from .text.runs import document_from_runs
 
 def version() -> str:
     return __version__
-
-
-def ingest_pdf(payload: str, threshold: float = 0.75) -> str:
-    """take any pdf and work out what it is.
-
-    the visitor has a pile of pdfs, not two tidy piles, so sorting them is the
-    tool's job. a document that reads as a syllabus comes back parsed; anything
-    else comes back as reading text ready to be matched.
-    """
-    doc = document_from_runs(json.loads(payload))
-    verdict = classify(doc)
-
-    if verdict.kind == SYLLABUS:
-        parsed = parse_extracted(doc, threshold=threshold)
-        result = parsed.to_dict()
-        result["page_warnings"] = _page_warnings(doc)
-    else:
-        result = _reading_dict(doc)
-
-    result["kind"] = verdict.kind
-    result["kind_confidence"] = verdict.confidence
-    result["kind_reasons"] = verdict.reasons
-    return json.dumps(result)
 
 
 def parse_runs(payload: str, threshold: float = 0.75) -> str:
@@ -70,28 +46,26 @@ def _page_warnings(doc: ExtractedDoc) -> list[dict]:
 def extract_reading(payload: str) -> str:
     """pull clean page text out of a reading, keeping page numbers attached."""
     doc = document_from_runs(json.loads(payload), detect_tables=False)
-    return json.dumps(_reading_dict(doc))
+    return json.dumps(
+        {
+            "filename": str(doc.path),
+            "page_count": doc.page_count,
+            "status": doc.status,
+            "warnings": doc.warnings,
+            "pages": [
+                {
+                    "number": page.number,
+                    "text": page.text,
+                    "footnotes": page.footnotes,
+                    "had_text_layer": page.had_text_layer,
+                }
+                for page in doc.pages
+            ],
+        }
+    )
 
 
-def _reading_dict(doc: ExtractedDoc) -> dict:
-    return {
-        "filename": str(doc.path),
-        "page_count": doc.page_count,
-        "status": doc.status,
-        "warnings": doc.warnings,
-        "pages": [
-            {
-                "number": page.number,
-                "text": page.text,
-                "footnotes": page.footnotes,
-                "had_text_layer": page.had_text_layer,
-            }
-            for page in doc.pages
-        ],
-    }
-
-
-def match_reading(head: str, candidates: str, filename: str = "") -> str:
+def match_reading(head: str, candidates: str) -> str:
     """score one reading against the works already parsed from a syllabus."""
     rows = json.loads(candidates)
     result = match_document(
@@ -106,6 +80,5 @@ def match_reading(head: str, candidates: str, filename: str = "") -> str:
             )
             for row in rows
         ],
-        filename=filename or None,
     )
     return json.dumps({"id": result.id, "score": result.score, "method": result.method})

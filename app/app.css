@@ -8,6 +8,7 @@
   --missing: #a11;
   --review: #8a6d00;
   --link: #0645ad;
+  --field: #fff;
   --size: 15px;
   --small: 13px;
   --large: 18px;
@@ -49,28 +50,64 @@ a:hover { text-decoration: underline; }
 
 header { border-bottom: 1px solid var(--rule); padding-bottom: 0.6rem; }
 
-nav a, nav button {
-  margin-right: 0.75rem;
+header nav {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.1rem;
+}
+
+header nav a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
 }
 
 nav.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 1.1rem;
   border-bottom: 1px solid var(--rule);
-  margin: 1rem 0 0.75rem;
-  padding-bottom: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.35rem;
 }
 
-nav.tabs button[aria-current="true"] { font-weight: 700; }
+/* tabs are navigation, not actions, so they carry no box */
+nav.tabs button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--link);
+}
+
+nav.tabs button:hover { text-decoration: underline; }
+nav.tabs button[aria-current="true"] { font-weight: 700; color: var(--ink); }
+
+nav.tabs .right { margin-left: auto; }
+nav.tabs .right label { color: var(--grey); font-size: var(--small); }
 
 section { margin-top: 1.5rem; }
 
-/* forms and controls stay as the browser draws them */
-button, input, select {
+/* controls stay as the browser draws them, but they have to inherit the
+   theme. a select left at its defaults renders washed out on a dark
+   background and reads as disabled. */
+button, input, select, textarea {
   font: inherit;
-  color: inherit;
+  color: var(--ink);
+  background: var(--field);
 }
 
+select, input[type="text"], input[type="search"] {
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.15rem 0.3rem;
+}
+
+select:focus, input:focus { outline: 1px solid var(--ink); }
+
 button {
-  background: #fff;
+  background: var(--field);
   border: 1px solid var(--ink);
   border-radius: 2px;
   padding: 0.15rem 0.6rem;
@@ -84,11 +121,15 @@ label.inline { margin-left: 0.75rem; }
 
 .drop {
   border: 1px dashed var(--rule);
-  padding: 1rem;
-  margin: 0.5rem 0;
+  border-radius: 2px;
+  padding: 0.8rem 1rem;
+  margin: 0.4rem 0;
   color: var(--grey);
   font-size: var(--small);
 }
+
+.drop label { color: var(--grey); }
+.drop .note { margin: 0.35rem 0 0; }
 
 .drop[data-active="true"] { border-color: var(--ink); color: var(--ink); }
 
@@ -134,7 +175,61 @@ ul { margin: 0.3rem 0; padding-left: 1.1rem; }
     --missing: #ff7b72;
     --review: #d7ba5a;
     --link: #7aa6ff;
+    --field: #1b1b1b;
   }
   html { background: #111; }
-  button { background: #111; }
 }
+
+/* the checklist. a tick and a note are the two things done most often, so
+   they are the widest and the leftmost thing on the row. */
+table.checklist td { border-bottom: 1px solid var(--rule); padding: 0.35rem 0.6rem 0.35rem 0; }
+table.checklist td.tick { width: 1.5rem; padding-right: 0.4rem; }
+table.checklist td.when { width: 4.5rem; color: var(--grey); white-space: nowrap; }
+
+.done { color: var(--grey); text-decoration: line-through; }
+
+input.note {
+  width: 100%;
+  max-width: 34rem;
+  margin-top: 0.2rem;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  padding: 0.1rem 0;
+  background: transparent;
+  font-size: var(--small);
+}
+
+input.note:focus { border-bottom-color: var(--ink); outline: none; }
+
+section.week { margin-top: 1.25rem; }
+section.week h3 { margin-bottom: 0.2rem; }
+
+td.when, th.when { white-space: nowrap; }
+
+ol.bibliography { padding-left: 1.4rem; }
+ol.bibliography li { margin-bottom: 0.35rem; }
+
+/* the quiet controls sit apart from the ones used every week */
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: baseline; }
+.controls .quiet:first-of-type { margin-left: auto; }
+
+button.quiet {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--grey);
+  font-size: var(--small);
+  text-decoration: underline;
+}
+
+button.quiet:hover { color: var(--missing); }
+
+#review-name { font-weight: 400; }
+
+/* the review table. one row per reading, and the raw source shown only where
+   the parse is doubtful, so the rows needing attention stand out. */
+table.review td { border-bottom: 1px solid var(--rule); padding: 0.3rem 0.6rem 0.3rem 0; }
+table.review td.flagcol { width: 3.5rem; color: var(--review); font-size: var(--small); }
+table.review input[type="text"] { width: 100%; max-width: 46rem; }
+.source { margin-top: 0.2rem; }
+#review .week h3 { margin: 0.9rem 0 0.1rem; }

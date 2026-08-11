@@ -11,7 +11,7 @@ import datetime as dt
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from ..text.extract import ExtractedDoc, extract_document
+from ..text.model import ExtractedDoc
 from . import deliverables as deliv
 from . import frontmatter, policies, schedule, zones
 from .citations import Citation
@@ -175,7 +175,17 @@ def parse_syllabus(
     path: str | Path, *, threshold: float = DEFAULT_THRESHOLD, doc: ExtractedDoc | None = None
 ) -> ParsedSyllabus:
     path = Path(path)
-    doc = doc or extract_document(path)
+    if doc is None:
+        # imported here so the parser itself never needs a pdf library. the
+        # browser build hands in an already extracted document instead.
+        from ..text.extract import extract_document
+
+        doc = extract_document(path)
+    return parse_extracted(doc, threshold=threshold)
+
+
+def parse_extracted(doc: ExtractedDoc, *, threshold: float = DEFAULT_THRESHOLD) -> ParsedSyllabus:
+    path = Path(doc.path)
     zoning = zones.segment(doc)
     meta = frontmatter.parse(doc)
     plan = schedule.parse(doc, zoning, meta.term)

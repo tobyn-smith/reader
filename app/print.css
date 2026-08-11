@@ -71,3 +71,27 @@
 
   .page-break { page-break-before: always; }
 }
+
+@media print {
+  /* the checklist prints as a checklist: an empty box to tick with a pen */
+  .bar, input.note:placeholder-shown, #queue { display: none !important; }
+
+  table.checklist td.tick { width: 14pt; }
+  table.checklist input[type="checkbox"] { display: none; }
+  table.checklist td.tick::before {
+    content: "\2610";
+    font-size: 12pt;
+  }
+  table.checklist tr:has(input:checked) td.tick::before { content: "\2611"; }
+
+  /* a note worth keeping prints under its reading */
+  input.note {
+    border: 0;
+    font-size: 9pt;
+    font-style: italic;
+    width: auto;
+  }
+
+  .done { text-decoration: none; }
+  section.week { page-break-inside: avoid; break-inside: avoid; }
+}

@@ -3,6 +3,7 @@
 
 import * as store from './store.js'
 import * as view from './render.js'
+import * as cite from './cite.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -11,8 +12,11 @@ const state = {
   documents: [],
   active: null,
   pending: null,
-  currentView: 'schedule',
-  jobs: 0,
+  // syllabi wait here so a batch is reviewed one at a time
+  queue: [],
+  files: [],
+  progress: new Map(),
+  currentView: 'week',
 }
 
 let extractWorker = null
@@ -44,62 +48,61 @@ function onExtractMessage(event) {
   if (!job) return
 
   if (type === 'progress') {
-    status(job.statusEl, `Reading ${job.name}, page ${page} of ${total}`)
+    note(job, `reading page ${page} of ${total}`)
     return
   }
   if (type === 'error') {
-    status(job.statusEl, `Could not read ${job.name}: ${message}`)
+    note(job, `could not be read: ${message}`, true)
     waiting.delete(id)
     return
   }
   if (type === 'cancelled') {
-    status(job.statusEl, `Cancelled ${job.name}`)
+    note(job, 'cancelled')
     waiting.delete(id)
     return
   }
   if (type !== 'extracted') return
 
   if (payload.needOcr.length) {
-    status(
-      job.statusEl,
-      `${job.name}: ${payload.needOcr.length} page(s) have no text layer and were left empty. ` +
-        'Scanned pages need OCR, which is not run without asking.'
-    )
+    note(job, `${payload.needOcr.length} page(s) have no text layer, left empty`, true)
   } else {
-    status(job.statusEl, `Parsing ${job.name}`)
+    note(job, 'sorting')
   }
 
   const { parseWorker: pw } = workers()
-  pw.postMessage({ type: job.kind === 'syllabus' ? 'parse' : 'reading', id, payload })
+  pw.postMessage({ type: 'ingest', id, payload })
 }
 
 function onParseMessage(event) {
   const { type, id, result, stage, message } = event.data
 
   if (type === 'boot') {
-    for (const job of waiting.values()) status(job.statusEl, `Loading parser: ${stage}`)
+    status('intake-status', `Loading parser: ${stage}`)
     return
   }
   const job = waiting.get(id)
   if (!job) return
 
   if (type === 'error') {
-    status(job.statusEl, `Could not parse ${job.name}: ${message}`)
+    note(job, `could not be parsed: ${message}`, true)
     waiting.delete(id)
     return
   }
 
-  if (type === 'parsed') {
+  // one call decides what the file is and returns the right thing for it
+  if (type === 'ingested') {
     waiting.delete(id)
-    state.pending = { name: job.name, parse: result }
-    status(job.statusEl, `Parsed ${job.name}`)
-    showReview()
+    if (result.kind === 'syllabus') {
+      job.kind = 'syllabus'
+      note(job, 'syllabus, ready to review')
+      state.queue.push({ name: job.name, parse: result })
+      if (!state.pending) nextReview()
+    } else {
+      job.kind = 'reading'
+      note(job, 'reading, matching')
+      matchReading(job, result)
+    }
     return
-  }
-
-  if (type === 'reading') {
-    waiting.delete(id)
-    matchReading(job, result)
   }
 
   if (type === 'matched') {
@@ -108,13 +111,101 @@ function onParseMessage(event) {
   }
 }
 
+// one line per file, so a dropped batch shows what happened to each
+function note(job, text, warn = false) {
+  job.note = text
+  job.warn = warn
+  drawQueue()
+}
+
+function drawQueue() {
+  const rows = state.files
+    .map(
+      (job) => `<tr class="${job.warn ? 'missing' : ''}">
+        <td>${view.esc(job.name)}</td>
+        <td>${view.esc(job.kind || '')}</td>
+        <td class="secondary">${view.esc(job.note || '')}</td>
+      </tr>`
+    )
+    .join('')
+  $('queue').innerHTML = rows ? `<table><tbody>${rows}</tbody></table>` : ''
+}
+
+function nextReview() {
+  if (!state.queue.length) {
+    state.pending = null
+    $('review').hidden = true
+    return
+  }
+  state.pending = state.queue.shift()
+  showReview()
+}
+
 async function matchReading(job, extracted) {
   const head = extracted.pages.slice(0, 2).map((p) => p.text).join('\n')
-  const candidates = []
+  const candidates = candidateWorks()
+
+  if (!candidates.length) {
+    finishReading(job, { id: null, score: 0, method: 'no syllabus added yet' })
+    return
+  }
+
+  const id = nextId++
+  waiting.set(id, Object.assign(job, { extracted }))
+  const { parseWorker: pw } = workers()
+  pw.postMessage({ type: 'match', id, head, candidates, filename: job.name })
+}
+
+async function finishReading(job, match) {
+  const [courseId, workKey] = (match.id || '::').split('::')
+  const extracted = job.extracted
+  await store.putDocument({
+    id: job.hash || job.name,
+    filename: job.name,
+    courseId: courseId || null,
+    workKey: workKey || null,
+    matchScore: match.score,
+    matchMethod: match.method,
+    pageCount: (extracted && extracted.page_count) || 0,
+    // kept so a reading dropped before its syllabus can be matched later
+    // without asking for the file again. it never leaves this browser.
+    head: extracted ? extracted.pages.slice(0, 2).map((p) => p.text).join('\n') : '',
+  })
+  state.documents = await store.listDocuments()
+  note(job, match.id ? `matched, score ${match.score}` : `not matched: ${match.method}`, !match.id)
+  drawUnmatched()
+  draw()
+}
+
+// dropping readings before their syllabus is the normal order for a pile of
+// files, so every unmatched document gets another chance once a syllabus lands
+async function rematchUnmatched() {
+  const orphans = state.documents.filter((d) => !d.workKey && d.head)
+  if (!orphans.length) return
+
+  const candidates = candidateWorks()
+  if (!candidates.length) return
+
+  const { parseWorker: pw } = workers()
+  for (const record of orphans) {
+    const id = nextId++
+    waiting.set(id, { name: record.filename, kind: 'reading', record })
+    pw.postMessage({
+      type: 'match',
+      id,
+      head: record.head,
+      candidates,
+      filename: record.filename,
+    })
+  }
+}
+
+function candidateWorks() {
+  const works = []
   for (const course of state.courses) {
     for (const session of course.parse.sessions) {
       for (const reading of session.readings) {
-        candidates.push({
+        works.push({
           id: `${course.id}::${reading.work.signature}`,
           title: reading.work.title,
           year: reading.work.year,
@@ -124,56 +215,28 @@ async function matchReading(job, extracted) {
       }
     }
   }
-
-  if (!candidates.length) {
-    finishReading(job, { id: null, score: 0, method: 'no syllabus parsed yet' })
-    return
-  }
-
-  const id = nextId++
-  waiting.set(id, { ...job, extracted })
-  const { parseWorker: pw } = workers()
-  pw.postMessage({ type: 'match', id, head, candidates })
+  return works
 }
 
-async function finishReading(job, match) {
-  const [courseId, workKey] = (match.id || '::').split('::')
-  await store.putDocument({
-    id: job.hash || job.name,
-    filename: job.name,
-    courseId: courseId || null,
-    workKey: workKey || null,
-    matchScore: match.score,
-    matchMethod: match.method,
-    pageCount: (job.extracted && job.extracted.page_count) || 0,
-  })
-  state.documents = await store.listDocuments()
-  status(
-    job.statusEl,
-    match.id
-      ? `${job.name} matched (${match.score})`
-      : `${job.name} not matched: ${match.method}`
-  )
-  drawUnmatched()
-  draw()
-}
-
-function submit(files, kind) {
+function submit(files) {
   const { extractWorker: ew } = workers()
-  const statusEl = kind === 'syllabus' ? 'intake-status' : 'reading-status'
+  status('intake-status', `${files.length} file(s) queued`)
 
   for (const file of files) {
     const id = nextId++
-    waiting.set(id, { name: file.name, kind, statusEl })
-    status(statusEl, `Reading ${file.name}`)
+    const job = { name: file.name, kind: '', note: 'queued' }
+    state.files.push(job)
+    waiting.set(id, job)
     file.arrayBuffer().then((buffer) => {
       ew.postMessage({ type: 'extract', id, name: file.name, buffer }, [buffer])
     })
   }
+  drawQueue()
 }
 
 function showReview() {
   $('review').hidden = false
+  $('review-name').textContent = state.pending.name
   $('review-table').innerHTML = view.reviewTable(state.pending.parse)
   $('review').scrollIntoView({ block: 'start' })
 }
@@ -203,12 +266,17 @@ async function confirmParse() {
   await store.putCourse(course)
   state.courses = await store.listCourses()
   state.active = course.id
-  state.pending = null
-  $('review').hidden = true
-  $('readings').hidden = false
   $('views').hidden = false
   $('data').hidden = false
+  nextReview()
+  await rematchUnmatched()
   draw()
+}
+
+async function setProgress(id, patch) {
+  const entry = Object.assign({ id, read: false, note: '' }, state.progress.get(id), patch)
+  state.progress.set(id, entry)
+  await store.putProgress(entry)
 }
 
 function drawNav() {
@@ -221,7 +289,7 @@ function drawNav() {
   nav.innerHTML = state.courses
     .map(
       (c) =>
-        `<a href="#" data-course="${view.esc(c.id)}"${
+        `<a href="#" data-course="${view.esc(c.id)}" title="${view.esc(courseLabel(c))}"${
           c.id === state.active ? ' aria-current="page"' : ''
         }>${view.esc(c.code)}</a>`
     )
@@ -238,14 +306,41 @@ function drawUnmatched() {
     : ''
 }
 
+// a title that just repeats the course code adds nothing to the option
+function courseLabel(course) {
+  const squash = (t) => (t || '').replace(/[^a-z0-9]/gi, '').toLowerCase()
+  const title = (course.title || '').trim()
+  if (!title || squash(title) === squash(course.code) || squash(title).length < 4) {
+    return course.code
+  }
+  const full = `${course.code} ${title}`
+  return full.length > 62 ? `${full.slice(0, 59)}...` : full
+}
+
+function drawStyleSelect() {
+  const styles = $('style-select')
+  if (!styles.options.length) {
+    styles.innerHTML = cite
+      .styles()
+      .map((s) => `<option value="${s}">${view.esc(cite.STYLE_NAMES[s])}</option>`)
+      .join('')
+  }
+  styles.value = view.style
+}
+
 function draw() {
   drawNav()
   const course = state.courses.find((c) => c.id === state.active) || state.courses[0]
-  if (!course) return
+  if (!course) {
+    $('views').hidden = true
+    return
+  }
+  $('views').hidden = false
+  drawStyleSelect()
 
   const target = $('view')
   if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
-  else if (state.currentView === 'week') target.innerHTML = view.weekView(course, state.documents)
+  else if (state.currentView === 'week') target.innerHTML = view.weekView(course, state.progress)
   else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses)
   else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
   else if (state.currentView === 'search') drawSearch(target)
@@ -288,12 +383,12 @@ function drawSearch(target) {
   }
 }
 
-function wireDropZone(zoneId, inputId, kind) {
+function wireDropZone(zoneId, inputId) {
   const zone = $(zoneId)
   const input = $(inputId)
 
   input.onchange = () => {
-    if (input.files.length) submit([...input.files], kind)
+    if (input.files.length) submit([...input.files])
     input.value = ''
   }
 
@@ -311,30 +406,26 @@ function wireDropZone(zoneId, inputId, kind) {
   }
   zone.addEventListener('drop', (e) => {
     const files = [...(e.dataTransfer?.files || [])].filter((f) => f.type === 'application/pdf')
-    if (files.length) submit(files, kind)
+    if (files.length) submit(files)
   })
 }
 
 async function boot() {
   state.courses = await store.listCourses()
   state.documents = await store.listDocuments()
+  state.progress = new Map((await store.listProgress()).map((e) => [e.id, e]))
   if (state.courses.length) {
     state.active = state.courses[0].id
-    $('readings').hidden = false
-    $('views').hidden = false
-    $('data').hidden = false
+    applyRequiredStyle()
     drawUnmatched()
     draw()
   }
 
-  wireDropZone('syllabus-drop', 'syllabus-input', 'syllabus')
-  wireDropZone('reading-drop', 'reading-input', 'reading')
+  wireDropZone('file-drop', 'file-input')
 
   $('confirm').onclick = confirmParse
   $('discard').onclick = () => {
-    state.pending = null
-    $('review').hidden = true
-    status('intake-status', 'Discarded')
+    nextReview()
   }
 
   $('nav').onclick = (e) => {
@@ -342,8 +433,38 @@ async function boot() {
     if (!link) return
     e.preventDefault()
     state.active = link.dataset.course
+    applyRequiredStyle()
     draw()
   }
+
+  $('style-select').onchange = (e) => {
+    view.setStyle(e.target.value)
+    draw()
+  }
+
+  $('remove-course').onclick = async () => {
+    const course = state.courses.find((c) => c.id === state.active)
+    if (!course) return
+    if (!confirm(`Remove ${course.code} and its checklist from this browser?`)) return
+    await store.removeCourse(course.id)
+    state.courses = await store.listCourses()
+    state.active = state.courses[0]?.id ?? null
+    drawNav()
+    draw()
+  }
+
+  // ticking a box and jotting a note are the two things done most often, so
+  // both save immediately rather than behind a save button
+  $('view').addEventListener('change', async (e) => {
+    const tick = e.target.closest('input[data-progress]')
+    if (tick) {
+      await setProgress(tick.dataset.progress, { read: tick.checked })
+      draw()
+      return
+    }
+    const note = e.target.closest('input[data-note]')
+    if (note) await setProgress(note.dataset.note, { note: note.value })
+  })
 
   document.querySelector('.tabs').onclick = (e) => {
     const button = e.target.closest('button[data-view]')
@@ -360,7 +481,7 @@ async function boot() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'seminar-vault.json'
+    a.download = 'schedule-reader.json'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -374,7 +495,6 @@ async function boot() {
       state.documents = await store.listDocuments()
       state.active = state.courses[0]?.id ?? null
       $('views').hidden = !state.courses.length
-      $('readings').hidden = !state.courses.length
       draw()
     } catch (error) {
       status('intake-status', `Import failed: ${error.message}`)
@@ -388,11 +508,14 @@ async function boot() {
     state.documents = []
     state.active = null
     $('views').hidden = true
-    $('readings').hidden = true
     $('data').hidden = true
+    state.files = []
+    drawQueue()
     drawNav()
     status('intake-status', 'All data cleared')
   }
+
+  draw()
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {})
@@ -400,3 +523,12 @@ async function boot() {
 }
 
 boot()
+
+
+// a course that states its own required style overrides the visitor's choice,
+// because that is the one that has to be handed in
+function applyRequiredStyle() {
+  const course = state.courses.find((c) => c.id === state.active)
+  const required = course && course.parse.course.citation_style
+  if (required && cite.styles().includes(required)) view.setStyle(required)
+}
