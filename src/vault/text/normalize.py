@@ -277,6 +277,11 @@ def _looks_like_url_tail(head: str, tail: str) -> bool:
     # a capitalised word starting a new sentence is not a url tail
     if re.match(r"^[A-Z][a-z]{2,}\b", tail) and not head.endswith(("-", "/", "=", "&", "_", "?")):
         return False
+    # a short label followed by a colon starts the next entry. inside a table
+    # cell a url regularly sits directly above the next reading, and joining
+    # them loses that reading entirely.
+    if re.match(r"^[A-Za-z]{1,6}:", tail):
+        return False
     # bullets and citation markers end the url
     if tail[:1] in {"•", "●", "-", "*"} and len(tail) > 1 and tail[1] == " ":
         return False

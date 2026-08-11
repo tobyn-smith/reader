@@ -173,10 +173,20 @@ def _table_looks_like_a_schedule(doc: ExtractedDoc, pages: set[int]) -> bool:
         if not 1 <= number <= doc.page_count:
             continue
         for grid in doc.page(number).tables:
-            flat = " ".join(cell.lower() for row in grid for cell in row)
-            if WEEK_RE.search(flat) or re.search(r"\bdate\b.*\btopic\b", flat):
+            # cells carry their own newlines, so the probe has to be flattened
+            # before anything can match across them
+            flat = collapse_whitespace(" ".join(cell for row in grid for cell in row)).lower()
+            if _WEEK_ANYWHERE_RE.search(flat):
+                return True
+            if re.search(r"\bdate\b.*\btopic\b", flat):
                 return True
     return False
+
+
+# the same week marker as WEEK_RE, but usable mid string rather than anchored
+_WEEK_ANYWHERE_RE = re.compile(
+    r"\b(?:week|session|class|unit|module)\s*#?\s*\d{1,2}\b", re.IGNORECASE
+)
 
 
 def parse(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> ScheduleParse:
@@ -497,9 +507,10 @@ def _parse_table(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> Sch
             continue
         for grid in doc.page(number).tables:
             for row in grid:
-                if _is_header_row(row):
+                cleaned = _strip_header_labels(row)
+                if not any(cleaned):
                     continue
-                rows.append((number, row))
+                rows.append((number, cleaned))
 
     for page, row in rows:
         first = collapse_whitespace(row[0]) if row else ""
@@ -516,9 +527,31 @@ def _parse_table(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> Sch
     return result
 
 
-def _is_header_row(row: list[str]) -> bool:
-    joined = " ".join(row).lower()
-    return "date" in joined and ("topic" in joined or "assignment" in joined)
+_HEADER_LABEL_RE = re.compile(
+    r"^\s*(?:date|week|day|topic|theme|subject|"
+    r"assignments?(?:\s+and\s+due\s+dates?)?|due(?:\s+dates?)?|"
+    r"readings?|notes?|deadlines?)\s*:?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _strip_header_labels(row: list[str]) -> list[str]:
+    """remove a column heading from the top of each cell.
+
+    cell extraction gives the heading its own row, while reconstructing a table
+    from text positions can fold it into the first data row, because the gap
+    below a heading is no bigger than the gap between lines inside a cell. the
+    label is therefore removed wherever it turns up, and the row is dropped only
+    when nothing survives. a heading never carries a number, so "Week 1" is
+    untouched.
+    """
+    out: list[str] = []
+    for cell in row:
+        lines = cell.split("\n")
+        while lines and _HEADER_LABEL_RE.match(lines[0]):
+            lines.pop(0)
+        out.append("\n".join(lines).strip())
+    return out
 
 
 def _row_to_sessions(
