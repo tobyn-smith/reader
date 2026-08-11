@@ -194,21 +194,29 @@ Reading lists inside table cells are the weakest output. Wrapped urls can
 leave fragments; obvious ones are dropped. A topic cell can still leak into
 readings on tables wider than the mapped columns.
 
-That leak is the main accuracy problem, and it was misdiagnosed for a while as
-a citation parsing problem. Over 24 real syllabi, 588 reading rows come out,
-387 of which parse into full citations. Bucketing the 201 that do not:
+That leak was the main accuracy problem, and it was misdiagnosed for a while as
+a citation parsing problem. Over 24 real syllabi it once produced 588 reading
+rows, 387 of them parsing into full citations. Bucketing the 201 that did not
+showed four fifths were never citations: 87 prose or topic labels, 50 too short
+to be anything, 26 schedule fragments, 3 chapter pointers, and only 35 actually
+reference shaped.
 
-    87   prose or a topic label
-    50   too short to be anything
-    35   actually reference shaped
-    26   a schedule fragment
-     3   a chapter or unit pointer
+Four fixes in test_reading_list_hygiene.py took that to 506 rows and 390
+citations, 66% to 77%, and none of them touched a citation pattern:
 
-So four fifths of the "unparsed citations" were never citations. On the rows
-that really are references the patterns get roughly nine in ten. Adding more
-citation patterns therefore buys very little; keeping non-readings out of
-reading lists in the first place is where the remaining accuracy is. Measure
-before writing another regex.
+- a header naming every column and none of them readings yields no readings.
+  the fallback that sweeps unnamed columns now excludes the due columns, so a
+  grading table stops contributing thirteen weeks of "Participation".
+- a date led line inside a week is that week's own timetable. it fails
+  is_session_head for sitting mid block, and was being collected as a reading.
+- a row that is only a url belongs to the row above, whether or not it kept its
+  scheme. joining them also completes the citation that lost its link.
+- a short title case line with no year, pages, quotes or link is a divider
+  inside the list, not a reading. it becomes the week's topic if there is none.
+
+What remains splits about a third genuine short form references ("Nye, Part II,
+pp. 113-234", naming a book assigned weeks earlier) and two thirds still junk.
+Measure before writing another citation pattern; that is not where it is going.
 
 Lookup rescue (lookup.py, called from enrich.py) sends a line no pattern could
 read to crossref and offers the result in review. The gate wants near total

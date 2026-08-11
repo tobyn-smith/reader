@@ -1,92 +1,86 @@
 # schedule reader
 
-Keep track of coursework readings. Give it your syllabi at the start of term
-and your reading PDFs each week. It keeps the schedule, the citations, the
-deadlines and the full text in one searchable place, and tells you each week
-what you have, what is missing, and what is due.
+Give it your syllabi at the start of term and your reading PDFs as you go. It
+pulls out the schedule, the readings and the deadlines, then tells you each week
+what's assigned and what you haven't got yet.
 
-There are two ways to use it.
+Two ways to run it.
 
 ## In a browser
 
 <https://tobyn-smith.github.io/reader/>
 
-Drag in a syllabus PDF and you get back the schedule, the readings as proper
-citations, the deadlines and a bibliography, ready to print or save as a PDF.
-Nothing to install, no account, no Python.
+Drop a syllabus PDF in and you get the schedule, the readings as citations, the
+deadlines, and a bibliography you can print. No install, no account.
 
-Your files are read in the browser and are never uploaded. There is no server
-and no upload endpoint, so there is nothing to store or leak. Everything you
-parse is kept in that browser only, and a "Clear all data" button removes it.
-Export to JSON to move it to another machine.
+Files never leave your machine. There's no server behind this and no upload
+endpoint, so there's nothing to leak. What you parse lives in that browser and
+nowhere else, which also means clearing your browser data wipes it. Export to
+JSON if you want it somewhere safer.
 
-The parser is the same Python the command line uses, compiled to WebAssembly
-and run in a worker, so both paths give the same answers. The fixture suite
-checks exactly that.
+It runs the same Python as the command line, compiled to WebAssembly. Both paths
+get tested against the same fixtures.
 
 ## How accurate it is
 
-Read this before trusting the output. The parser is a set of patterns, not a
-model, and syllabi are written in every layout a person can invent.
+Worth knowing before you lean on it. This is pattern matching, not a model, and
+people write syllabi in whatever layout occurs to them that morning.
 
-Measured over 24 real syllabi from one university, parsed and checked by hand:
+24 real syllabi, parsed and checked by hand:
 
-| What | Rate |
+| | |
 | --- | --- |
-| Recognised a syllabus from a reading | 100% |
+| Told a syllabus from a reading | 100% |
 | Course code | 100% |
 | Term | 96% |
-| Found the schedule | 79% |
-| Readings turned into full citations | 66% |
-| Weights totalling near 100% | 6 of 10 |
+| Found a schedule | 79% |
+| Readings parsed into full citations | 77% |
+| Weights adding up to about 100 | 6 of 10 |
 
-The structural fields are reliable. Reading lists are where accuracy is lost,
-though not in the way that 66% suggests. Of the rows that fail, four fifths
-were never readings to begin with: prose from under a week heading, a topic
-label, a fragment of a schedule that lost its line breaks. On rows that really
-are references, the patterns get roughly nine in ten.
+Course code and term are dependable. Reading lists are the weak spot, and the
+reason is worth knowing: most of what fails was never a reading. Week topics,
+prose from under a heading, a grading table's columns, and the week's own
+timetable were all being swept into reading lists and then counted as things
+you hadn't read yet.
 
-So the honest version is that the citation parsing mostly works and the reading
-list it gets fed does not. That is a table and layout problem rather than a
-citation problem, and it is the next thing worth fixing.
+That was 66% until recently. Keeping non-readings out is what moved it to 77%,
+and there's more of it left. Of the rows that still fail, about a third are
+genuine references in a short form the patterns can't unpick, like "Nye, Part
+II, pp. 113-234" pointing at a book named weeks earlier. The rest is still
+junk that shouldn't be in the list.
 
-On the command line the parser also asks Crossref about lines it could not read
-and offers whatever comes back for confirmation, never accepting it silently.
-The gate is deliberately strict and this recovers about one row in a hundred,
-so treat it as a bonus rather than a fix. It stays off in the browser, where
-nothing is meant to leave the machine.
+Anything it can't read, it shows you verbatim and marks for checking. It doesn't
+drop things quietly and it doesn't invent them. That's what the review step is
+for.
 
-What it will not do is hide that from you. A reading it cannot parse is shown
-as the exact text from the PDF and marked for checking. Nothing is dropped
-silently and nothing is invented. That is what the review step is for, and why
-it is worth the few minutes at the start of term.
+When no schedule turns up it's usually because the PDF hasn't got one, either
+because it lives on the course site or the file is really just a grading table.
+Course info and weights still come out.
 
-Where a schedule is missing entirely it is usually because the PDF has none:
-the schedule lives on the course site, or the file carries only a deadline
-grid with no topics or readings. In those cases the course, term and weights
-still come through.
+Layouts it knows: bulleted lists, ruled tables, labelled blocks, date-led
+headings, and numbered meetings with the date at either end. Anything stranger
+falls back to the nearest parser and shows up as low confidence.
 
-Layouts handled: bulleted lists, ruled tables, labelled blocks, date-led
-headings, and numbered meetings with the date leading or trailing. Anything
-else degrades to the closest parser and shows up as low confidence in review.
+The command line also asks Crossref about lines it couldn't parse, and offers
+whatever comes back for you to confirm. The gate is strict on purpose, so it
+only recovers about one row in a hundred. The browser doesn't do this, since
+nothing is meant to leave your machine there.
 
 ## On the command line
 
-For batch work: a folder of readings, full text search, and publishing a site.
+Better for bulk work: a folder of readings, full text search, publishing a site.
 
-It has two halves that share one database:
+Two halves sharing one database.
 
-**Syllabus intake.** Give it a syllabus PDF. It pulls out the course info, the
-week-by-week schedule, each reading as a proper citation, each graded
-assignment with its due date, and the policies you will need to look up later,
-including the course's AI policy. It shows you the whole parse before saving
-anything.
+**Syllabus intake.** Point it at a PDF. You get course info, the weekly
+schedule, readings as citations, graded work with due dates, and the policies
+you'll want to look up later, including whatever the course says about AI. It
+shows you all of it before writing anything.
 
-**Reading pipeline.** Drop your PDFs in a folder and run one command. Text is
-extracted with page numbers kept all the way through. Two-column layouts are
-read in the right order, footnotes are kept separate, and scanned pages are
-flagged for OCR. Each file is matched to its syllabus entry, so `vault status`
-can print a checklist:
+**Reading pipeline.** Put PDFs in a folder and run one command. Page numbers
+survive the whole way through. Two-column articles come out in reading order,
+footnotes stay separate, and scanned pages get flagged for OCR. Each file gets
+matched to its syllabus entry, so `vault status` can print:
 
     POLS 6510 Week 5 (9/11) Interstate Bargaining
       [x] Okonkwo 1995, Rationalist Accounts of Bargaining Failure
@@ -96,13 +90,13 @@ can print a checklist:
     due
       POLS 6510  Reading Memo & Participation  weekly on thursday 09:00
 
-`vault search` runs full text search over everything ingested and returns the
-citation and page number with each hit.
+`vault search` searches everything you've ingested and gives you the citation
+and page number with each hit.
 
-Everything runs on your machine, offline, with no accounts and no keys. The
-optional model layer writes reading briefs and does nothing else. Without it
-the tool still does everything above. If a course bans AI use, briefs are
-turned off for that course. Nothing in the tool generates submittable text.
+It all runs locally with no keys. There's an optional model layer that writes
+reading briefs and does nothing else; skip it and the rest still works. Where a
+course bans AI, briefs are off for that course. Nothing here writes anything
+you'd submit.
 
 ## Install
 
@@ -115,66 +109,62 @@ Python 3.11 or newer.
     pip install -e ".[dev]"
     git config core.hooksPath .githooks
 
-Optional extras. Each one adds a single feature:
+Optional, one feature each:
 
-- `ocrmypdf` on the PATH: read scanned PDFs
-- `pagefind` (or npx): search on the built site
-- `weasyprint`: print PDFs on your machine (CI makes them either way)
+- `ocrmypdf` on the PATH for scanned PDFs
+- `pagefind` for search on the built site
+- `weasyprint` for print PDFs locally (CI builds them regardless)
 
 ## Configure
 
-Nothing to configure. Your database, PDFs, inbox and caches live in
-`~/.seminar-vault/`, outside the repo, so course files cannot end up in git by
-accident. To move them, copy `.env.example` to `.env` and set `VAULT_HOME`.
+Nothing to configure. Your database, PDFs and caches sit in `~/.seminar-vault/`,
+well outside the repo, so coursework can't wander into a commit. Copy
+`.env.example` to `.env` and set `VAULT_HOME` to put them elsewhere.
 
 ## Use
 
-    vault syllabus syllabus.pdf       parse, review each flagged row, save
-    vault ingest readings/            add reading pdfs; safe to re-run
+    vault syllabus syllabus.pdf       parse, review, save
+    vault ingest readings/            add reading pdfs, safe to re-run
     vault ingest                      same, from ~/.seminar-vault/inbox
     vault status                      this week: have, missing, due
     vault status --course "POLS 6510" --week 5
     vault search "commitment problem"
-    vault brief 42                    needs a model key; off where AI is banned
+    vault brief 42                    needs a model key, off where AI is banned
     vault export --public             write the filtered data/public.json
-    vault build --public --pdf        the site github pages serves
-    vault build --private             everything, local only, never committed
+    vault build --public --pdf        what github pages serves
+    vault build --private             everything, local only
     vault serve                       browse the private build
 
 ## Publishing
 
-The public site on GitHub Pages shows schedules, citations, deadlines and
-bibliographies. Nothing else. Every published field has to be on an allowlist,
-and the test suite fails if anything new slips in. Reading text, briefs,
-private notes and instructor contact details stay on your machine. CI builds
-the site from one reviewed file, `data/public.json`, and never sees your
-database, so it cannot leak what it cannot read. `ARCHITECTURE.md` has the
-details, plus a guide for reaching your private build from a phone.
+The public site carries schedules, citations, deadlines and bibliographies, and
+that's the lot. A field has to be named on an allowlist to get out, and the
+tests fail if something new shows up. Reading text, briefs, notes and instructor
+contact details stay local. CI builds from `data/public.json`, which you review
+before committing, and never touches your database. `ARCHITECTURE.md` covers the
+rest, including reaching your private build from a phone.
 
 ## Make it yours
 
-The demo at `tobyn-smith.github.io/reader/demo/` is built from the invented
-courses in `tests/fixtures/`. The repo holds no real coursework. To run your
-own:
+The demo at `tobyn-smith.github.io/reader/demo/` runs on invented courses from
+`tests/fixtures/`. There's no real coursework in this repo. For your own:
 
-1. Fork the repo. In Settings, Pages, set the source to GitHub Actions.
-2. Run `vault syllabus your-syllabus.pdf` for each course and review the parse.
-3. Run `vault ingest your-readings/` as the term goes on.
-4. Run `vault export --public`, read what it says it included and left out,
-   then commit `data/public.json`. The push publishes your site.
+1. Fork it. Settings, Pages, source: GitHub Actions.
+2. `vault syllabus your-syllabus.pdf` per course, and review the parse.
+3. `vault ingest your-readings/` as term goes on.
+4. `vault export --public`, read what it says it kept and dropped, then commit
+   `data/public.json`. Pushing publishes.
 
-Your database and PDFs stay in `~/.seminar-vault`, outside the repo. The
-allowlist, the CI setup and the pre-commit hook all work the same in your
-fork, so the only thing that can reach your public site is what the export
-file contains.
+Your database and PDFs stay in `~/.seminar-vault`. The allowlist, the CI setup
+and the pre-commit hook all carry over to your fork.
 
 ## Tests
 
     pytest -q
 
-The suite runs offline with no keys set. The fixtures are made-up PDFs that
-copy the layouts real syllabi use: bulleted schedules with odd glyph markers,
-ruled tables with two meetings a week, labelled topic and readings blocks,
-two-column articles, footnote-heavy pages, and a scanned page with no text
-layer. The tests check exact reading counts per week, because a parser that
-quietly drops one reading in five looks correct in every other way.
+Runs offline with no keys. Fixtures are invented PDFs copying the layouts real
+syllabi use: bulleted schedules with odd glyph markers, ruled tables with two
+meetings a week, labelled topic and reading blocks, two-column articles,
+footnote-heavy pages, and one scan with no text layer. They assert exact reading
+counts per week, because a parser that quietly loses one reading in five
+otherwise looks fine.

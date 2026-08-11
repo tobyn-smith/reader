@@ -201,8 +201,11 @@ PAGE_RANGE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# an asterisk in front of a line is a syllabus's own footnote mark. it says
+# "look at this one", not "this is a reading", so it is stepped over before the
+# line is read rather than being allowed to hide a "Due:" behind it.
 DELIVERABLE_HINT_RE = re.compile(
-    r"^\s*(?:due|sign[\s-]?up|presentation|assessment|quiz|exam)\b|"
+    r"^\s*\*?\s*(?:due|sign[\s-]?up|presentation|assessment|quiz|exam)\b|"
     r"\b(?:due|submit)\b.{0,40}\b\d{1,2}\s*/\s*\d{1,2}\b|"
     r"\bweekly assessment\b|\bassessment\s+\d+\b",
     re.IGNORECASE,
@@ -422,9 +425,119 @@ def _split_week_heading(session: SessionEntry, text: str, term: Term | None) -> 
     session.topic = collapse_whitespace(topic) or None
 
 
+def _is_url_tail(text: str) -> bool:
+    """is this entry nothing but a link.
+
+    wrapping inside a table cell puts spaces in the middle of a url, so the
+    words in one are no proof of prose. stripping every token that carries a
+    slash or a dot leaves the words that were really text, and a web citation
+    that kept its title still has some.
+    """
+    stripped = collapse_whitespace(text)
+    if not stripped.lower().startswith(("http://", "https://", "www.")):
+        return False
+    remainder = re.sub(r"\S*[/.]\S*", " ", stripped)
+    return len(remainder.split()) <= 1
+
+
+# a token from the middle of a url path: lowercase, hyphenated, no prose
+_PATH_TOKEN = re.compile(r"^[a-z0-9][a-z0-9\-_=&%.+/~]*$")
+
+
+def _is_url_fragment(text: str) -> bool:
+    """a url tail that lost its scheme when the cell wrapped."""
+    tokens = collapse_whitespace(text).split()
+    if not tokens or len(tokens) > 6:
+        return False
+    if not all(_PATH_TOKEN.match(token) for token in tokens):
+        return False
+    return sum(1 for t in tokens if "-" in t or "/" in t) >= max(1, len(tokens) - 1)
+
+
+def _continues_url(previous: str, text: str) -> bool:
+    """does this entry finish a url the one above it was cut off inside.
+
+    the scheme is on the row above, so the tail on its own looks like nothing.
+    both halves have to agree before they are joined: the row above has to
+    carry a url and break off mid path, and this row has to be path and not
+    prose. either test alone would swallow a page range.
+    """
+    prior = collapse_whitespace(previous).lower()
+    if "http" not in prior and "www." not in prior:
+        return False
+    if not prior.endswith(("-", "/", "=", "_", "?", "&")):
+        return False
+    return _is_url_fragment(text)
+
+
+def _join_url_tails(entries: list[str]) -> list[str]:
+    """fold a link only entry into the one above it.
+
+    a web citation is a title and a url together, and a cell that wraps can put
+    the url on a row of its own. left alone it becomes a reading nobody can act
+    on, and it also hides that the row above lost its link.
+    """
+    joined: list[str] = []
+    for raw in entries:
+        if joined and (_is_url_tail(raw) or _continues_url(joined[-1], raw)):
+            joined[-1] = f"{joined[-1]} {collapse_whitespace(raw)}".strip()
+            continue
+        joined.append(raw)
+    return joined
+
+
+# the small words a title case heading is allowed to leave lowercase
+_MINOR_WORDS = {"and", "of", "the", "for", "in", "to", "on", "with", "a", "an", "or"}
+
+
+def _looks_like_reading_subheading(text: str) -> bool:
+    """a thematic divider inside a reading list, not a reading.
+
+    long reading lists get grouped under short headings ("Human Security",
+    "Colonial Legacies"), and those were being checked off as though they were
+    something to go and read. what marks them is the absence of everything a
+    citation carries: no year, no page numbers, no quoted title, no link, no
+    closing period, and few enough words to be a label.
+
+    a standalone "in" is left out because it is how a chapter names the book it
+    sits in, which is a real short form reading rather than a heading.
+    """
+    stripped = collapse_whitespace(text or "")
+    if not stripped or len(stripped) > 46:
+        return False
+    tokens = stripped.split()
+    if not tokens or len(tokens) > 6:
+        return False
+    if re.search(r"[\d\"“”]", stripped) or stripped.endswith("."):
+        return False
+    lowered = stripped.lower()
+    if "http" in lowered or "www." in lowered or " in " in lowered:
+        return False
+    words = [w for w in tokens if w[:1].isalpha()]
+    if len(words) < 2:
+        return False
+    return all(w[0].isupper() or w.lower() in _MINOR_WORDS for w in words)
+
+
+def _lift_subheadings(session: SessionEntry, entries: list[str]) -> list[str]:
+    """take dividers out of the reading list, keeping the first as a topic.
+
+    a week that never named a topic often has one sitting right here, so the
+    label is moved rather than thrown away.
+    """
+    kept: list[str] = []
+    for raw in entries:
+        if _looks_like_reading_subheading(raw):
+            if not session.topic:
+                session.topic = collapse_whitespace(raw)
+            continue
+        kept.append(raw)
+    return kept
+
+
 def _finish(session: SessionEntry, entries: list[str]) -> None:
     ordinal = 0
-    for raw in entries:
+    for raw in _lift_subheadings(session, _join_url_tails(entries)):
         entry = _build_reading(raw, ordinal)
         if entry is None:
             continue
@@ -555,6 +668,25 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
         if session is None:
             if _looks_like_unit_heading(text):
                 section_heading = text.strip(" :")
+            continue
+
+        # a date led line sitting inside a week is that week's own timetable,
+        # not a reading. it fails is_session_head because it is mid block rather
+        # than at the top of one, and a week that lists "August 22 -Topic" under
+        # its heading was otherwise putting each meeting on the reading list.
+        # the pattern needs a bare month and day, so a citation carrying a full
+        # date with a year does not reach here.
+        meeting = date_heading(text)
+        if meeting:
+            flush_entry()
+            found = list(iter_dates(text, term))
+            if found and session.meeting_date is None:
+                session.meeting_date = found[0]
+            rest = collapse_whitespace(
+                meeting.group("rest") or meeting.group("rest2") or ""
+            )
+            if rest and not session.topic:
+                session.topic = rest
             continue
 
         # a label switches collection on or off for what follows it
@@ -713,7 +845,26 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
 
 def _finish_labelled(session: SessionEntry, tagged: list[tuple[str, str]]) -> None:
     ordinal = 0
+    merged: list[tuple[str, str]] = []
     for label, raw in tagged:
+        if merged and (_is_url_tail(raw) or _continues_url(merged[-1][1], raw)):
+            previous_label, previous_raw = merged[-1]
+            merged[-1] = (previous_label, f"{previous_raw} {collapse_whitespace(raw)}".strip())
+            continue
+        merged.append((label, raw))
+
+    for label, raw in merged:
+        if _looks_like_reading_subheading(raw):
+            if not session.topic:
+                session.topic = collapse_whitespace(raw)
+            continue
+        # graded work listed among the readings is a due date, not a reading.
+        # the bulleted parser has always routed these to the deliverable hints;
+        # a labelled block was still checking them off as things to read.
+        flat = collapse_whitespace(raw)
+        if DELIVERABLE_HINT_RE.match(flat):
+            session.deliverable_hints.append(flat)
+            continue
         # a terms and key concepts block is a glossary, not a reading list.
         # "De minimus calculations" is a thing to know, not a thing to read,
         # and listing it on a reading checklist makes the checklist useless.
@@ -972,9 +1123,14 @@ def _strip_header_labels(row: list[str]) -> list[str]:
 def _row_cells(row: list[str], shape: TableShape) -> tuple[str, str, str, str]:
     """pull anchor, topic, unit and body text out of a row using the shape.
 
-    topic and date columns never reach the reading list. that separation is
-    structural rather than a filter: a cell the header called "Topic" cannot
-    leak into the readings no matter what it contains.
+    a column the header named is never read as something else. that separation
+    is structural rather than a filter: a cell under "Topic" or under "Other
+    Due" cannot leak into the readings no matter what it contains.
+
+    the fallback below only sweeps up columns the header did not name at all,
+    which is the case where guessing is the best available option. a grid whose
+    header names its every column and none of them readings yields no readings,
+    and that is the right answer rather than a gap to fill.
     """
     if shape.from_header:
         def cell(index: int | None) -> str:
@@ -987,7 +1143,7 @@ def _row_cells(row: list[str], shape: TableShape) -> tuple[str, str, str, str]:
         if shape.body_cols:
             body = "\n\n".join(cell(i) for i in shape.body_cols if cell(i))
         else:
-            named = anchor_cols | {shape.topic_col, shape.unit_col}
+            named = anchor_cols | {shape.topic_col, shape.unit_col} | set(shape.due_cols)
             body = "\n\n".join(
                 row[i] for i in range(len(row)) if i not in named and row[i]
             )
