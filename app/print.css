@@ -1,5 +1,8 @@
-/* print output is read on paper, away from a screen, so it is designed for that
-   rather than being the screen page sent to a printer. assume black and white. */
+/* print output is read on paper, away from a screen, so it is designed for
+   that rather than being the screen page sent through a printer. it is the
+   same quiet-paper design in its print form: serif body for sustained reading,
+   the same table treatment as the screen, black and white safe throughout.
+   assume no colour. */
 
 @page {
   size: letter;
@@ -22,21 +25,21 @@
   header .statement,
   header nav,
   nav.tabs,
-  #intake,
-  #readings,
   #review,
-  #data,
+  #tools,
+  #queue,
+  #unmatched,
   button,
-  input,
-  label,
   .drop,
-  .progress,
   .no-print {
     display: none !important;
   }
 
-  h1 { font-size: 13pt; margin: 0 0 0.5em; }
-  h2 { font-size: 11pt; margin: 1em 0 0.3em; }
+  h1 { font-size: 13pt; margin: 0 0 0.5em; letter-spacing: 0; }
+  h2 { font-size: 12pt; margin: 1em 0 0.3em; }
+  h3 { font-size: 11pt; margin: 0.9em 0 0.2em; }
+
+  .secondary, .note, .status { color: #000; font-size: 9pt; }
 
   a { color: #000; text-decoration: none; }
 
@@ -48,50 +51,46 @@
     word-break: break-all;
   }
 
+  /* tables match the screen: quiet uppercase heads over a strong rule */
   table { width: 100%; border-collapse: collapse; }
-  th, td { border-bottom: 0.5pt solid #000; padding: 3pt 6pt 3pt 0; }
+  th {
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1pt solid #000;
+    padding: 3pt 8pt 3pt 0;
+  }
+  td { border-bottom: 0.5pt solid #777; padding: 3pt 8pt 3pt 0; }
   thead { display: table-header-group; }
+  td.when { color: #000; }
 
   /* no citation may split across a page */
   .entry, tr, li { page-break-inside: avoid; break-inside: avoid; }
+  section.week, section.course-deadlines { page-break-inside: avoid; break-inside: avoid; }
 
   /* missing and overdue read as weight, not colour */
-  tr.missing td { font-weight: 700; }
+  tr.missing td { font-weight: 700; color: #000; }
   tr.missing td:first-child::before { content: "MISSING  "; }
+  .review-row td { color: #000; }
 
-  .running-header {
+  /* the checklist prints as a checklist: a box to tick with a pen */
+  table.checklist input[type="checkbox"] { display: none; }
+  table.checklist td.tick { width: 14pt; }
+  table.checklist td.tick::before { content: "\2610"; font-size: 12pt; }
+  table.checklist tr:has(input:checked) td.tick::before { content: "\2611"; }
+  .done { text-decoration: none; color: #000; }
+
+  /* an empty note prints as nothing; a written one prints under its reading */
+  input.note { border: 0; background: none; font-size: 9pt; font-style: italic; width: auto; color: #000; }
+  input.note:placeholder-shown { display: none; }
+
+  #print-meta {
     display: block;
-    font-size: 9pt;
-    border-bottom: 0.5pt solid #000;
-    margin-bottom: 6pt;
-    padding-bottom: 2pt;
+    font-size: 8pt;
+    margin-top: 10pt;
+    border-top: 0.5pt solid #000;
+    padding-top: 3pt;
   }
-
-  #print-meta { display: block; font-size: 8pt; margin-top: 8pt; }
 
   .page-break { page-break-before: always; }
-}
-
-@media print {
-  /* the checklist prints as a checklist: an empty box to tick with a pen */
-  .bar, input.note:placeholder-shown, #queue { display: none !important; }
-
-  table.checklist td.tick { width: 14pt; }
-  table.checklist input[type="checkbox"] { display: none; }
-  table.checklist td.tick::before {
-    content: "\2610";
-    font-size: 12pt;
-  }
-  table.checklist tr:has(input:checked) td.tick::before { content: "\2611"; }
-
-  /* a note worth keeping prints under its reading */
-  input.note {
-    border: 0;
-    font-size: 9pt;
-    font-style: italic;
-    width: auto;
-  }
-
-  .done { text-decoration: none; }
-  section.week { page-break-inside: avoid; break-inside: avoid; }
 }

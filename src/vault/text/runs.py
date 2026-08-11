@@ -15,6 +15,7 @@ pyodide in a browser tab and in ordinary cpython for the parity tests.
 
 from __future__ import annotations
 
+import re
 import statistics
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +25,10 @@ from .layout import Block, Page, detect_running_lines, order_blocks, split_footn
 from .model import ExtractedDoc, ExtractedPage
 
 MIN_CHARS_FOR_TEXT_LAYER = 40
+
+# a week heading inside a table's anchor column. defined here rather than
+# imported because text/ sits below syllabus/ and must not depend on it.
+_WEEK_MARK_RE = re.compile(r"^\s*(?:week|session|module|unit)\s*#?\s*\d{1,2}\b", re.IGNORECASE)
 
 
 @dataclass
@@ -194,35 +199,52 @@ def _tables_from_lines(lines: list[Line], page_width: float) -> list[list[list[s
             if text:
                 fragments.append((line.y0, line.y1 - line.y0, column, text))
 
-    anchor_ys = sorted(y for y, _, column, _ in fragments if column == 0)
-    if len(anchor_ys) < 2:
+    anchor = sorted((y, text) for y, _, column, text in fragments if column == 0)
+    if len(anchor) < 2:
         return []
+    anchor_ys = [y for y, _ in anchor]
 
     heights = [h for _, h, _, _ in fragments if h > 0]
     line_height = statistics.median(heights) if heights else 12.0
 
-    # group anchor lines into rows. two shapes exist: a grid with one line per
-    # row, where anchor lines sit at uniform single-line spacing, and a grid
-    # whose date cell stacks a week above its meeting dates, where lines inside
-    # a cell sit closer than lines across a row boundary. uniform spacing means
-    # every anchor line is its own row; otherwise only a gap well beyond line
-    # spacing starts one.
+    # group anchor lines into rows. measured against real schedules, lines
+    # inside one cell sit at up to about 2.5 line heights apart, while true row
+    # boundaries sit at 8 or more, so 3.5 splits them with a wide margin.
+    # week markers are a stronger signal than any gap: where the anchor column
+    # says "Week 1", "Week 2", rows start exactly there, everything above the
+    # first marker is preamble, and a dated row far below the last line (a
+    # final exam row) still opens its own.
     gaps = [b - a for a, b in zip(anchor_ys, anchor_ys[1:])]
     uniform = gaps and statistics.median(gaps) <= line_height * 1.7
+    week_marks = [y for y, text in anchor if _WEEK_MARK_RE.match(text)]
 
-    if uniform:
+    # two markers on one page is a schedule; a prose page names a week once
+    rows: list[float]
+    if len(week_marks) >= 2:
+        rows = []
+        previous = None
+        for y, text in anchor:
+            if _WEEK_MARK_RE.match(text):
+                rows.append(y)
+            elif rows and previous is not None and y - previous > line_height * 3.5:
+                rows.append(y)
+            previous = y
+    elif uniform:
         rows = list(anchor_ys)
     else:
         rows = [anchor_ys[0]]
         previous = anchor_ys[0]
         for y in anchor_ys[1:]:
-            if y - previous > line_height * 2.4:
+            if y - previous > line_height * 3.5:
                 rows.append(y)
             previous = y
     if len(rows) < 2:
         return []
 
     def row_of(y: float) -> int:
+        # a fragment above the first row is page furniture, not table content
+        if y < rows[0] - 3.0:
+            return -1
         row = 0
         for index, top in enumerate(rows):
             if y >= top - 3.0:
@@ -231,7 +253,9 @@ def _tables_from_lines(lines: list[Line], page_width: float) -> list[list[list[s
 
     grid: list[list[list[str]]] = [[[] for _ in edges] for _ in rows]
     for y, _, column, text in sorted(fragments):
-        grid[row_of(y)][column].append(text)
+        target = row_of(y)
+        if target >= 0:
+            grid[target][column].append(text)
 
     table = [["\n".join(cell).strip() for cell in row] for row in grid]
     table = [row for row in table if any(row)]
