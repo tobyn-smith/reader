@@ -42,6 +42,18 @@
           "format_notes": null
         },
         {
+          "id": 10,
+          "title": "EXAM 1 IN CLASS",
+          "kind": "exam",
+          "due_date": "2031-08-26",
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
           "id": 11,
           "title": "Weekly Assessment 2",
           "kind": "weekly_assessment",
@@ -66,24 +78,12 @@
           "format_notes": null
         },
         {
-          "id": 10,
-          "title": "EXAM 1 IN CLASS",
-          "kind": "exam",
-          "due_date": null,
-          "due_time": null,
-          "recurrence": null,
-          "weight_percent": null,
-          "page_limit": null,
-          "word_limit": null,
-          "format_notes": null
-        },
-        {
           "id": 6,
           "title": "Exams (3)",
           "kind": "other",
           "due_date": null,
           "due_time": null,
-          "recurrence": null,
+          "recurrence": "see schedule",
           "weight_percent": 40.0,
           "page_limit": null,
           "word_limit": null,
@@ -95,7 +95,7 @@
           "kind": "other",
           "due_date": null,
           "due_time": null,
-          "recurrence": null,
+          "recurrence": "see schedule",
           "weight_percent": 40.0,
           "page_limit": null,
           "word_limit": null,
@@ -727,6 +727,30 @@
       ],
       "deliverables": [
         {
+          "id": 16,
+          "title": "Case Study Presentation and Report #1",
+          "kind": "signup",
+          "due_date": "2031-01-26",
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 17,
+          "title": "Case Study Paper and Presentation",
+          "kind": "presentation",
+          "due_date": "2031-02-02",
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
           "id": 13,
           "title": "Case Study Report",
           "kind": "case_study",
@@ -734,6 +758,18 @@
           "due_time": null,
           "recurrence": null,
           "weight_percent": 20.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 18,
+          "title": "Case Studies 1 - 5",
+          "kind": "presentation",
+          "due_date": "2031-02-09",
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": null,
           "page_limit": null,
           "word_limit": null,
           "format_notes": null
@@ -758,42 +794,6 @@
           "due_time": null,
           "recurrence": null,
           "weight_percent": 35.0,
-          "page_limit": null,
-          "word_limit": null,
-          "format_notes": null
-        },
-        {
-          "id": 18,
-          "title": "Case Studies 1 - 5",
-          "kind": "presentation",
-          "due_date": null,
-          "due_time": null,
-          "recurrence": null,
-          "weight_percent": null,
-          "page_limit": null,
-          "word_limit": null,
-          "format_notes": null
-        },
-        {
-          "id": 17,
-          "title": "Case Study Paper and Presentation",
-          "kind": "presentation",
-          "due_date": null,
-          "due_time": null,
-          "recurrence": null,
-          "weight_percent": null,
-          "page_limit": null,
-          "word_limit": null,
-          "format_notes": null
-        },
-        {
-          "id": 16,
-          "title": "Case Study Presentation and Report #1",
-          "kind": "signup",
-          "due_date": null,
-          "due_time": null,
-          "recurrence": null,
-          "weight_percent": null,
           "page_limit": null,
           "word_limit": null,
           "format_notes": null

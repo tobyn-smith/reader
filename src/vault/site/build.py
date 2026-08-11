@@ -197,19 +197,29 @@ def _collect_deliverables(courses: list[dict]) -> list[dict]:
     for course in courses:
         for item in course.get("deliverables", []):
             dated = bool(item.get("due_date"))
-            recurring = bool(item.get("recurrence"))
+            recurrence = item.get("recurrence") or ""
             weighted = bool(item.get("weight_percent"))
-            if not dated and not recurring and not weighted:
+            if not dated and not recurrence and not weighted:
                 continue
+            if dated:
+                group, sort = "dated", item["due_date"]
+            elif recurrence == "see schedule":
+                # a weight component whose occurrences are dated in the
+                # schedule. it belongs with the dated work, labelled as such.
+                group, sort = "dated", "9998-99-99"
+            elif recurrence:
+                group, sort = "recurring", "9999-99-99"
+            else:
+                group, sort = "undated", "9999-99-99"
             out.append(
                 {
-                    "sort": item.get("due_date") or "9999-99-99",
-                    "when": short_date(item.get("due_date")) or (item.get("recurrence") or ""),
+                    "sort": sort,
+                    "when": short_date(item.get("due_date")) or recurrence,
                     "course": course["code"],
                     "title": item.get("title", ""),
                     "weight": item.get("weight_percent"),
                     "time": (item.get("due_time") or "")[:5],
-                    "group": "dated" if dated else ("recurring" if recurring else "undated"),
+                    "group": group,
                 }
             )
     return sorted(out, key=lambda d: (d["sort"], d["course"]))

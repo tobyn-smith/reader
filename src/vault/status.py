@@ -153,7 +153,7 @@ def upcoming_deliverables(
     out = []
     for row in db.all_deliverables(conn):
         due = parse_date(row["due_date"])
-        if row["recurrence"]:
+        if row["recurrence"] and row["recurrence"] != "see schedule":
             out.append(row)
         elif due and on <= due <= horizon:
             out.append(row)

@@ -232,6 +232,8 @@ def deadlines_html(courses: list[dict], generated: str) -> str:
             )
             if item.get("due_date"):
                 dated.append(row)
+            elif item.get("recurrence") == "see schedule":
+                dated.append(("9998-99-99",) + row[1:])
             elif item.get("recurrence"):
                 recurring.append(row)
             elif weight:

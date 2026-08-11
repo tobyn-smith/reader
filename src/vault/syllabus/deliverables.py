@@ -113,7 +113,16 @@ def _to_int(raw: str) -> int | None:
     return NUMBER_WORDS.get(raw)
 
 
-def extract(zones: list[Zone], term: Term | None, schedule_hints: list[str]) -> DeliverableSet:
+SEE_SCHEDULE = "see schedule"
+
+
+def extract(
+    zones: list[Zone],
+    term: Term | None,
+    schedule_hints: list[tuple[str, dt.date | None]],
+) -> DeliverableSet:
+    """schedule_hints pairs each due or exam line with its session's date, so a
+    cell reading only "EXAM 1 IN CLASS" still lands on the day it happens."""
     result = DeliverableSet()
     seen: dict[str, Deliverable] = {}
 
@@ -124,12 +133,13 @@ def extract(zones: list[Zone], term: Term | None, schedule_hints: list[str]) -> 
             _merge(seen, item)
     _drop_recurrence_bleed(seen)
 
-    for hint in schedule_hints:
-        item = _from_hint(hint, term)
+    for hint, session_date in schedule_hints:
+        item = _from_hint(hint, term, session_date)
         if item is not None:
             _merge(seen, item)
 
     result.items = list(seen.values())
+    _link_components_to_schedule(result.items)
     result.format_notes = _format_notes(zones)
     for item in result.items:
         if item.format_notes is None and result.format_notes:
@@ -137,6 +147,30 @@ def extract(zones: list[Zone], term: Term | None, schedule_hints: list[str]) -> 
 
     _check_weights(result)
     return result
+
+
+def _link_components_to_schedule(items: list[Deliverable]) -> None:
+    """connect an undated weight component to its dated occurrences.
+
+    "Exams (3), 40%" in the grading summary and "EXAM 1 IN CLASS" on 9/16 in
+    the schedule describe the same work. the component cannot carry three dates,
+    but claiming the syllabus gives none is wrong, so it is marked as dated by
+    the schedule instead.
+    """
+    dated_keys = [merge_key(i.title) for i in items if i.due_date]
+
+    def stem(title: str) -> str:
+        bare = merge_key(title).rstrip("s")
+        return re.sub(r"\d+$", "", bare)
+
+    for item in items:
+        if item.due_date or item.recurrence or not item.weight_percent:
+            continue
+        item_stem = stem(item.title)
+        if len(item_stem) < 4:
+            continue
+        if any(key.startswith(item_stem) and key != merge_key(item.title) for key in dated_keys):
+            item.recurrence = SEE_SCHEDULE
 
 
 @dataclass
@@ -348,7 +382,9 @@ def _build(
     return item
 
 
-def _from_hint(hint: str, term: Term | None) -> Deliverable | None:
+def _from_hint(
+    hint: str, term: Term | None, session_date: dt.date | None = None
+) -> Deliverable | None:
     """turn a due or sign-up line found inside the schedule into a row."""
     text = collapse_whitespace(hint)
     if len(text) < 5:
@@ -374,6 +410,9 @@ def _from_hint(hint: str, term: Term | None) -> Deliverable | None:
     dates = list(iter_dates(text, term))
     if dates:
         item.due_date = dates[0]
+    elif session_date is not None:
+        # the cell names the event and the row carries the date
+        item.due_date = session_date
     item.due_time = parse_time(text)
     if re.match(r"^\s*sign[\s-]?up", text, re.IGNORECASE):
         item.kind = "signup"

@@ -180,7 +180,11 @@ def parse_syllabus(
     meta = frontmatter.parse(doc)
     plan = schedule.parse(doc, zoning, meta.term)
 
-    hints = [hint for session in plan.sessions for hint in session.deliverable_hints]
+    hints = [
+        (hint, session.meeting_date)
+        for session in plan.sessions
+        for hint in session.deliverable_hints
+    ]
     graded = deliv.extract(zoning, meta.term, hints)
     found_policies = policies.extract(zoning)
 
