@@ -286,18 +286,19 @@ export function reviewTable(parse, showAll = false) {
 
   const sessions = parse.sessions.length
   const readings = checkCount + cleanCount
-  const empty = parse.sessions.filter((s) => !s.readings.length).length
   const weights = parse.deliverables.weight_total
 
-  // the numbers read better as a row of labelled figures than as a sentence
-  // of them joined by middots, because they are there to be compared against
-  // the syllabus rather than read as prose
+  // labelled figures rather than a sentence of them joined by middots, since
+  // they are there to be compared against the syllabus. the words are the
+  // ones on a syllabus: weeks and readings, not sessions and rows. "weeks
+  // with no readings" is left out because it is usually a break, and a figure
+  // in this strip reads as something gone wrong; it is said in full below
+  // when it needs saying at all.
   const stats = [
-    ['Sessions', sessions, false],
+    ['Weeks', sessions, false],
     ['Readings', readings, false],
     ['To check', checkCount, checkCount > 0],
-    empty ? ['No readings', empty, false] : null,
-    weights ? ['Weights', `${weights}%`, Math.abs(weights - 100) > 1] : null,
+    weights ? ['Your grade', `${weights}%`, Math.abs(weights - 100) > 1] : null,
   ].filter(Boolean)
 
   const strip = `<dl class="rstats">${stats.map(
@@ -311,13 +312,14 @@ export function reviewTable(parse, showAll = false) {
   const warnings = (parse.warnings || []).filter((w) => !/^\d+ session/.test(w))
 
   const lead = checkCount
-    ? `<p class="rlead">Showing the ${checkCount} row${checkCount === 1 ? '' : 's'}
-        that need a look. <span class="quiet-note">${cleanCount} parsed cleanly.</span>
+    ? `<p class="rlead">These ${checkCount} didn't come out cleanly, so give them
+        a look against your syllabus. <span class="quiet-note">The other
+        ${cleanCount} look fine.</span>
         <button type="button" id="toggle-all" class="quiet">${
-          showAll ? 'show only what needs checking' : 'show all rows'}</button></p>`
-    : `<p class="rlead">Nothing needs checking.
+          showAll ? 'just show the doubtful ones' : 'show every reading'}</button></p>`
+    : `<p class="rlead">Everything came out cleanly.
         <button type="button" id="toggle-all" class="quiet">${
-          showAll ? 'hide' : 'show all rows'}</button></p>`
+          showAll ? 'hide' : 'show every reading'}</button></p>`
 
   return `${strip}
     ${lead}

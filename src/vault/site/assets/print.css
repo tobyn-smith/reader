@@ -31,12 +31,24 @@ h2 {
 }
 h3 { font-size: 11pt; margin: 10pt 0 4pt; break-after: avoid; }
 
+/* nothing leaves a single line stranded on either side of a page break */
+p, li, td { orphans: 2; widows: 2; }
+
 .generated { string-set: generated-on content(); display: none; }
 
 table { width: 100%; border-collapse: collapse; font-size: 10pt; }
 th, td { text-align: left; vertical-align: top; padding: 3pt 6pt 3pt 0; }
-th { border-bottom: .75pt solid #000; }
+th {
+  border-bottom: .75pt solid #000;
+  font-size: 8.5pt;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
 td { border-bottom: .25pt solid #999; }
+
+/* a heading row repeats when a table runs over a page, so a column of dates
+   on page three is still labelled */
+thead { display: table-header-group; }
 
 /* a citation must never split across a page */
 tr, li.reading, .entry { break-inside: avoid; }
@@ -53,10 +65,21 @@ a { color: #000; text-decoration: none; }
 a[href^="http"]::after {
   content: " " attr(href);
   font-size: 8pt;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 nav, .pagefind-ui, #search, .screen-only { display: none; }
 
-ol.bib { padding-left: 1.2rem; }
-ol.bib li { margin-bottom: 5pt; break-inside: avoid; }
+/* a bibliography hangs its turn lines, which is how one is set and what makes
+   the surnames findable running a finger down the margin */
+ol.bib {
+  padding-left: 0;
+  list-style: none;
+}
+
+ol.bib li {
+  padding-left: 1.4em;
+  text-indent: -1.4em;
+  margin-bottom: 5pt;
+  break-inside: avoid;
+}

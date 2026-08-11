@@ -583,14 +583,30 @@ def _check_weights(result: DeliverableSet) -> None:
     weights = [i.weight_percent for i in result.items if i.weight_percent]
     total = round(sum(weights), 2)
     result.weight_total = total
+    # these are read by a student, not by whoever wrote the parser. say what
+    # was found, what it probably means, and where to look. a total that is
+    # wrong is never quietly corrected.
     if not weights:
-        result.weight_warning = "no assignment weights found"
+        result.weight_warning = (
+            "No percentages found for the graded work. Check the grading "
+            "section of your syllabus."
+        )
         return
     if 99.0 <= total <= 100.5:
         return
     if 100.5 < total <= 110.0:
         result.weight_warning = (
-            f"weights total {total}%, slightly over 100, which is normal when extra credit is offered"
+            f"The graded work adds up to {total}%. A little over 100 is normal "
+            "when there is extra credit."
         )
         return
-    result.weight_warning = f"weights total {total}%, which does not add up to 100"
+    if total < 99.0:
+        result.weight_warning = (
+            f"Only {total}% of your grade was found, so some assignments are "
+            "probably missing. Check the grading section of your syllabus."
+        )
+        return
+    result.weight_warning = (
+        f"The graded work adds up to {total}%, which is more than 100. "
+        "Something may have been counted twice."
+    )

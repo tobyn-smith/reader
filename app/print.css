@@ -21,12 +21,16 @@
 
   body { max-width: none; margin: 0; padding: 0; }
 
-  /* the first line of the first page is the course code, nothing above it */
+  /* the first line of the first page is the course code, nothing above it.
+     the panels that explain the tool, or let you export from it, belong to
+     the screen and were printing into the middle of the document. */
   header .statement,
   header nav,
   nav.tabs,
   #review,
   #tools,
+  #accuracy,
+  #data-tools,
   #queue,
   #unmatched,
   button,
@@ -39,16 +43,23 @@
   h2 { font-size: 12pt; margin: 1em 0 0.3em; }
   h3 { font-size: 11pt; margin: 0.9em 0 0.2em; }
 
+  /* a heading never sits alone at the foot of a page, and no paragraph
+     leaves a single line behind on either side of a break */
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+  p, li, td { orphans: 2; widows: 2; }
+
   .secondary, .note, .status { color: #000; font-size: 9pt; }
 
   a { color: #000; text-decoration: none; }
 
-  /* a blue underlined word is useless on paper, so the address is printed */
+  /* a blue underlined word is useless on paper, so the address is printed.
+     breaking anywhere beats a url pushing the margin out, but it is allowed
+     to keep whole words together where it can. */
   a[href^="http"]::after {
     content: " " attr(href);
     font-size: 8pt;
     color: #000;
-    word-break: break-all;
+    overflow-wrap: anywhere;
   }
 
   /* tables match the screen: quiet uppercase heads over a strong rule */
@@ -67,6 +78,19 @@
   /* no citation may split across a page */
   .entry, tr, li { page-break-inside: avoid; break-inside: avoid; }
   section.week, section.course-deadlines { page-break-inside: avoid; break-inside: avoid; }
+
+  /* a bibliography hangs its turn lines, which is how one is set and what
+     makes the surnames findable running a finger down the margin */
+  ol.bibliography {
+    padding-left: 0;
+    list-style: none;
+  }
+
+  ol.bibliography li {
+    padding-left: 1.4em;
+    text-indent: -1.4em;
+    margin-bottom: 4pt;
+  }
 
   /* missing and overdue read as weight, not colour */
   tr.missing td { font-weight: 700; color: #000; }

@@ -319,6 +319,11 @@ def _sanity_warnings(parsed: ParsedSyllabus) -> list[str]:
 
     a silently dropped week or a duplicated date is invisible unless something
     counts, so these run on every parse and are shown during review.
+
+    they are written for whoever is looking at the review page, which is a
+    student with their syllabus open, not the person who wrote the parser.
+    each one says what was found and where to look, and none of them use a
+    word like session or zone that only means something inside this code.
     """
     notes: list[str] = []
 
@@ -326,7 +331,11 @@ def _sanity_warnings(parsed: ParsedSyllabus) -> list[str]:
         notes.append(parsed.deliverables.weight_warning)
 
     if not parsed.sessions:
-        notes.append("no sessions found, so the schedule zone was probably missed")
+        notes.append(
+            "No weekly schedule was found in this PDF. That usually means it "
+            "is not in the file, and lives on the course site instead. The "
+            "course details and grading below still came through."
+        )
 
     # a gap in the week numbers is worth reporting, but only when the numbers
     # really are weeks. a syllabus that numbers every meeting runs past twenty,
@@ -335,7 +344,11 @@ def _sanity_warnings(parsed: ParsedSyllabus) -> list[str]:
     if weeks and max(weeks) <= 17:
         missing = sorted(set(range(min(weeks), max(weeks) + 1)) - set(weeks))
         if missing:
-            notes.append(f"no session found for week {', '.join(str(w) for w in missing)}")
+            notes.append(
+                f"{_weeks_phrase(missing)} {'is' if len(missing) == 1 else 'are'}"
+                " missing from the schedule. That is often a reading week or a "
+                "break, but it is worth a look."
+            )
 
     dated = [s for s in parsed.sessions if s.meeting_date]
     seen: dict[dt.date, int] = {}
@@ -343,13 +356,26 @@ def _sanity_warnings(parsed: ParsedSyllabus) -> list[str]:
         key = (session.meeting_date, session.sub_session_label)
         if key in seen:
             notes.append(
-                f"week {session.week_number} repeats the date "
-                f"{session.meeting_date.isoformat()} already used by week {seen[key]}"
+                f"Weeks {seen[key]} and {session.week_number} are both dated "
+                f"{session.meeting_date.strftime('%d %B')}. One of them is "
+                "probably wrong."
             )
         seen[key] = session.week_number or 0
 
-    empty = [s.week_number for s in parsed.sessions if s.session_type == "reading" and not s.readings]
+    empty = [s.week_number for s in parsed.sessions
+             if s.session_type == "reading" and not s.readings and s.week_number]
     if empty:
-        notes.append(f"weeks marked as reading weeks but carrying no readings: {empty}")
+        notes.append(
+            f"{_weeks_phrase(empty)} {'has' if len(empty) == 1 else 'have'} no "
+            "readings listed. Often that is a break or an exam week."
+        )
 
     return notes
+
+
+def _weeks_phrase(weeks: list[int]) -> str:
+    """"Week 4" or "Weeks 4, 9 and 10", so a sentence can be built on it."""
+    numbers = [str(w) for w in weeks]
+    if len(numbers) == 1:
+        return f"Week {numbers[0]}"
+    return "Weeks " + ", ".join(numbers[:-1]) + f" and {numbers[-1]}"
