@@ -56,11 +56,12 @@ def find_term(text: str) -> Term | None:
     return Term(m.group(4).lower(), int(m.group(3)))
 
 
-# the space between month and day is optional because kerning-heavy pdfs lose
-# it ("Aug13-15"). the lookahead stops a year being read as a day: "August
-# 2020" must not become august 20.
+# the separator between month and day varies more than it should: a space, no
+# space at all in kerning-heavy pdfs ("Aug13-15"), a period after an
+# abbreviation, or a comma ("February, 5"). the lookahead stops a year being
+# read as a day, so "August 2020" is not august 20.
 _ORDINAL_RE = re.compile(
-    r"\b(" + "|".join(MONTHS) + r")\.?\s*(\d{1,2})(?!\d)\s*(?:st|nd|rd|th)?\b",
+    r"\b(" + "|".join(MONTHS) + r")\.?,?\s*(\d{1,2})(?!\d)\s*(?:st|nd|rd|th)?\b",
     re.IGNORECASE,
 )
 _NUMERIC_RE = re.compile(r"\b(\d{1,2})\s*/\s*(\d{1,2})(?:\s*/\s*(\d{2,4}))?\b")

@@ -57,6 +57,8 @@ _KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
             "weekly schedule", "reading schedule", "schedule of readings",
             "schedule and assignments", "tentative schedule", "course overview",
             "weekly topics", "seminar schedule", "reading list", "course plan",
+            "thematic outline", "topical outline", "schedule and assignments",
+            "course topics", "lecture schedule",
         ),
     ),
     (
@@ -88,10 +90,12 @@ SESSION_MARKER = re.compile(
     r"^\s*(?:week|session|class|unit|module)\s*#?\s*\d{1,2}\b", re.IGNORECASE
 )
 _DATE_LED = re.compile(r"^\s*\d{1,2}\s*/\s*\d{1,2}\b")
-# a schedule headed by month and day rather than by week number
+# a schedule headed by month and day rather than by week number. an optional
+# list number in front, as in "1. August 14:", belongs to the list not the date.
 _MONTH_LED = re.compile(
-    r"^\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?"
-    r"\s+\d{1,2}\s*(?:st|nd|rd|th)?\s*[:.–—-]",
+    r"^\s*(?:\(?\d{1,2}[.)]\s+)?"
+    r"(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?,?"
+    r"\s*\d{1,2}\s*(?:st|nd|rd|th)?\s*[:.–—-]",
     re.IGNORECASE,
 )
 

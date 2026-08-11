@@ -89,11 +89,37 @@ DATE_HEADING_RE = re.compile(
 )
 
 
+# a numbered meeting, as in "1. August 14: Introduction". the number belongs to
+# the list, not to the date, so it is removed before matching.
+_MEETING_NUMBER_RE = re.compile(r"^\s*\(?\d{1,2}[.)]\s+")
+
+
+def strip_meeting_number(text: str) -> str:
+    return _MEETING_NUMBER_RE.sub("", text, count=1)
+
+
+# a numbered meeting that puts its date at the end instead of the front:
+# "1. Introduction (01/13)". the number and the trailing date bracket the topic.
+NUMBERED_DATED_RE = re.compile(
+    r"^\s*\(?(?P<number>\d{1,2})[.)]\s+(?P<topic>[^()]{2,90}?)\s*"
+    r"\((?P<date>(?:\d{1,2}\s*/\s*\d{1,2}(?:\s*/\s*\d{2,4})?"
+    r"|(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?,?\s*\d{1,2}[^)]{0,12}))\)"
+    r"\s*[:.]?\s*$",
+    re.IGNORECASE,
+)
+
+
+def numbered_dated_heading(text: str) -> re.Match[str] | None:
+    if len(text) > 140:
+        return None
+    return NUMBERED_DATED_RE.match(text)
+
+
 def date_heading(text: str) -> re.Match[str] | None:
     """match a date-led session heading, if the line is one."""
     if len(text) > 160:
         return None
-    return DATE_HEADING_RE.match(text)
+    return DATE_HEADING_RE.match(strip_meeting_number(text))
 
 
 def is_session_head(text: str, *, starts_block: bool = True) -> bool:
@@ -104,6 +130,8 @@ def is_session_head(text: str, *, starts_block: bool = True) -> bool:
     which is where a heading actually sits.
     """
     if WEEK_RE.match(text):
+        return True
+    if numbered_dated_heading(text):
         return True
     return starts_block and date_heading(text) is not None
 
@@ -240,18 +268,46 @@ _WEEK_ANYWHERE_RE = re.compile(
 
 
 def parse(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> ScheduleParse:
-    structure = detect_structure(doc, zones)
-    lines = [line for z in zones if z.kind == SCHEDULE for line in z.lines]
+    """run the detected parser, and keep the best answer.
 
-    if structure == TABLE:
-        result = _parse_table(doc, zones, term)
-    elif structure == LABELLED:
-        result = _parse_labelled(lines, term)
-    else:
-        result = _parse_bulleted(lines, term)
+    detection reads the layout, but a syllabus can carry two schedules: a
+    summary grid early and the real week by week listing later. picking one by
+    shape alone then returns nothing while the other parser would have found
+    fifteen weeks. so the runners up are tried whenever the winner comes back
+    thin, and the fullest result wins. parsing is regex over lines already in
+    memory, so the extra passes cost nothing worth counting.
+    """
+    lines = [line for z in zones if z.kind == SCHEDULE for line in z.lines]
+    detected = detect_structure(doc, zones)
+
+    def run(structure: str) -> ScheduleParse:
+        if structure == TABLE:
+            return _parse_table(doc, zones, term)
+        if structure == LABELLED:
+            return _parse_labelled(lines, term)
+        return _parse_bulleted(lines, term)
+
+    result = run(detected)
+    if _thin(result):
+        for structure in (TABLE, LABELLED, BULLETED):
+            if structure == detected:
+                continue
+            other = run(structure)
+            if _score(other) > _score(result):
+                result = other
 
     result.important_dates = _find_important_dates(doc, term)
     return result
+
+
+def _score(parsed: ScheduleParse) -> tuple[int, int]:
+    """sessions first, then readings. a schedule is its meetings."""
+    return len(parsed.sessions), sum(len(s.readings) for s in parsed.sessions)
+
+
+def _thin(parsed: ScheduleParse) -> bool:
+    sessions, readings = _score(parsed)
+    return sessions == 0 or (sessions < 4 and readings == 0)
 
 
 def _find_important_dates(doc: ExtractedDoc, term: Term | None) -> list[DatedEntry]:
@@ -294,6 +350,15 @@ def _classify_session(session: SessionEntry) -> None:
 
 
 def _split_week_heading(session: SessionEntry, text: str, term: Term | None) -> None:
+    numbered = numbered_dated_heading(text)
+    if numbered:
+        session.week_number = int(numbered.group("number"))
+        found = list(iter_dates(numbered.group("date"), term))
+        if found:
+            session.meeting_date = found[0]
+        session.topic = collapse_whitespace(numbered.group("topic")).strip(" :,-–—") or None
+        return
+
     m = WEEK_RE.match(text)
     if m:
         session.week_number = int(m.group("number"))
