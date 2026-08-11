@@ -548,11 +548,41 @@ def _finish(session: SessionEntry, entries: list[str]) -> None:
         session.confidence = min(r.confidence for r in session.readings)
 
 
+def _looks_like_prose(text: str) -> bool:
+    """a week's description paragraph rather than a reading.
+
+    plenty of syllabi write a few sentences under the week heading about what
+    the week is for. that text sits exactly where a reading list sits and was
+    being checked off as something to go and read.
+
+    it is told apart by absence. a citation of any length carries a year, or a
+    quoted title, or a page range, or a link, or it opens with a surname. a
+    paragraph of English carries none of those, and runs long.
+    """
+    flat = collapse_whitespace(text)
+    if len(flat.split()) < 22:
+        return False
+    if CITATION_START_RE.match(flat):
+        return False
+    if re.search(r"\b(?:19|20)\d{2}\b|[\"“”]|https?://", flat):
+        return False
+    # a page reference in any of the forms syllabi write it, spelled out
+    # included. "Pages 29-37 in ..." is a reading, and only the page marker
+    # says so.
+    return not re.search(
+        r"\bp(?:p|ages?|g)?\.?\s*\d|\bvol\.|\bno\.\s*\d|\bch(?:apter|\.)?\s*\d",
+        flat,
+        re.IGNORECASE,
+    )
+
+
 def _build_reading(raw: str, ordinal: int) -> ReadingEntry | None:
     text = collapse_whitespace(raw)
     if not text or len(text) < 4:
         return None
     if cit.looks_like_placeholder(text):
+        return None
+    if _looks_like_prose(text):
         return None
     # an instruction is not a reading. "syllabus review, no reading" under a
     # week heading means the week has none, and an exam announcement is an

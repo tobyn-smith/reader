@@ -34,7 +34,7 @@ people write syllabi in whatever layout occurs to them that morning.
 | Course code | 100% |
 | Term | 96% |
 | Found a schedule | 79% |
-| Readings parsed into full citations | 77% |
+| Readings parsed into full citations | 80% |
 | Weights adding up to about 100 | 6 of 10 |
 
 Course code and term are dependable. Reading lists are the weak spot, and the
@@ -43,7 +43,7 @@ prose from under a heading, a grading table's columns, and the week's own
 timetable were all being swept into reading lists and then counted as things
 you hadn't read yet.
 
-That was 66% until recently. Keeping non-readings out is what moved it to 77%,
+That was 66% until recently. Keeping non-readings out is what moved it to 80%,
 and there's more of it left. Of the rows that still fail, about a third are
 genuine references in a short form the patterns can't unpick, like "Nye, Part
 II, pp. 113-234" pointing at a book named weeks earlier. The rest is still

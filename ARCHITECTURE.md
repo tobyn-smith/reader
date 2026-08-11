@@ -201,8 +201,8 @@ showed four fifths were never citations: 87 prose or topic labels, 50 too short
 to be anything, 26 schedule fragments, 3 chapter pointers, and only 35 actually
 reference shaped.
 
-Four fixes in test_reading_list_hygiene.py took that to 506 rows and 390
-citations, 66% to 77%, and none of them touched a citation pattern:
+Five fixes in test_reading_list_hygiene.py took that to 487 rows and 390
+citations, 66% to 80%, and none of them touched a citation pattern:
 
 - a header naming every column and none of them readings yields no readings.
   the fallback that sweeps unnamed columns now excludes the due columns, so a
@@ -213,6 +213,10 @@ citations, 66% to 77%, and none of them touched a citation pattern:
   scheme. joining them also completes the citation that lost its link.
 - a short title case line with no year, pages, quotes or link is a divider
   inside the list, not a reading. it becomes the week's topic if there is none.
+- a long run of words carrying no year, quoted title, page marker or link, and
+  not opening with a surname, is the week's description paragraph. the page
+  test has to accept "Pages 29-37" spelled out; matching only "pp." threw away
+  a real reading and that is what the test pins.
 
 What remains splits about a third genuine short form references ("Nye, Part II,
 pp. 113-234", naming a book assigned weeks earlier) and two thirds still junk.

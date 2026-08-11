@@ -159,6 +159,44 @@ class TestReadingListSubheadings:
         assert kept == ["Smith 1999, A Book"]
 
 
+class TestWeekDescriptions:
+    """the paragraph under a week heading is about the week, not to be read."""
+
+    def test_a_description_paragraph_is_not_a_reading(self):
+        for paragraph in (
+            "We will discuss the intentions and outline of the course as well as our "
+            "mutual expectations. We will further go over the assessment and what is "
+            "expected of everyone taking part this term.",
+            "Politics is essentially about power, and power is most notably exercised "
+            "through the implementation of policy, which is why this week looks at how "
+            "decisions actually get made and by whom in practice.",
+        ):
+            assert schedule._looks_like_prose(paragraph)
+
+    def test_a_long_citation_is_not_prose(self):
+        """each of these is long, and each carries one mark of a citation."""
+        for citation in (
+            # spelled out pages, the form that nearly got this rule reverted
+            "Pages 29-37 in The Guerrilla Girls: Bedside Companion to the History of "
+            "Western Art. PDF on eLC. Content warning: discussion of sexual violence",
+            # a year
+            "Halvorsen, Gabriel A., Russell J. Dalton and Kaare Strom, Comparative Politics "
+            "Today, published in its sixth edition and covering the whole continent, 2016",
+            # a quoted title
+            'Berg, Kevin. "The U.S. Wants to Make Sure China Cannot Catch Up on '
+            'Quantum Computing," in Foreign Policy, an essay about export controls',
+            # opens with a surname, which is the one structural signal
+            "Halvorsen, Arend. Patterns of Democracy: Government Forms and Performance "
+            "in Thirty-Six Countries, a study of consensus and majoritarian systems",
+        ):
+            assert not schedule._looks_like_prose(citation), citation
+
+    def test_a_short_line_is_never_prose(self):
+        """brevity is the whole defence for short form references."""
+        assert not schedule._looks_like_prose("Okonkwo (12) in Comparative Politics.")
+        assert not schedule._looks_like_prose("Okonkwo and Osei, Chapters 3 and 4")
+
+
 class TestGradedWorkAmongTheReadings:
     def test_a_due_line_in_a_labelled_block_is_a_deliverable(self):
         """an asterisk in front of "Due:" was hiding it from the check."""
