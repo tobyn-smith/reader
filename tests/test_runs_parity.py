@@ -101,3 +101,55 @@ class TestRunsScanned:
         doc = document_from_runs(json.loads(json.dumps(payload)))
         assert doc.status == "needs_ocr"
         assert doc.pages[0].had_text_layer is False
+
+
+class TestWebEntryPoints:
+    """the browser calls these across a json boundary, so exercise them as json."""
+
+    def test_parse_runs_returns_the_same_counts(self):
+        from vault import web
+
+        payload = runs_payload(FIXTURES / "structure-a-bulleted.pdf")
+        result = json.loads(web.parse_runs(json.dumps(payload)))
+        expected = json.loads(
+            (EXPECTED / "structure-a-bulleted.json").read_text(encoding="utf-8")
+        )
+        assert result["structure"] == expected["structure"]
+        assert len(result["sessions"]) == expected["session_count"]
+        for week, want in expected["reading_counts"].items():
+            got = sum(
+                len(s["readings"]) for s in result["sessions"] if s["week_number"] == int(week)
+            )
+            assert got == want, f"week {week}"
+
+    def test_match_reading_scores_across_the_boundary(self):
+        from vault import web
+
+        candidates = json.dumps(
+            [
+                {
+                    "id": "w1",
+                    "title": "Rationalist Accounts of Bargaining Failure",
+                    "year": 1995,
+                    "authors": [{"surname": "Okonkwo", "given": "Adaeze N."}],
+                    "doi": None,
+                },
+                {"id": "w2", "title": "Something Entirely Different", "year": 2010,
+                 "authors": [{"surname": "Nobody"}], "doi": None},
+            ]
+        )
+        head = "Rationalist Accounts of Bargaining Failure\nAdaeze N. Okonkwo\n1995"
+        result = json.loads(web.match_reading(head, candidates))
+        assert result["id"] == "w1"
+        assert result["score"] > 0.9
+
+    def test_match_reports_no_match_rather_than_guessing(self):
+        from vault import web
+
+        candidates = json.dumps(
+            [{"id": "w1", "title": "Wholly Unrelated Title", "year": 1990,
+              "authors": [{"surname": "Nobody"}], "doi": None}]
+        )
+        result = json.loads(web.match_reading("An essay about something else", candidates))
+        assert result["id"] is None
+        assert result["method"] == "below threshold"
