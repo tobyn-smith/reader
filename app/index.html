@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>seminar vault</title>
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+
+<header>
+  <h1>seminar vault</h1>
+  <p class="statement">Files are processed in your browser and are never uploaded.</p>
+  <nav id="nav" hidden></nav>
+</header>
+
+<main>
+
+<section id="intake">
+  <h2>Add a syllabus</h2>
+  <form id="syllabus-form">
+    <label for="syllabus-input">Syllabus PDF</label>
+    <input type="file" id="syllabus-input" accept="application/pdf" multiple>
+  </form>
+  <div id="syllabus-drop" class="drop">Drop a syllabus PDF here</div>
+  <p id="intake-status" class="status" role="status"></p>
+</section>
+
+<section id="readings" hidden>
+  <h2>Add readings</h2>
+  <form id="reading-form">
+    <label for="reading-input">Reading PDFs</label>
+    <input type="file" id="reading-input" accept="application/pdf" multiple>
+  </form>
+  <div id="reading-drop" class="drop">Drop reading PDFs here</div>
+  <p id="reading-status" class="status" role="status"></p>
+  <div id="unmatched"></div>
+</section>
+
+<section id="review" hidden>
+  <h2>Review</h2>
+  <p class="note">Rows the parser was unsure of are marked. Correct anything wrong, then confirm.</p>
+  <div id="review-table"></div>
+  <p>
+    <button type="button" id="confirm">Confirm parse</button>
+    <button type="button" id="discard">Discard</button>
+  </p>
+</section>
+
+<section id="views" hidden>
+  <nav class="tabs">
+    <button type="button" data-view="schedule">Schedule</button>
+    <button type="button" data-view="week">Week</button>
+    <button type="button" data-view="deadlines">Deadlines</button>
+    <button type="button" data-view="bibliography">Bibliography</button>
+    <button type="button" data-view="search">Search</button>
+  </nav>
+  <div id="view"></div>
+</section>
+
+<section id="data" hidden>
+  <h2>Data</h2>
+  <p class="note">
+    Everything is stored in this browser only. It will not follow you to another
+    device, and clearing browser data removes it.
+  </p>
+  <p>
+    <button type="button" id="print">Print or save as PDF</button>
+    <button type="button" id="export">Export JSON</button>
+    <label class="inline" for="import-input">Import JSON</label>
+    <input type="file" id="import-input" accept="application/json">
+    <button type="button" id="clear">Clear all data</button>
+  </p>
+</section>
+
+</main>
+
+<footer>
+  <p id="print-meta"></p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

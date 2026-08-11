@@ -1,0 +1,140 @@
+/* screen styles. three semantic colours and nothing else: one for missing or
+   overdue, one for a low confidence row needing review, one for links. */
+
+:root {
+  --ink: #111;
+  --grey: #666;
+  --rule: #ccc;
+  --missing: #a11;
+  --review: #8a6d00;
+  --link: #0645ad;
+  --size: 15px;
+  --small: 13px;
+  --large: 18px;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--size);
+  line-height: 1.45;
+  color: var(--ink);
+  background: #fff;
+}
+
+body {
+  margin: 0;
+  padding: 1.5rem 1rem 3rem;
+  max-width: 68rem;
+}
+
+h1, h2, h3 {
+  font-size: var(--size);
+  font-weight: 700;
+  margin: 1.5rem 0 0.4rem;
+}
+
+h1 { font-size: var(--large); margin-top: 0; }
+
+p { margin: 0.4rem 0; max-width: 80ch; }
+
+a { color: var(--link); }
+a:hover { text-decoration: underline; }
+
+.statement, .note, .status {
+  color: var(--grey);
+  font-size: var(--small);
+}
+
+header { border-bottom: 1px solid var(--rule); padding-bottom: 0.6rem; }
+
+nav a, nav button {
+  margin-right: 0.75rem;
+}
+
+nav.tabs {
+  border-bottom: 1px solid var(--rule);
+  margin: 1rem 0 0.75rem;
+  padding-bottom: 0.4rem;
+}
+
+nav.tabs button[aria-current="true"] { font-weight: 700; }
+
+section { margin-top: 1.5rem; }
+
+/* forms and controls stay as the browser draws them */
+button, input, select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: #fff;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  padding: 0.15rem 0.6rem;
+  cursor: pointer;
+}
+
+button:disabled { color: var(--grey); border-color: var(--rule); cursor: default; }
+
+label { display: inline-block; margin-right: 0.5rem; }
+label.inline { margin-left: 0.75rem; }
+
+.drop {
+  border: 1px dashed var(--rule);
+  padding: 1rem;
+  margin: 0.5rem 0;
+  color: var(--grey);
+  font-size: var(--small);
+}
+
+.drop[data-active="true"] { border-color: var(--ink); color: var(--ink); }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0 1rem;
+  font-size: var(--size);
+}
+
+caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 0.5rem 0 0.25rem;
+}
+
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.25rem 0.6rem 0.25rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+th { font-weight: 700; }
+
+td.num, th.num { text-align: right; padding-right: 1rem; white-space: nowrap; }
+
+tr.missing td { color: var(--missing); }
+td.flag { color: var(--review); }
+.review-row td { color: var(--review); }
+
+.secondary { color: var(--grey); font-size: var(--small); }
+
+ul { margin: 0.3rem 0; padding-left: 1.1rem; }
+
+.progress { color: var(--grey); font-size: var(--small); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8e8e8;
+    --grey: #9a9a9a;
+    --rule: #444;
+    --missing: #ff7b72;
+    --review: #d7ba5a;
+    --link: #7aa6ff;
+  }
+  html { background: #111; }
+  button { background: #111; }
+}
