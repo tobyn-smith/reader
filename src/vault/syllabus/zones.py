@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 
 from ..text.model import ExtractedDoc
+from ..text.normalize import strip_leading_marker
 
 FRONT_MATTER = "front_matter"
 REQUIREMENTS = "requirements"
@@ -148,6 +149,49 @@ def flatten(doc: ExtractedDoc) -> list[Line]:
     return lines
 
 
+_WEEK_NUMBER = re.compile(
+    r"^\s*(?:week|session|class|unit|module)\s*#?\s*(\d{1,2})\b", re.IGNORECASE
+)
+
+
+def _first_week_of_the_schedule(lines: list[Line]) -> int | None:
+    """find where the run of week headings starts.
+
+    a syllabus names a week outside the schedule all the time: "Week 5
+    Assignment (15%): due by midnight" sits in the requirements section, and
+    starting the schedule there swallows the front matter. what distinguishes
+    the real schedule is that its weeks form a long ascending run, so the
+    longest such run wins and stray single mentions are ignored.
+    """
+    candidates: list[tuple[int, int]] = []
+    for line in lines:
+        # a week heading is routinely preceded by a bullet, and in some fonts
+        # that bullet extracts as a stray letter on the same line
+        m = _WEEK_NUMBER.match(strip_leading_marker(line.stripped)[0])
+        if m:
+            candidates.append((line.index, int(m.group(1))))
+
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0][0]
+
+    best_start, best_length = None, 0
+    run_start, run_length = 0, 1
+    for position in range(1, len(candidates)):
+        # equal numbers are the same week meeting twice, which continues the run
+        if candidates[position][1] >= candidates[position - 1][1]:
+            run_length += 1
+        else:
+            run_start, run_length = position, 1
+        if run_length > best_length:
+            best_start, best_length = run_start, run_length
+
+    if best_start is None or best_length < 2:
+        return candidates[0][0]
+    return candidates[best_start][0]
+
+
 def find_schedule_start(lines: list[Line]) -> int | None:
     """locate where the week by week schedule begins.
 
@@ -157,17 +201,20 @@ def find_schedule_start(lines: list[Line]) -> int | None:
     line it is taken as the real start so the heading is not left behind in the
     policy zone.
     """
-    first_marker = None
-    for line in lines:
-        text = line.stripped
-        if SESSION_MARKER.match(text) or _DATE_LED.match(text):
-            first_marker = line.index
-            break
+    first_marker = _first_week_of_the_schedule(lines)
+
+    if first_marker is None:
+        for line in lines:
+            text = strip_leading_marker(line.stripped)[0]
+            if _DATE_LED.match(text):
+                first_marker = line.index
+                break
 
     if first_marker is None:
         # a month-led schedule. several are required before believing it, so a
         # sentence that happens to open with a date does not start the zone.
-        dated = [line.index for line in lines if _MONTH_LED.match(line.stripped)]
+        dated = [line.index for line in lines
+                 if _MONTH_LED.match(strip_leading_marker(line.stripped)[0])]
         if len(dated) >= 3:
             first_marker = dated[0]
 

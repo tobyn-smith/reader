@@ -29,8 +29,9 @@ async function boot() {
 import sys
 if "/lib/vault-src" not in sys.path:
     sys.path.insert(0, "/lib/vault-src")
-import vault.web as web
+import vault.web
 `)
+    web = pyodide.pyimport('vault.web')
     self.postMessage({ type: 'boot', stage: 'ready' })
     return pyodide
   })()
@@ -38,17 +39,31 @@ import vault.web as web
   return loading
 }
 
+// the module is imported once and held. importing it per call and destroying
+// the proxy afterwards left later imports failing with ModuleNotFoundError,
+// which showed up as every file after the first refusing to parse.
+let web = null
+
 function call(name, args) {
-  const web = pyodide.pyimport('vault.web')
   const fn = web[name]
   const result = fn(...args)
   const value = typeof result === 'string' ? result : result.toString()
   if (result && typeof result.destroy === 'function') result.destroy()
-  web.destroy()
+  if (fn && typeof fn.destroy === 'function') fn.destroy()
   return value
 }
 
-self.onmessage = async (event) => {
+// pyodide is single threaded, and overlapping calls into it interleave badly.
+// each request waits for the one before it.
+let chain = Promise.resolve()
+
+function serialize(work) {
+  const next = chain.then(work, work)
+  chain = next.catch(() => {})
+  return next
+}
+
+self.onmessage = (event) => serialize(async () => {
   const { type, id, payload, threshold, head, candidates } = event.data
 
   try {
@@ -87,4 +102,4 @@ self.onmessage = async (event) => {
   } catch (error) {
     self.postMessage({ type: 'error', id, message: String((error && error.message) || error) })
   }
-}
+})

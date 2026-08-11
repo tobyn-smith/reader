@@ -82,7 +82,11 @@ class Line:
         for run in ordered:
             if cursor is not None:
                 gap = run.x - cursor
-                threshold = max(run.size, 4.0) * 0.34
+                # a space is roughly a quarter of the font size. measured
+                # against real syllabi, anything above about 0.28 starts gluing
+                # words together, which turned "u Week 1 (8/14)" into
+                # "uWeek1(8/14)" and hid every week heading from the parser.
+                threshold = max(run.size, 4.0) * 0.25
                 if gap > threshold and parts and not parts[-1].endswith(" ") and not run.text.startswith(" "):
                     parts.append(" ")
             parts.append(run.text)
