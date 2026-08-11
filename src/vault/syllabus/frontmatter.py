@@ -11,6 +11,16 @@ from .dates import Term, find_term
 
 # a course code is letters then digits, usually with a space between
 CODE_RE = re.compile(r"\b([A-Z]{2,5})\s*[- ]?\s*(\d{3,5}[A-Z]?)\b")
+
+# some syllabi never print the subject prefix and label the number instead:
+# "Course Number: 4316", with the department on its own line. the number alone
+# is a weaker label than "INTL 4316" but it is what the document actually says,
+# and inventing the prefix from a department name would be a guess.
+LABELLED_CODE_RE = re.compile(
+    r"^\s*course\s*(?:number|code|no\.?)\s*[:#]\s*"
+    r"(?P<code>[A-Z]{2,5}\s?\d{3,5}[A-Z]?|\d{3,5}[A-Z]?)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
 EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 
 _LABELLED = {
@@ -75,6 +85,10 @@ def parse(doc: ExtractedDoc) -> CourseMeta:
     code = CODE_RE.search(head)
     if code:
         meta.code = f"{code.group(1)} {code.group(2)}"
+    else:
+        labelled = LABELLED_CODE_RE.search(head)
+        if labelled:
+            meta.code = collapse_whitespace(labelled.group("code")).upper()
 
     meta.title = _find_title(lines, meta.code)
 

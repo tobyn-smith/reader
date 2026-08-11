@@ -290,13 +290,14 @@ def parse(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> SchedulePa
         return _parse_bulleted(lines, term)
 
     result = run(detected)
-    if _thin(result):
-        for structure in (TABLE, LABELLED, BULLETED):
-            if structure == detected:
-                continue
-            other = run(structure)
-            if _score(other) > _score(result):
-                result = other
+    for structure in (TABLE, LABELLED, BULLETED):
+        if structure == detected:
+            continue
+        other = run(structure)
+        # strictly better only, so detection wins every tie and stays the
+        # default explanation for what happened
+        if _score(other) > _score(result):
+            result = other
 
     result.important_dates = _find_important_dates(doc, term)
     return result
@@ -310,18 +311,6 @@ def _score(parsed: ScheduleParse) -> tuple[int, int]:
     thing the tool exists to produce, so it decides.
     """
     return sum(len(s.readings) for s in parsed.sessions), len(parsed.sessions)
-
-
-def _thin(parsed: ScheduleParse) -> bool:
-    """worth asking the other parsers about.
-
-    no sessions at all, or sessions that carry almost nothing, which is what a
-    summary grid looks like next to the real schedule.
-    """
-    readings, sessions = _score(parsed)
-    if sessions == 0:
-        return True
-    return readings < sessions * 0.34
 
 
 def _find_important_dates(doc: ExtractedDoc, term: Term | None) -> list[DatedEntry]:
