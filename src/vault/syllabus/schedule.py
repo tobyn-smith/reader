@@ -153,7 +153,7 @@ LABEL_RE = re.compile(
 
 # blocks whose content is never a reading
 _SKIP_LABELS = re.compile(
-    r"^(?:goals?|learning objectives?|objectives?|aims?|discussion questions?|"
+    r"^(?:prose|goals?|learning objectives?|objectives?|aims?|discussion questions?|"
     r"key concepts?|key terms?|terms|terms and key concepts|"
     r"in[\s-]class|activit(?:y|ies)|notes?|reminders?)$",
     re.IGNORECASE,
@@ -582,8 +582,16 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
     session: SessionEntry | None = None
     entries: list[tuple[str, str]] = []
     current: list[str] = []
-    label = "readings"
     section_heading: str | None = None
+
+    # a syllabus that labels its reading blocks also writes a paragraph of
+    # description under each week heading. treating what comes before the first
+    # label as readings turns that prose into reading entries. so where labels
+    # are in use, a block only becomes readings once a label says so; where
+    # they are not, everything under the heading is the reading list.
+    labels_in_use = sum(1 for line in lines if LABEL_RE.match(line.stripped)) >= 2
+    opening_label = "prose" if labels_in_use else "readings"
+    label = opening_label
 
     def flush_entry() -> None:
         if current:
@@ -600,7 +608,7 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
             result.sessions.append(session)
         entries.clear()
         session = None
-        label = "readings"
+        label = opening_label
 
     for line in lines:
         text = line.stripped

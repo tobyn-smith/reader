@@ -266,6 +266,23 @@ PATTERNS: list[Pattern] = [
         expects_year=False,
     ),
     Pattern(
+        # humanities syllabi put the year at the end rather than after the
+        # author: "Halvorsen, John and Simon Tomas Berg. The European Union: A Very
+        # Short Introduction. Oxford: Oxford University Press, 2018, chapter 3."
+        "book_year_last",
+        re.compile(
+            r"^(?P<authors>.+?)\s*(?:\(eds?\.?\))?[.,]\s*"
+            r"(?P<title>[^.]{6,140})\.\s*"
+            r"(?P<city>[A-Z][A-Za-z .'-]{2,30}):\s*(?P<publisher>[^,]{2,60}),\s*"
+            + _YEAR
+            + r"(?:[,.]\s*(?P<edition>[^,.]{0,24}edition))?"
+            r"(?:[,.]\s*(?P<chapters>chapters?\s+[\d\s,and-]+))?",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        BOOK,
+        0.85,
+    ),
+    Pattern(
         "author_date_book",
         re.compile(
             r"^(?P<authors>.+?)\.?\s+" + _YEAR + r"\.\s*(?P<title>[^\"“]+?)\.\s*"
@@ -275,6 +292,36 @@ PATTERNS: list[Pattern] = [
         ),
         BOOK,
         0.75,
+    ),
+    Pattern(
+        # a course with one set text refers to it in shorthand all term:
+        # "Okonkwo and Osei, Chapter 1". the surname is the whole citation.
+        "author_short_chapter",
+        re.compile(
+            r"^(?P<authors>[A-Z][A-Za-z'’-]+(?:\s+(?:and|&)\s+[A-Z][A-Za-z'’-]+)*)"
+            r"\s*,\s*(?P<pages>(?:chapters?|ch\.?|sections?|pp?\.|pages?)\s*"
+            r"[\d][\d.,\s-]*)\s*\.?\s*$",
+            re.IGNORECASE,
+        ),
+        BOOK_CHAPTER,
+        0.7,
+        expects_year=False,
+        expects_title=False,
+    ),
+    Pattern(
+        # the same shorthand with no author at all, where the set text is named
+        # once in the front matter: "Chapter section 1.2", "Chapters 3.1, 3.2".
+        "chapter_reference",
+        re.compile(
+            r"^(?:chapters?|ch\.?|sections?)\s*(?:sections?\s*)?"
+            r"(?P<pages>[\d][\d.,\s-]*(?:\s*and\s*[\d.]+)?)\s*(?P<title>.{0,60})$",
+            re.IGNORECASE,
+        ),
+        BOOK_CHAPTER,
+        0.65,
+        expects_author=False,
+        expects_year=False,
+        expects_title=False,
     ),
     Pattern(
         "numbered_sections_in_work",

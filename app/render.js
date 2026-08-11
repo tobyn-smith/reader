@@ -221,65 +221,78 @@ export function bibliographyView(course) {
     <ol class="bibliography">${entries.join('')}</ol>`
 }
 
-export function reviewTable(parse) {
+export function reviewTable(parse, showAll = false) {
   const flagged = new Set(parse.review.map((r) => r.source_text))
-  let needsCheck = 0
+  let checkCount = 0
+  let cleanCount = 0
 
-  const blocks = parse.sessions
-    .filter((s) => s.readings.length)
-    .map((session, si) => {
-      const index = parse.sessions.indexOf(session)
-      const rows = session.readings.map((reading, ri) => {
-        // the raw source only earns its space where the parse is doubtful.
-        // printing it under every row buries the rows that need attention.
-        const low = flagged.has(reading.raw_source_text) || reading.confidence < 0.75
-        if (low) needsCheck += 1
-        return `<tr class="${low ? 'review-row' : ''}">
-          <td class="flagcol">${low ? 'check' : ''}</td>
-          <td>
-            <input type="text" data-session="${index}" data-reading="${ri}"
-              value="${esc(citation(reading.work))}">
-            ${low ? `<div class="secondary source">${esc(reading.raw_source_text)}</div>` : ''}
-          </td>
-        </tr>`
-      })
+  const blocks = []
+  parse.sessions.forEach((session, index) => {
+    if (!session.readings.length) return
 
-      const when = [
-        session.week_number ? `Week ${session.week_number}` : '',
-        shortDate(session.meeting_date),
-        session.sub_session_label || '',
-      ].filter(Boolean).join(' ')
-
-      return `<section class="week">
-        <h3>${esc(when || 'Unscheduled')} <span class="secondary">${esc(session.topic || '')}</span></h3>
-        <table class="review"><tbody>${rows.join('')}</tbody></table>
-      </section>`
+    const rows = []
+    session.readings.forEach((reading, ri) => {
+      const low = flagged.has(reading.raw_source_text) || reading.confidence < 0.75
+      if (low) checkCount += 1
+      else cleanCount += 1
+      // by default only the rows that need a decision are drawn. reviewing
+      // fifty clean citations to find four doubtful ones is the work this
+      // step is supposed to save.
+      if (!low && !showAll) return
+      rows.push(`<tr class="${low ? 'review-row' : ''}">
+        <td class="flagcol">${low ? 'check' : ''}</td>
+        <td>
+          <input type="text" data-session="${index}" data-reading="${ri}"
+            value="${esc(citation(reading.work))}">
+          ${low ? `<div class="secondary source">from: ${esc(reading.raw_source_text)}</div>` : ''}
+        </td>
+      </tr>`)
     })
 
-  const readings = parse.sessions.reduce((n, s) => n + s.readings.length, 0)
+    if (!rows.length) return
+    const when = [
+      session.week_number ? `Week ${session.week_number}` : '',
+      shortDate(session.meeting_date),
+      session.sub_session_label || '',
+    ].filter(Boolean).join(' ')
+
+    blocks.push(`<section class="week">
+      <h3>${esc(when || 'Unscheduled')} <span class="secondary">${esc(session.topic || '')}</span></h3>
+      <table class="review"><tbody>${rows.join('')}</tbody></table>
+    </section>`)
+  })
+
+  const sessions = parse.sessions.length
+  const readings = checkCount + cleanCount
+  const empty = parse.sessions.filter((s) => !s.readings.length).length
   const weights = parse.deliverables.weight_total
 
-  // one line of plain counts. a session with no readings is a break or an
-  // exam, which is normal, so it is stated as a fact rather than a warning.
-  const empty = parse.sessions.filter((s) => !s.readings.length).length
   const facts = [
-    `${parse.sessions.length} sessions`,
+    `${sessions} sessions`,
     `${readings} readings`,
     empty ? `${empty} with none` : '',
     weights ? `weights ${weights}%` : '',
   ].filter(Boolean).join(' · ')
 
-  // only things a person can act on
+  // warnings a person can act on. "4 sessions with no readings" is a fact
+  // about a term that has breaks in it, and is already in the line above.
   const warnings = (parse.warnings || []).filter((w) => !/^\d+ session/.test(w))
 
+  const heading = checkCount
+    ? `<p><strong>${checkCount}</strong> row${checkCount === 1 ? '' : 's'} to check.
+        <span class="secondary">${cleanCount} parsed cleanly.</span>
+        <button type="button" id="toggle-all" class="quiet">${
+          showAll ? 'show only rows to check' : 'show all rows'}</button></p>`
+    : `<p>Nothing needs checking.
+        <button type="button" id="toggle-all" class="quiet">${
+          showAll ? 'hide' : 'show all rows'}</button></p>`
+
   return `<p class="secondary">${esc(facts)}</p>
-    ${needsCheck
-      ? `<p class="secondary">${needsCheck} row${needsCheck === 1 ? '' : 's'} marked
-         <span class="flagged">check</span>, the rest parsed cleanly.</p>`
-      : '<p class="secondary">Nothing flagged.</p>'}
+    ${heading}
     ${warnings.length
       ? `<ul class="secondary">${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>`
       : ''}
     ${blocks.join('')}`
 }
+
 

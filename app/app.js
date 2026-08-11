@@ -16,6 +16,8 @@ const state = {
   queue: [],
   files: [],
   progress: new Map(),
+  // review opens on the rows that need a decision, not on everything
+  reviewShowAll: false,
   currentView: 'week',
 }
 
@@ -237,7 +239,7 @@ function submit(files) {
 function showReview() {
   $('review').hidden = false
   $('review-name').textContent = state.pending.name
-  $('review-table').innerHTML = view.reviewTable(state.pending.parse)
+  $('review-table').innerHTML = view.reviewTable(state.pending.parse, state.reviewShowAll)
   $('review').scrollIntoView({ block: 'start' })
 }
 
@@ -429,6 +431,12 @@ async function boot() {
   }
 
   wireDropZone('file-drop', 'file-input')
+
+  $('review-table').addEventListener('click', (e) => {
+    if (!e.target.closest('#toggle-all')) return
+    state.reviewShowAll = !state.reviewShowAll
+    showReview()
+  })
 
   $('confirm').onclick = confirmParse
   $('discard').onclick = () => {
