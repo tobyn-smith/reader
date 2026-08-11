@@ -4,6 +4,13 @@ both apis are free and keyless. every response is cached on disk, a failed
 lookup never breaks a parse, and a field the user confirmed by hand is never
 overwritten. enrichment adds, it does not correct silently: a fetched value only
 lands in an empty field.
+
+there are two jobs here and they behave differently. filling completes a
+citation the patterns already read, and lands values straight into empty fields.
+rescue takes a line no pattern could read at all, asks crossref what it is, and
+attaches the answer as a suggestion for review. rescue never writes to the
+citation, because the line got there by defeating the deterministic rules and a
+search result is not evidence enough to overrule that on its own.
 """
 
 from __future__ import annotations
@@ -12,30 +19,56 @@ import hashlib
 import json
 import re
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
 
+from .lookup import rescue_from_item, worth_rescuing
+from .syllabus.citations import Suggestion
 from .syllabus.pipeline import ParsedSyllabus
+from .text.normalize import collapse_whitespace
 
 TIMEOUT = 8
 PAUSE = 0.4
+RESCUE_ROWS = 5
 
 _FILLABLE = ("container", "publisher", "volume", "issue", "pages", "doi", "url", "year")
 
 
-def enrich_parse(parsed: ParsedSyllabus, *, cache_dir: Path) -> int:
+@dataclass
+class EnrichResult:
+    filled: int = 0
+    suggested: int = 0
+    looked_up: int = 0
+
+    def __bool__(self) -> bool:
+        return bool(self.filled or self.suggested)
+
+
+def enrich_parse(parsed: ParsedSyllabus, *, cache_dir: Path, rescue: bool = True) -> EnrichResult:
+    result = EnrichResult()
     try:
         import requests
     except ImportError:
-        return 0
+        return result
 
     session = requests.Session()
     session.headers["User-Agent"] = "seminar-vault/0.1 (course reading manager)"
-    filled = 0
 
     for entry in (r for s in parsed.sessions for r in s.readings):
         citation = entry.citation
-        if not citation.parsed or citation.confidence >= 0.99:
+
+        if not citation.parsed:
+            if not rescue or not worth_rescuing(citation.raw):
+                continue
+            result.looked_up += 1
+            suggestion = _crossref_rescue(session, citation.raw, cache_dir)
+            if suggestion:
+                citation.suggestion = suggestion
+                result.suggested += 1
+            continue
+
+        if citation.confidence >= 0.99:
             continue
         record = None
         if citation.doi:
@@ -46,9 +79,9 @@ def enrich_parse(parsed: ParsedSyllabus, *, cache_dir: Path) -> int:
             record = _openlibrary(session, citation, cache_dir)
         if not record:
             continue
-        filled += _fill(citation, record)
+        result.filled += _fill(citation, record)
 
-    return filled
+    return result
 
 
 def _cache_path(cache_dir: Path, key: str) -> Path:
@@ -109,6 +142,23 @@ def _plausible(citation, item: dict) -> bool:
     if not a_words:
         return False
     return len(a_words & b_words) / len(a_words) > 0.6
+
+
+_SELECT = "title,author,container-title,issued,volume,issue,page,DOI,URL,publisher,type"
+
+
+def _crossref_rescue(session, raw: str, cache_dir: Path) -> Suggestion | None:
+    query = quote(collapse_whitespace(raw)[:300])
+    url = (
+        f"https://api.crossref.org/works?rows={RESCUE_ROWS}"
+        f"&select={_SELECT}&query.bibliographic={query}"
+    )
+    data = _cached_get(session, url, cache_dir)
+    for item in ((data or {}).get("message") or {}).get("items", []):
+        suggestion = rescue_from_item(raw, item)
+        if suggestion:
+            return suggestion
+    return None
 
 
 def _openlibrary(session, citation, cache_dir: Path) -> dict | None:

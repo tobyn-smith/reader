@@ -46,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
     syllabus.add_argument("--yes", action="store_true", help="accept the parse without the review prompt")
     syllabus.add_argument("--json", type=Path, help="write the parse to a file instead of the database")
     syllabus.add_argument("--no-enrich", action="store_true", help="skip crossref and openlibrary lookups")
+    syllabus.add_argument(
+        "--no-rescue",
+        action="store_true",
+        help="skip crossref lookups for lines no citation pattern could read",
+    )
     syllabus.set_defaults(handler=cmd_syllabus)
 
     ingest = commands.add_parser("ingest", help="ingest reading pdfs")
@@ -105,9 +110,14 @@ def cmd_syllabus(args, config) -> int:
     if not args.no_enrich:
         from .enrich import enrich_parse
 
-        enriched = enrich_parse(parsed, cache_dir=config.cache)
-        if enriched:
-            print(f"enrichment filled {enriched} fields from crossref and openlibrary")
+        enriched = enrich_parse(parsed, cache_dir=config.cache, rescue=not args.no_rescue)
+        if enriched.filled:
+            print(f"enrichment filled {enriched.filled} fields from crossref and openlibrary")
+        if enriched.looked_up:
+            print(
+                f"crossref matched {enriched.suggested} of {enriched.looked_up} unreadable "
+                "lines, offered as suggestions in review"
+            )
 
     if args.json:
         args.json.write_text(

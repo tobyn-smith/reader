@@ -120,6 +120,7 @@ def _citation_dict(citation: Citation) -> dict:
         "raw_source_text": citation.raw,
         "signature": citation.signature(),
         "confidence": citation.confidence,
+        "suggestion": citation.suggestion.as_dict() if citation.suggestion else None,
     }
 
 
@@ -259,13 +260,16 @@ def _collect_review(parsed: ParsedSyllabus, threshold: float) -> list[ReviewItem
         for reading in session.readings:
             citation = reading.citation
             if not citation.parsed:
+                reason = "no citation pattern matched"
+                if citation.suggestion:
+                    reason += f", {citation.suggestion.source} suggests a match"
                 items.append(
                     ReviewItem(
                         entity_type="work",
                         entity_ref=f"session[{session.ordinal}].reading[{reading.ordinal}]",
                         source_text=reading.raw,
                         confidence=0.0,
-                        reason="no citation pattern matched",
+                        reason=reason,
                         guess=_citation_dict(citation),
                     )
                 )

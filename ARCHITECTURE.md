@@ -194,6 +194,37 @@ Reading lists inside table cells are the weakest output. Wrapped urls can
 leave fragments; obvious ones are dropped. A topic cell can still leak into
 readings on tables wider than the mapped columns.
 
+That leak is the main accuracy problem, and it was misdiagnosed for a while as
+a citation parsing problem. Over 24 real syllabi, 588 reading rows come out,
+387 of which parse into full citations. Bucketing the 201 that do not:
+
+    87   prose or a topic label
+    50   too short to be anything
+    35   actually reference shaped
+    26   a schedule fragment
+     3   a chapter or unit pointer
+
+So four fifths of the "unparsed citations" were never citations. On the rows
+that really are references the patterns get roughly nine in ten. Adding more
+citation patterns therefore buys very little; keeping non-readings out of
+reading lists in the first place is where the remaining accuracy is. Measure
+before writing another regex.
+
+Lookup rescue (lookup.py, called from enrich.py) sends a line no pattern could
+read to crossref and offers the result in review. The gate wants near total
+title agreement, the first author present in the line, a year to corroborate
+against, and a container that is not a reference work. Every one of those
+came from watching a looser gate fail: at 0.7 title cover roughly three
+quarters of what came back was wrong, matching schedule fragments to papers
+sharing vocabulary, and matching books to published reviews of the book, which
+carry the book's exact title with the reviewer listed first.
+
+The rescue is worth about one point of accuracy, which is small, and it is
+kept because the five it recovers are correct and it costs nothing when it
+finds nothing. It is command line only. The browser build promises that
+nothing leaves the machine, and one point is not worth qualifying that promise
+even behind a toggle. web.py must stay free of network calls.
+
 Title detection can truncate an unusual front-matter block. Surfaces in
 review.
 

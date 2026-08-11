@@ -41,6 +41,30 @@ class Author:
 
 
 @dataclass
+class Suggestion:
+    """a proposed reading for a line no pattern claimed.
+
+    this is deliberately not a citation. it sits beside the unparsed row and
+    waits for a person to accept it, because the line reached this point exactly
+    because the deterministic rules could not read it. source and agreement are
+    carried so review can show why the suggestion is being offered at all.
+    """
+
+    source: str
+    display: str
+    title_cover: float
+    fields: dict = field(default_factory=dict)
+
+    def as_dict(self) -> dict:
+        return {
+            "source": self.source,
+            "display": self.display,
+            "title_cover": round(self.title_cover, 2),
+            "fields": self.fields,
+        }
+
+
+@dataclass
 class Citation:
     raw: str
     authors: list[Author] = field(default_factory=list)
@@ -60,10 +84,34 @@ class Citation:
     matched_pattern: str | None = None
     confidence: float = 0.0
     notes: list[str] = field(default_factory=list)
+    suggestion: Suggestion | None = None
 
     @property
     def parsed(self) -> bool:
         return self.matched_pattern is not None
+
+    def accept_suggestion(self) -> bool:
+        """fold an offered suggestion into this citation.
+
+        only ever called from a confirmation step. the pattern name records that
+        a lookup produced this rather than a rule, so a later reader can tell the
+        two apart, and confidence stays below 1.0 because a person accepted a
+        match rather than a rule proving one.
+        """
+        if self.suggestion is None:
+            return False
+        for key, value in self.suggestion.fields.items():
+            if value in (None, "", []):
+                continue
+            if key == "authors":
+                self.authors = [Author(**a) for a in value]
+            else:
+                setattr(self, key, value)
+        self.matched_pattern = f"{self.suggestion.source}_lookup"
+        self.confidence = 0.9
+        self.notes.append(f"accepted from {self.suggestion.source}")
+        self.suggestion = None
+        return True
 
     def signature(self) -> str:
         surname = self.authors[0].surname or self.authors[0].literal if self.authors else ""

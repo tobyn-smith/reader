@@ -74,25 +74,52 @@ def _review_one(item: dict) -> str:
     print(f"[{item['entity_type']}] {item['reason']} (confidence {item['confidence']})")
     print(f"  source: {item['source_text'][:300]}")
     guess = item.get("guess") or {}
+    suggestion = guess.get("suggestion")
     shown = {k: v for k, v in guess.items() if v not in (None, [], "", {})}
-    for key in ("raw_source_text", "signature", "confidence", "matched_pattern"):
+    for key in ("raw_source_text", "signature", "confidence", "matched_pattern", "suggestion"):
         shown.pop(key, None)
     if shown:
         print(f"  parsed: {json.dumps(shown, ensure_ascii=False, default=str)[:300]}")
 
+    prompt = "  [a]ccept  [e]dit  [r]eject  [q]uit: "
+    if suggestion:
+        cover = int(suggestion["title_cover"] * 100)
+        print(f"  {suggestion['source']} suggests: {suggestion['display'][:300]}")
+        print(f"    {cover}% of that title appears in the line above")
+        prompt = "  [a]ccept as is  [s]uggested  [e]dit  [r]eject  [q]uit: "
+
     while True:
-        answer = input("  [a]ccept  [e]dit  [r]eject  [q]uit: ").strip().lower()
+        answer = input(prompt).strip().lower()
         if answer in {"a", ""}:
             return "accepted"
         if answer == "r":
             return "rejected"
         if answer == "q":
             return "quit"
+        if answer == "s" and suggestion:
+            item["decided_value"] = _merge_suggestion(guess, suggestion)
+            return "edited"
         if answer == "e":
             edited = _edit(guess)
             if edited is not None:
                 item["decided_value"] = edited
                 return "edited"
+
+
+def _merge_suggestion(guess: dict, suggestion: dict) -> dict:
+    """fold a looked-up match in, without overwriting what the parse already read.
+
+    the pattern name records that this came from a lookup a person accepted
+    rather than from a rule, so the two are still tellable apart afterwards.
+    """
+    merged = {k: v for k, v in guess.items() if k != "suggestion"}
+    for key, value in (suggestion.get("fields") or {}).items():
+        if value in (None, "", []) or merged.get(key):
+            continue
+        merged[key] = value
+    merged["matched_pattern"] = f"{suggestion['source']}_lookup"
+    merged["confidence"] = 0.9
+    return merged
 
 
 def _edit(guess: dict) -> dict | None:

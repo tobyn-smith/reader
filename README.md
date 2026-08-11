@@ -40,9 +40,21 @@ Measured over 24 real syllabi from one university, parsed and checked by hand:
 | Readings turned into full citations | 66% |
 | Weights totalling near 100% | 6 of 10 |
 
-The structural fields are reliable. Reading lists are not, and that is the
-number to keep in mind: a third of readings come through as the raw line from
-your syllabus rather than as author, title and year.
+The structural fields are reliable. Reading lists are where accuracy is lost,
+though not in the way that 66% suggests. Of the rows that fail, four fifths
+were never readings to begin with: prose from under a week heading, a topic
+label, a fragment of a schedule that lost its line breaks. On rows that really
+are references, the patterns get roughly nine in ten.
+
+So the honest version is that the citation parsing mostly works and the reading
+list it gets fed does not. That is a table and layout problem rather than a
+citation problem, and it is the next thing worth fixing.
+
+On the command line the parser also asks Crossref about lines it could not read
+and offers whatever comes back for confirmation, never accepting it silently.
+The gate is deliberately strict and this recovers about one row in a hundred,
+so treat it as a bonus rather than a fix. It stays off in the browser, where
+nothing is meant to leave the machine.
 
 What it will not do is hide that from you. A reading it cannot parse is shown
 as the exact text from the PDF and marked for checking. Nothing is dropped
