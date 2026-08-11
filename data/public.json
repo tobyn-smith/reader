@@ -95,7 +95,7 @@
           "kind": "other",
           "due_date": null,
           "due_time": null,
-          "recurrence": "weekly",
+          "recurrence": null,
           "weight_percent": 40.0,
           "page_limit": null,
           "word_limit": null,
@@ -107,7 +107,7 @@
           "kind": "other",
           "due_date": null,
           "due_time": null,
-          "recurrence": "weekly",
+          "recurrence": null,
           "weight_percent": 3.0,
           "page_limit": null,
           "word_limit": null,
@@ -329,6 +329,18 @@
       ],
       "deliverables": [
         {
+          "id": 2,
+          "title": "Field Survey",
+          "kind": "other",
+          "due_date": "2031-09-11",
+          "due_time": "23:59:00",
+          "recurrence": null,
+          "weight_percent": 15.0,
+          "page_limit": 5,
+          "word_limit": null,
+          "format_notes": "- Every assignment should be written in Times New Roman, 12 point, with APSR citation style."
+        },
+        {
           "id": 3,
           "title": "Mid-term Essay",
           "kind": "essay",
@@ -349,18 +361,6 @@
           "recurrence": null,
           "weight_percent": 35.0,
           "page_limit": 20,
-          "word_limit": null,
-          "format_notes": "- Every assignment should be written in Times New Roman, 12 point, with APSR citation style."
-        },
-        {
-          "id": 2,
-          "title": "Field Survey",
-          "kind": "other",
-          "due_date": null,
-          "due_time": null,
-          "recurrence": null,
-          "weight_percent": 15.0,
-          "page_limit": null,
           "word_limit": null,
           "format_notes": "- Every assignment should be written in Times New Roman, 12 point, with APSR citation style."
         },
@@ -727,13 +727,37 @@
       ],
       "deliverables": [
         {
+          "id": 13,
+          "title": "Case Study Report",
+          "kind": "case_study",
+          "due_date": "2031-02-02",
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 20.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
           "id": 14,
           "title": "Agency Reports",
           "kind": "report",
-          "due_date": null,
+          "due_date": "2031-03-02",
           "due_time": null,
           "recurrence": null,
           "weight_percent": 25.0,
+          "page_limit": null,
+          "word_limit": null,
+          "format_notes": null
+        },
+        {
+          "id": 15,
+          "title": "Final Issues Report",
+          "kind": "exam",
+          "due_date": "2031-04-13",
+          "due_time": null,
+          "recurrence": null,
+          "weight_percent": 35.0,
           "page_limit": null,
           "word_limit": null,
           "format_notes": null
@@ -770,30 +794,6 @@
           "due_time": null,
           "recurrence": null,
           "weight_percent": null,
-          "page_limit": null,
-          "word_limit": null,
-          "format_notes": null
-        },
-        {
-          "id": 13,
-          "title": "Case Study Report",
-          "kind": "case_study",
-          "due_date": null,
-          "due_time": null,
-          "recurrence": null,
-          "weight_percent": 20.0,
-          "page_limit": null,
-          "word_limit": null,
-          "format_notes": null
-        },
-        {
-          "id": 15,
-          "title": "Final Issues Report",
-          "kind": "exam",
-          "due_date": null,
-          "due_time": null,
-          "recurrence": null,
-          "weight_percent": 35.0,
           "page_limit": null,
           "word_limit": null,
           "format_notes": null

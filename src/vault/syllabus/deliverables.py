@@ -174,7 +174,10 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
 
         if len(title) < 3:
             continue
-        item = _build(title, weight, raw, raw, zone.kind, page, term)
+        # the window is what follows the percentage. handing the whole row to
+        # the builder lets a title like "Weekly Assessments" read as recurrence.
+        tail = raw[m.end():] if m else ""
+        item = _build(title, weight, tail, raw, zone.kind, page, term)
         candidates.append(_Candidate(item, "table"))
 
     for paragraph, page, markers in _paragraphs(zone):
@@ -183,13 +186,19 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
             continue
 
         matches = list(TITLED_WEIGHT_RE.finditer(text))
-        for index, m in enumerate(matches):
+        # where each assignment's real name begins. the raw title group can
+        # backtrack into the previous assignment's prose, so the boundary for
+        # a body is the next tidied title, not the next raw match.
+        starts: list[tuple[re.Match, str, int]] = []
+        for m in matches:
             title = _tidy_title(m.group("title"))
+            offset = m.group("title").rfind(title) if title else 0
+            starts.append((m, title, m.start("title") + max(offset, 0)))
+
+        for index, (m, title, _) in enumerate(starts):
             if len(title) < 3:
                 continue
-            # the description of an assignment stops where the next one starts,
-            # otherwise a due date bleeds onto the assignment above it
-            stop = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+            stop = starts[index + 1][2] if index + 1 < len(starts) else len(text)
             body = text[m.end(): min(stop, m.end() + 900)]
             item = _build(title, float(m.group("weight")), body, text, zone.kind, page, term)
             candidates.append(_Candidate(item, _marker_for(m.start(), text, markers)))
@@ -199,7 +208,9 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
             item = _build(
                 collapse_whitespace(extra.group("title")).strip(" .,:-") or "extra credit",
                 float(extra.group("weight")),
-                text,
+                # only what follows the mention, or a "weekly" elsewhere in the
+                # paragraph becomes this item's recurrence
+                text[extra.end(): extra.end() + 300],
                 text,
                 zone.kind,
                 page,
@@ -304,6 +315,12 @@ def _build(
         if dates:
             item.due_date = dates[0]
         item.due_time = parse_time(window)
+    elif len(collapse_whitespace(window)) < 40:
+        # a grading table writes "20%  February 2nd" with no keyword at all.
+        # in a window that short, a date is the due date.
+        dates = list(iter_dates(window, term))
+        if dates:
+            item.due_date = dates[0]
 
     if RECURRING_RE.search(window):
         weekday = parse_weekday(window)

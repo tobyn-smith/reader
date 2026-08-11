@@ -218,30 +218,47 @@ def bibliography_html(course: dict, generated: str) -> str:
 
 
 def deadlines_html(courses: list[dict], generated: str) -> str:
-    rows = []
+    dated, recurring, undated = [], [], []
     for course in courses:
         for item in course.get("deliverables", []):
-            rows.append(
-                (
-                    item.get("due_date") or "9999-99-99",
-                    short_date(item.get("due_date")) or item.get("recurrence") or "",
-                    (item.get("due_time") or "")[:5],
-                    course["code"],
-                    item.get("title", ""),
-                    f"{item['weight_percent']}%" if item.get("weight_percent") else "",
-                )
+            weight = f"{item['weight_percent']:g}%" if item.get("weight_percent") else ""
+            row = (
+                item.get("due_date") or "9999-99-99",
+                short_date(item.get("due_date")) or item.get("recurrence") or "",
+                (item.get("due_time") or "")[:5],
+                course["code"],
+                item.get("title", ""),
+                weight,
             )
-    rows.sort(key=lambda r: r[0])
+            if item.get("due_date"):
+                dated.append(row)
+            elif item.get("recurrence"):
+                recurring.append(row)
+            elif weight:
+                undated.append(row)
+            # a hint with no date and no weight is a session event, not a
+            # deadline, and has no business on this document
+    dated.sort(key=lambda r: r[0])
 
-    parts = [
-        "<h1>All deadlines</h1>",
-        "<table><thead><tr><th>Due</th><th>Time</th><th>Course</th><th>Item</th>"
-        "<th>Weight</th></tr></thead><tbody>",
-    ]
-    for _, when, time, code, title, weight in rows:
-        parts.append(
-            f"<tr><td>{esc(when)}</td><td>{esc(time)}</td><td>{esc(code)}</td>"
-            f"<td>{esc(title)}</td><td>{esc(weight)}</td></tr>"
-        )
-    parts.append("</tbody></table>")
+    def render_rows(rows: list, head: str) -> list[str]:
+        parts = [
+            f"<table><thead><tr><th>{head}</th><th>Time</th><th>Course</th>"
+            "<th>Item</th><th>Weight</th></tr></thead><tbody>"
+        ]
+        for _, when, time, code, title, weight in rows:
+            parts.append(
+                f"<tr><td>{esc(when)}</td><td>{esc(time)}</td><td>{esc(code)}</td>"
+                f"<td>{esc(title)}</td><td>{esc(weight)}</td></tr>"
+            )
+        parts.append("</tbody></table>")
+        return parts
+
+    parts = ["<h1>All deadlines</h1>"]
+    parts += render_rows(dated, "Due")
+    if recurring:
+        parts.append("<h2>Recurring</h2>")
+        parts += render_rows(recurring, "Repeats")
+    if undated:
+        parts.append("<h2>No date in the syllabus</h2>")
+        parts += render_rows(undated, "")
     return _shell("Deadlines", "".join(parts), generated)

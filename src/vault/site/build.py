@@ -171,7 +171,7 @@ def _index(courses: list[dict]) -> str:
                         esc(d["when"]),
                         esc(d["course"]),
                         esc(d["title"]),
-                        f"{d['weight']}%" if d["weight"] else "",
+                        esc(_weight_label(d["weight"])),
                     ]
                     for d in upcoming
                 ],
@@ -180,35 +180,68 @@ def _index(courses: list[dict]) -> str:
     return page("Courses", "\n".join(body), depth=0, nav=nav(courses, 0))
 
 
+def _weight_label(value) -> str:
+    if not value:
+        return ""
+    return f"{value:g}%"
+
+
 def _collect_deliverables(courses: list[dict]) -> list[dict]:
+    """graded work that can be placed in time.
+
+    a sign-up or presentation line with no date and no weight is a session
+    event, not a deadline. it belongs on the week it happens and only clutters
+    a date-ordered list, so it is left out here.
+    """
     out = []
     for course in courses:
         for item in course.get("deliverables", []):
-            when = item.get("due_date") or ""
+            dated = bool(item.get("due_date"))
+            recurring = bool(item.get("recurrence"))
+            weighted = bool(item.get("weight_percent"))
+            if not dated and not recurring and not weighted:
+                continue
             out.append(
                 {
-                    "sort": when or "9999-99-99",
+                    "sort": item.get("due_date") or "9999-99-99",
                     "when": short_date(item.get("due_date")) or (item.get("recurrence") or ""),
                     "course": course["code"],
                     "title": item.get("title", ""),
                     "weight": item.get("weight_percent"),
                     "time": (item.get("due_time") or "")[:5],
+                    "group": "dated" if dated else ("recurring" if recurring else "undated"),
                 }
             )
-    return sorted(out, key=lambda d: d["sort"])
+    return sorted(out, key=lambda d: (d["sort"], d["course"]))
 
 
 def _deadlines(courses: list[dict]) -> str:
-    rows = [
-        [esc(d["when"]), esc(d["time"]), esc(d["course"]), esc(d["title"]),
-         f"{d['weight']}%" if d["weight"] else ""]
-        for d in _collect_deliverables(courses)
-    ]
+    items = _collect_deliverables(courses)
+
+    def rows_for(group: str) -> list[list[str]]:
+        return [
+            [esc(d["when"]), esc(d["time"]), esc(d["course"]), esc(d["title"]),
+             esc(_weight_label(d["weight"]))]
+            for d in items
+            if d["group"] == group
+        ]
+
     body = [
         "<h1>Deadlines</h1>",
         '<p><a href="pdf/deadlines.pdf">Print PDF</a></p>',
-        table(["Due", "Time", "Course", "Item", "Weight"], rows),
+        table(["Due", "Time", "Course", "Item", "Weight"], rows_for("dated")),
     ]
+
+    recurring = rows_for("recurring")
+    if recurring:
+        body.append("<h2>Recurring</h2>")
+        body.append(table(["Repeats", "Time", "Course", "Item", "Weight"], recurring))
+
+    undated = rows_for("undated")
+    if undated:
+        body.append("<h2>No date in the syllabus</h2>")
+        body.append(table(["", "", "Course", "Item", "Weight"], undated))
+
     return page("Deadlines", "\n".join(body), depth=0, nav=nav(courses, 0))
 
 
@@ -341,7 +374,7 @@ def _week(course: dict, courses: list[dict], number: int) -> str:
         body.append(
             table(
                 ["Due", "Item", "Weight"],
-                [[esc(d["when"]), esc(d["title"]), f"{d['weight']}%" if d["weight"] else ""] for d in due],
+                [[esc(d["when"]), esc(d["title"]), esc(_weight_label(d["weight"]))] for d in due],
             )
         )
 
