@@ -187,10 +187,29 @@ only; nothing needs it today.
 
 ## Known rough edges
 
-The parsers fit the structures they were built against: bulleted, ruled table,
-and labelled-block schedules. A genuinely novel layout degrades to the nearest
-parser and shows up as low confidence and count warnings during review, which
-is the intended failure mode, but the review step is then doing real work.
+Four schedule layouts are handled: bulleted lists, ruled tables, labelled
+blocks, and date-led headings ("January 17th: Module 1"). A genuinely novel
+layout degrades to the nearest parser and shows up as low confidence and count
+warnings during review, which is the intended failure mode, but the review step
+is then doing real work.
+
+Measured against sixteen real syllabi from one university, the parser finds a
+schedule in ten of them. The six it misses share a shape it does not yet read:
+a one-page grid whose rows are keyed by weekday and date ("THUR 1/23", "01-07")
+with no week numbers and no ruled lines that pdfplumber will report. Course
+code, term, instructor and grading weights are still extracted from those
+files; only the schedule is empty. Adding a fifth parser for weekday-keyed
+grids is the single highest-value change left.
+
+Weights do not always reconcile. Where a syllabus states them once in a summary
+table and again in prose, the two are merged on an equal weight plus overlapping
+title rule, which fixed the trade seminars but is not general. A total other
+than 100 is reported rather than corrected.
+
+Reading lists inside table cells are the least reliable output. A long URL that
+wraps inside a cell can survive as two fragments; the obvious fragments are now
+dropped rather than listed as readings, but a topic cell can still leak into a
+reading list when a table has more columns than the parser expects.
 
 Front-matter title detection joins wrapped lines by continuation words. An
 unusual header block can still truncate a title; it surfaces in review.
