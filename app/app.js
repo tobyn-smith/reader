@@ -525,6 +525,15 @@ async function boot() {
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {})
+    // when a deploy replaces the worker, the page it is holding open is still
+    // built from the old cache. one reload as the new worker takes control
+    // brings the fresh assets in, instead of showing a stale page all visit.
+    let reloaded = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return
+      reloaded = true
+      if (navigator.serviceWorker.controller) location.reload()
+    })
   }
 }
 
