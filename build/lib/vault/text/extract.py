@@ -20,7 +20,6 @@ from pathlib import Path
 import pymupdf
 
 from . import normalize
-from .model import ExtractedDoc, ExtractedPage
 from .layout import Block, Page, detect_running_lines, order_blocks, split_footnotes, strip_running_lines
 
 warnings.filterwarnings("ignore", module="pdfplumber")
@@ -29,6 +28,44 @@ warnings.filterwarnings("ignore", module="pdfminer")
 # a page with fewer than this many characters of text layer is treated as an
 # image that needs ocr rather than a genuinely sparse page
 MIN_CHARS_FOR_TEXT_LAYER = 40
+
+
+@dataclass
+class ExtractedPage:
+    number: int
+    text: str
+    raw_text: str
+    footnotes: list[str] = field(default_factory=list)
+    tables: list[list[list[str]]] = field(default_factory=list)
+    column_count: int = 1
+    had_text_layer: bool = True
+    edits: list[normalize.Edit] = field(default_factory=list)
+    # text of each block in reading order. block boundaries survive because
+    # "is this line the start of a block" is the cheapest reliable signal for
+    # telling a heading from a wrapped line of prose.
+    block_texts: list[str] = field(default_factory=list)
+
+    @property
+    def is_tabular(self) -> bool:
+        return bool(self.tables)
+
+
+@dataclass
+class ExtractedDoc:
+    path: Path
+    file_hash: str
+    page_count: int
+    pages: list[ExtractedPage]
+    ocr_used: bool = False
+    status: str = "ok"
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def text(self) -> str:
+        return "\n".join(p.text for p in self.pages)
+
+    def page(self, number: int) -> ExtractedPage:
+        return self.pages[number - 1]
 
 
 def file_hash(path: Path) -> str:

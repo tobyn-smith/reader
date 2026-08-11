@@ -19,7 +19,7 @@ import datetime as dt
 import re
 from dataclasses import dataclass, field
 
-from ..text.model import ExtractedDoc
+from ..text.extract import ExtractedDoc
 from ..text.normalize import collapse_whitespace, strip_leading_marker
 from . import citations as cit
 from .dates import DatedEntry, Term, iter_dates, parse_important_dates

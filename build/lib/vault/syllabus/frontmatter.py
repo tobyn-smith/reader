@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from ..text.model import ExtractedDoc
+from ..text.extract import ExtractedDoc
 from ..text.normalize import URL_RE, collapse_whitespace
 from .dates import Term, find_term
 

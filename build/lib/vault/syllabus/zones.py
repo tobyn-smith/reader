@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from ..text.model import ExtractedDoc
+from ..text.extract import ExtractedDoc
 
 FRONT_MATTER = "front_matter"
 REQUIREMENTS = "requirements"

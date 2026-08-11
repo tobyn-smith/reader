@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .model import ExtractedDoc
+from .extract import ExtractedDoc
 
 # a paragraph shorter than this is folded into its neighbour rather than
 # becoming a chunk of its own
