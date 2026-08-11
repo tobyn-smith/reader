@@ -186,3 +186,40 @@ class TestHeaderGatedGrids:
             rows.append((y + 13, [(108, "Journal of Examples 1(2): 10-20.")]))
         doc = document_from_runs(self._payload(rows))
         assert doc.pages[0].tables == []
+
+
+class TestColumnGaps:
+    """pdf.js reports a column gap as a whitespace run many times wider than a
+    space, not as a positional gap. the parity fixtures cannot catch this,
+    because they are built from pymupdf spans which already expand it, so it is
+    pinned directly."""
+
+    def _line(self, runs):
+        from vault.text.runs import Line, Run
+
+        return Line([Run(*r) for r in runs]).text
+
+    def test_a_wide_whitespace_run_becomes_a_column_gap(self):
+        # text, x, y, w, h, size
+        text = self._line([
+            ("Weekly Assessments", 78, 100, 101, 12, 12),
+            (" ", 179, 100, 58, 12, 12),
+            ("4", 237, 100, 6, 12, 12),
+            ("0%", 243, 100, 15, 12, 12),
+        ])
+        assert "Weekly Assessments" in text and "40%" in text
+        # the weights parser reads a run of spaces as the column boundary
+        from vault.syllabus.deliverables import TABLE_WEIGHT_RE
+
+        match = TABLE_WEIGHT_RE.match(text)
+        assert match, f"weights table unreadable: {text!r}"
+        assert match.group("title") == "Weekly Assessments"
+        assert match.group("weight") == "40"
+
+    def test_an_ordinary_space_run_stays_one_space(self):
+        text = self._line([
+            ("Introduction", 72, 100, 60, 12, 12),
+            (" ", 132, 100, 3, 12, 12),
+            ("to", 135, 100, 10, 12, 12),
+        ])
+        assert text == "Introduction to"

@@ -59,8 +59,11 @@ TABLE_WEIGHT_RE = re.compile(
 )
 
 # a grading scale sits in the same column layout as the weights table, so its
-# last row bleeds into the first assignment title as a stray "=F" or "F".
-GRADE_LETTER_PREFIX_RE = re.compile(r"^=?\s*[A-F][+-]?\s+(?=[A-Z])")
+# rows bleed into assignment titles: a stray "=F", a letter grade, or the tail
+# of a score range like "87" left in front of the real title.
+GRADE_LETTER_PREFIX_RE = re.compile(
+    r"^(?:=?\s*[A-F][+-]?|\d{1,3}(?:\s*[-–]\s*\d{1,3})?)\s+(?=[A-Za-z])"
+)
 ORPHAN_WEIGHT_RE = re.compile(r"^\s*=?\s*(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*$")
 EXTRA_CREDIT_RE = re.compile(
     r"(?P<title>[\w ]*extra credit[\w ]*)\s*\+?\s*(?P<weight>\d{1,3})\s*%", re.IGNORECASE

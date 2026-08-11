@@ -96,18 +96,40 @@ class Line:
         parts: list[str] = []
         cursor = None
         for run in ordered:
+            em = max(run.size, 4.0)
+
+            # a column gap can arrive as a run that is nothing but whitespace
+            # yet many times wider than a space. keeping it as one character
+            # throws away the only sign that a label and its number are in
+            # separate columns, which is what the weights table is read from.
+            if run.text and not run.text.strip():
+                width = max(run.w, run.x1 - (cursor or run.x))
+                parts.append(" " * _space_run(width, em))
+                cursor = max(cursor, run.x1) if cursor is not None else run.x1
+                continue
+
             if cursor is not None:
                 gap = run.x - cursor
                 # a space is roughly a quarter of the font size. measured
                 # against real syllabi, anything above about 0.28 starts gluing
                 # words together, which turned "u Week 1 (8/14)" into
                 # "uWeek1(8/14)" and hid every week heading from the parser.
-                threshold = max(run.size, 4.0) * 0.25
-                if gap > threshold and parts and not parts[-1].endswith(" ") and not run.text.startswith(" "):
-                    parts.append(" ")
+                if gap > em * 0.25 and parts and not parts[-1].endswith(" ") and not run.text.startswith(" "):
+                    parts.append(" " * _space_run(gap, em))
             parts.append(run.text)
             cursor = max(cursor, run.x1) if cursor is not None else run.x1
         return "".join(parts)
+
+
+def _space_run(width: float, em: float) -> int:
+    """how many spaces a blank of this width stands for.
+
+    one space for an ordinary word break, several for a column gap, so that
+    text laid out in columns still reads as columns downstream.
+    """
+    if width <= em * 0.6:
+        return 1
+    return max(2, min(12, int(width / (em * 0.35))))
 
 
 def _lines_from_runs(runs: list[Run]) -> list[Line]:
