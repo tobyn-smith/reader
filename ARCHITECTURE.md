@@ -155,11 +155,12 @@ Some syllabi have no weekly schedule in the pdf at all, or only a deadline
 grid with no topics or readings. Those parse to an empty schedule with course
 info and weights still extracted. That is the correct output, not a bug.
 
-The browser cannot see grids that fit one row per line with no week markers.
-pdfplumber reads their rules; pdf.js has none to read. Tried clustering run
-starts instead of line starts: it mistakes hanging-indent citation lists for
-tables and shreds them. Reverted. Closing this needs line/rect data from the
-pdf.js operator list added to the runs contract.
+One-line-per-row grids have no ruled lines the runs path can see. Plain
+run-start clustering mistakes hanging-indent citation lists for tables, so it
+is only allowed behind a gate: a header line naming a time column and a
+content column. Grids without any header row stay invisible to the browser
+path; closing that fully would need line/rect data from the pdf.js operator
+list.
 
 Weight reconciliation merges a summary-table row with its prose paragraph on
 equal weight plus title overlap. Works on the cases seen so far, not general.
