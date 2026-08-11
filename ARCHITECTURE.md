@@ -194,12 +194,24 @@ warnings during review, which is the intended failure mode, but the review step
 is then doing real work.
 
 Measured against sixteen real syllabi from one university, the parser finds a
-schedule in ten of them. The six it misses share a shape it does not yet read:
-a one-page grid whose rows are keyed by weekday and date ("THUR 1/23", "01-07")
-with no week numbers and no ruled lines that pdfplumber will report. Course
-code, term, instructor and grading weights are still extracted from those
-files; only the schedule is empty. Adding a fifth parser for weekday-keyed
-grids is the single highest-value change left.
+schedule in twelve. Table columns are mapped from the header row when one names
+them (week, date, topic, unit, readings, material due), so a six column grid no
+longer reads a date as the topic, a bare "1" under a Week heading counts as a
+week, and "01-07" in a date column parses as a date. The shape is learned per
+grid, because pdfplumber reports different phantom columns page by page.
+
+The remaining four are empty for honest reasons, checked by hand: two contain
+no weekly schedule at all (it lives on the course site), and two carry only a
+quiz deadline grid with no topics or readings, which surfaces through the
+deliverables instead. An empty schedule with the course identity and weights
+still extracted is the correct output for all four.
+
+The browser path reconstructs tables from text positions and cannot see ruled
+lines, so grids that fit one row per line (the six column kind) are found by
+the command line but not yet in the browser, which falls back to flowing text
+there. Clustering run starts instead of line starts would find them, but it
+also mistakes hanging-indent citation lists for tables and shreds the document,
+so the conservative side of that trade is kept and the gap stands recorded.
 
 Weights do not always reconcile. Where a syllabus states them once in a summary
 table and again in prose, the two are merged on an equal weight plus overlapping

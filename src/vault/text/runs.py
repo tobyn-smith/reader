@@ -201,15 +201,24 @@ def _tables_from_lines(lines: list[Line], page_width: float) -> list[list[list[s
     heights = [h for _, h, _, _ in fragments if h > 0]
     line_height = statistics.median(heights) if heights else 12.0
 
-    # group anchor lines into rows. a date cell stacks a week and its meeting
-    # dates on separate lines, so only a gap well beyond normal line spacing
-    # means the next row has started.
-    rows: list[float] = [anchor_ys[0]]
-    previous = anchor_ys[0]
-    for y in anchor_ys[1:]:
-        if y - previous > line_height * 2.4:
-            rows.append(y)
-        previous = y
+    # group anchor lines into rows. two shapes exist: a grid with one line per
+    # row, where anchor lines sit at uniform single-line spacing, and a grid
+    # whose date cell stacks a week above its meeting dates, where lines inside
+    # a cell sit closer than lines across a row boundary. uniform spacing means
+    # every anchor line is its own row; otherwise only a gap well beyond line
+    # spacing starts one.
+    gaps = [b - a for a, b in zip(anchor_ys, anchor_ys[1:])]
+    uniform = gaps and statistics.median(gaps) <= line_height * 1.7
+
+    if uniform:
+        rows = list(anchor_ys)
+    else:
+        rows = [anchor_ys[0]]
+        previous = anchor_ys[0]
+        for y in anchor_ys[1:]:
+            if y - previous > line_height * 2.4:
+                rows.append(y)
+            previous = y
     if len(rows) < 2:
         return []
 
@@ -233,7 +242,15 @@ def _tables_from_lines(lines: list[Line], page_width: float) -> list[list[list[s
 
 
 def _column_edges(lines: list[Line]) -> list[float]:
-    """cluster line-start x positions into stable column edges."""
+    """cluster line-start x positions into stable column edges.
+
+    line starts, deliberately. clustering run starts instead would also see the
+    grids that fit a whole row on one line, but hanging-indent citation lists
+    produce equally stable run-start columns, and treating those pages as
+    tables shreds them. a missed table degrades to flowing text; a phantom
+    table destroys a document. the conservative side of that trade is the only
+    acceptable one.
+    """
     xs = sorted(line.x0 for line in lines)
     clusters: list[list[float]] = []
     for x in xs:

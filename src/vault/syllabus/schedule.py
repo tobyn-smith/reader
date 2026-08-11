@@ -207,6 +207,14 @@ def _table_looks_like_a_schedule(doc: ExtractedDoc, pages: set[int]) -> bool:
         if not 1 <= number <= doc.page_count:
             continue
         for grid in doc.page(number).tables:
+            # a header row that names a time column and a content column is a
+            # schedule regardless of the exact words it chose
+            shape = _shape_from_header(grid)
+            if shape.from_header and (
+                shape.week_col is not None or shape.date_cols
+            ) and (shape.topic_col is not None or shape.body_cols):
+                return True
+
             # cells carry their own newlines, so the probe has to be flattened
             # before anything can match across them
             flat = collapse_whitespace(" ".join(cell for row in grid for cell in row)).lower()
@@ -378,6 +386,10 @@ def _is_fragment(text: str) -> bool:
     stripped = text.strip()
     if stripped[:1] in {".", "/", "-", "?", "&", "="}:
         return True
+
+    # "Chapter 2" or "pp. 12-30" is terse but it is a real assignment
+    if re.match(r"(?i)^(?:chapters?|ch\.?|pages?|pp?\.?|parts?|sections?|units?)\s*\d", stripped):
+        return False
 
     # what is left once every url is removed. a real citation keeps words.
     without_urls = URL_RE.sub(" ", stripped)
@@ -580,45 +592,196 @@ def _requirement_level(label: str) -> str:
     return "required"
 
 
+@dataclass
+class TableShape:
+    """which column holds what, learned from the header row.
+
+    a schedule table is not always date, topic, readings. real ones run to six
+    columns (week, date, unit, topic, material due, other due), and reading
+    positionally there put a date in the topic and threw the readings away.
+    when no header names the columns, the old positional reading stands.
+    """
+
+    week_col: int | None = None
+    date_cols: list[int] = field(default_factory=list)
+    topic_col: int | None = None
+    unit_col: int | None = None
+    body_cols: list[int] = field(default_factory=list)
+    from_header: bool = False
+
+
+_WEEK_HEADERS = re.compile(r"^\s*(?:week|wk|meetings?|class(?:es)?|session)\s*:?\s*$", re.IGNORECASE)
+_DATE_HEADERS = re.compile(r"^\s*(?:date|dates|day|days)\b[^|]*$", re.IGNORECASE)
+_TOPIC_HEADERS = re.compile(r"^\s*(?:topic|theme|subject)s?\s*:?\s*$", re.IGNORECASE)
+_UNIT_HEADERS = re.compile(r"^\s*(?:unit|module|section|part)s?\s*:?\s*$", re.IGNORECASE)
+_BODY_HEADERS = re.compile(
+    r"^\s*(?:readings?|assignments?|homework|materials?|notes?|deliverables?|"
+    r"assignments?\s+and\s+due\s+dates?|(?:material|other|work)\s*due|"
+    r"due(?:\s+dates?)?|what.?s\s+due)\s*(?:\([^)]*\))?\s*:?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _shape_from_header(grid: list[list[str]]) -> TableShape:
+    shape = TableShape()
+    if not grid:
+        return shape
+
+    header = [collapse_whitespace(cell.split("\n")[0]) for cell in grid[0]]
+    recognised = 0
+    for index, label in enumerate(header):
+        if _WEEK_HEADERS.match(label) and shape.week_col is None:
+            shape.week_col, recognised = index, recognised + 1
+        elif _DATE_HEADERS.match(label):
+            shape.date_cols.append(index)
+            recognised += 1
+        elif _TOPIC_HEADERS.match(label) and shape.topic_col is None:
+            shape.topic_col, recognised = index, recognised + 1
+        elif _UNIT_HEADERS.match(label) and shape.unit_col is None:
+            shape.unit_col, recognised = index, recognised + 1
+        elif _BODY_HEADERS.match(label):
+            shape.body_cols.append(index)
+            recognised += 1
+
+    # two named columns is a header row. one could be a stray word.
+    if recognised >= 2:
+        shape.from_header = True
+        # a "meetings" style column carries both the week number and the date
+        if shape.week_col is not None and not shape.date_cols:
+            shape.date_cols = [shape.week_col]
+        if shape.from_header and shape.topic_col is None and shape.unit_col is not None:
+            shape.topic_col, shape.unit_col = shape.unit_col, None
+        return shape
+
+    return TableShape()
+
+
+_BARE_WEEK_INT = re.compile(r"^\s*(\d{1,2})\s*$")
+# a date written month-dash-day, as in "01-07". only believed in an anchor
+# cell: anywhere else two digits around a dash is a page range.
+_DASH_DATE = re.compile(r"\b(\d{1,2})-(\d{1,2})\b")
+
+
+def _anchor_dates(text: str, term: Term | None) -> list:
+    found = list(iter_dates(text, term))
+    if found or term is None or len(text) > 24:
+        return found
+    out = []
+    for m in _DASH_DATE.finditer(text):
+        month, day = int(m.group(1)), int(m.group(2))
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            built = _safe_term_date(term, month, day)
+            if built:
+                out.append(built)
+    return out
+
+
+def _safe_term_date(term: Term, month: int, day: int):
+    import datetime as _dt
+
+    try:
+        return _dt.date(term.year_for_month(month), month, day)
+    except ValueError:
+        return None
+
+
 def _parse_table(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> ScheduleParse:
     """read the cells rather than the flowing text.
 
-    a row whose first cell has no week and no date is a continuation of the row
-    above, which is what a week split across a page break looks like.
+    the header row, when there is one, decides which column holds the week, the
+    date, the topic and the work. a row with a date but no week continues the
+    week above it as a second meeting; a row with neither continues the same
+    meeting, which is what a row split across a page break looks like.
     """
     result = ScheduleParse(TABLE)
     pages = sorted({line.page for z in zones if z.kind == SCHEDULE for line in z.lines})
 
-    rows: list[tuple[int, list[str]]] = []
+    # the shape belongs to a grid, not to the document. pdfplumber reports a
+    # different column geometry page by page, phantom columns included, so a
+    # shape learned on one page misreads the next. a headerless grid inherits
+    # the previous shape only when the widths agree, which is what a table
+    # continuing across a page break looks like.
+    previous: TableShape | None = None
+    previous_width = 0
+    rows: list[tuple[int, list[str], TableShape]] = []
     for number in pages:
         if not 1 <= number <= doc.page_count:
             continue
         for grid in doc.page(number).tables:
+            width = max(len(r) for r in grid) if grid else 0
+            shape = _shape_from_header(grid)
+            if not shape.from_header:
+                if previous is not None and previous.from_header and width == previous_width:
+                    shape = previous
+            previous, previous_width = shape, width
             for row in grid:
                 cleaned = _strip_header_labels(row)
                 if not any(cleaned):
                     continue
-                rows.append((number, cleaned))
+                rows.append((number, cleaned, shape))
 
-    for page, row in rows:
-        first = collapse_whitespace(row[0]) if row else ""
-        has_anchor = bool(WEEK_RE.match(first) or list(iter_dates(first, term)))
-        if not has_anchor and result.sessions:
-            _append_to_last(result.sessions, row)
+    last_week: int | None = None
+    for page, row, shape in rows:
+        week_number, dates = _row_anchor(row, shape, term)
+
+        if week_number is None and not dates:
+            if result.sessions:
+                _append_to_last(result.sessions, row, shape)
             continue
-        if not has_anchor:
-            continue
-        _row_to_sessions(result, page, row, term)
+
+        if week_number is None and dates and shape.from_header:
+            # a dated row under the same week: the second meeting of the week
+            week_number = last_week
+        if week_number is not None:
+            last_week = week_number
+
+        _row_to_sessions(result, page, row, term, shape, week_number, dates)
 
     for session in result.sessions:
         _classify_session(session)
     return result
 
 
+def _row_anchor(
+    row: list[str], shape: TableShape, term: Term | None
+) -> tuple[int | None, list]:
+    """what week and dates anchor this row, if any."""
+    if shape.from_header:
+        week_number = None
+        if shape.week_col is not None and shape.week_col < len(row):
+            cell = collapse_whitespace(row[shape.week_col])
+            bare = _BARE_WEEK_INT.match(cell)
+            if bare and 1 <= int(bare.group(1)) <= 20:
+                week_number = int(bare.group(1))
+            else:
+                named = WEEK_RE.match(cell)
+                if named:
+                    week_number = int(named.group("number"))
+        dates = []
+        for col in shape.date_cols:
+            if col < len(row):
+                dates.extend(_anchor_dates(collapse_whitespace(row[col]), term))
+        if week_number is None:
+            # plenty of tables stack "Week 1" above the dates inside the date
+            # column rather than giving weeks a column of their own
+            for col in shape.date_cols:
+                if col < len(row):
+                    named = WEEK_RE.match(collapse_whitespace(row[col]))
+                    if named:
+                        week_number = int(named.group("number"))
+                        break
+        return week_number, dates
+
+    first = collapse_whitespace(row[0]) if row else ""
+    named = WEEK_RE.match(first)
+    return (int(named.group("number")) if named else None), list(iter_dates(first, term))
+
+
 _HEADER_LABEL_RE = re.compile(
-    r"^\s*(?:date|week|day|topic|theme|subject|"
+    r"^\s*(?:date|dates|week|day|days|topic|theme|subject|meetings?|unit|module|"
     r"assignments?(?:\s+and\s+due\s+dates?)?|due(?:\s+dates?)?|"
-    r"readings?|notes?|deadlines?)\s*:?\s*$",
+    r"(?:material|other|work)\s*due|"
+    r"readings?|notes?|deadlines?|materials?)\s*(?:\([^)]*\))?\s*:?\s*$",
     re.IGNORECASE,
 )
 
@@ -642,20 +805,48 @@ def _strip_header_labels(row: list[str]) -> list[str]:
     return out
 
 
-def _row_to_sessions(
-    result: ScheduleParse, page: int, row: list[str], term: Term | None
-) -> None:
-    anchor = row[0]
+def _row_cells(row: list[str], shape: TableShape) -> tuple[str, str, str, str]:
+    """pull anchor, topic, unit and body text out of a row using the shape.
+
+    topic and date columns never reach the reading list. that separation is
+    structural rather than a filter: a cell the header called "Topic" cannot
+    leak into the readings no matter what it contains.
+    """
+    if shape.from_header:
+        def cell(index: int | None) -> str:
+            return row[index] if index is not None and index < len(row) else ""
+
+        anchor_cols = {shape.week_col, *shape.date_cols} - {None}
+        anchor = "\n".join(cell(i) for i in sorted(anchor_cols))
+        topic = cell(shape.topic_col)
+        unit = cell(shape.unit_col)
+        if shape.body_cols:
+            body = "\n\n".join(cell(i) for i in shape.body_cols if cell(i))
+        else:
+            named = anchor_cols | {shape.topic_col, shape.unit_col}
+            body = "\n\n".join(
+                row[i] for i in range(len(row)) if i not in named and row[i]
+            )
+        return anchor, topic, unit, body
+
+    anchor = row[0] if row else ""
     topic = row[1] if len(row) > 1 else ""
     body = row[2] if len(row) > 2 else ""
     if len(row) == 2:
         topic, body = "", row[1]
+    return anchor, topic, "", body
 
-    # a date cell stacks the week and its meeting dates on separate lines, so it
-    # has to be flattened before the week pattern can see past the first newline
-    week = WEEK_RE.match(collapse_whitespace(anchor))
-    week_number = int(week.group("number")) if week else None
-    dates = list(iter_dates(anchor, term))
+
+def _row_to_sessions(
+    result: ScheduleParse,
+    page: int,
+    row: list[str],
+    term: Term | None,
+    shape: TableShape,
+    week_number: int | None,
+    dates: list,
+) -> None:
+    anchor, topic, unit, body = _row_cells(row, shape)
 
     blocks = _split_sub_sessions(body)
     if not blocks:
@@ -665,6 +856,7 @@ def _row_to_sessions(
         session = _new_session(len(result.sessions), page, f"{anchor} | {topic} | {chunk}".strip())
         session.week_number = week_number
         session.topic = collapse_whitespace(topic) or None
+        session.section_heading = collapse_whitespace(unit) or None
         session.sub_session_label = label
         if dates:
             session.meeting_date = dates[min(index, len(dates) - 1)]
@@ -674,8 +866,11 @@ def _row_to_sessions(
         result.sessions.append(session)
 
 
-def _append_to_last(sessions: list[SessionEntry], row: list[str]) -> None:
-    tail = " ".join(cell for cell in row if cell).strip()
+def _append_to_last(
+    sessions: list[SessionEntry], row: list[str], shape: TableShape
+) -> None:
+    _, topic, _, body = _row_cells(row, shape)
+    tail = body if shape.from_header else " ".join(cell for cell in row if cell).strip()
     if not tail:
         return
     session = sessions[-1]
