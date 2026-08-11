@@ -179,8 +179,16 @@ path; closing that fully would need line/rect data from the pdf.js operator
 list.
 
 Weight reconciliation merges a summary-table row with its prose paragraph on
-equal weight plus title overlap. Works on the cases seen so far, not general.
-Totals off 100 are reported, never corrected.
+equal weight plus at least two shared distinctive words. Type words (exam,
+quiz, essay, memo) do not count as shared, because a midterm and a final are
+both exams, often for the same weight, and merging them silently drops a whole
+assignment from the total. Totals off 100 are reported, never corrected.
+
+Reading lists exclude anything that is not a reading: learning objectives,
+goals, discussion questions, glossary blocks, the prose description under a
+week heading, and table columns the header names as due work. Both the
+labelled and the bulleted parser honour those labels; a syllabus that uses
+labels at all only starts collecting readings once a label says so.
 
 Reading lists inside table cells are the weakest output. Wrapped urls can
 leave fragments; obvious ones are dropped. A topic cell can still leak into
