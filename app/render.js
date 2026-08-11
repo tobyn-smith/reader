@@ -112,8 +112,13 @@ export function weekView(course, progress) {
 
     const heading = sessions[0].topic || sessions[0].section_heading || ''
     const done = rows.filter((r) => r.includes('checked')).length
+    // a break or a cancelled class has no week number, so it is titled by its
+    // date rather than by an invented one
+    const title = sessions[0].week_number
+      ? `Week ${sessions[0].week_number}`
+      : shortDate(sessions[0].meeting_date) || 'Unscheduled'
     blocks.push(`<section class="week">
-      <h3>Week ${esc(key)} <span class="secondary">${esc(heading)}</span></h3>
+      <h3>${esc(title)} <span class="secondary">${esc(heading)}</span></h3>
       ${rows.length
         ? `<p class="secondary">${done} of ${rows.length} read</p>
            <table class="checklist"><tbody>${rows.join('')}</tbody></table>`
