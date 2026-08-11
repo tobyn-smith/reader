@@ -517,6 +517,10 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
     buffer: list[str] = []
     current: list[str] = []
     section_heading: str | None = None
+    # a bulleted schedule still labels its blocks. "Learning objectives:" and
+    # the bullets under it are not readings, and collecting them puts course
+    # aims on the reading checklist.
+    skipping = False
 
     def flush_entry() -> None:
         if current:
@@ -524,13 +528,14 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
             current.clear()
 
     def flush_session() -> None:
-        nonlocal session
+        nonlocal session, skipping
         flush_entry()
         if session is not None:
             _finish(session, buffer)
             result.sessions.append(session)
         buffer.clear()
         session = None
+        skipping = False
 
     for line in lines:
         text = line.stripped
@@ -550,6 +555,23 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
         if session is None:
             if _looks_like_unit_heading(text):
                 section_heading = text.strip(" :")
+            continue
+
+        # a label switches collection on or off for what follows it
+        label = LABEL_RE.match(stripped) or BARE_LABEL_RE.match(stripped)
+        if label:
+            flush_entry()
+            name = label.group("label").strip()
+            skipping = _requirement_level(name) == "reference"
+            rest = (label.groupdict().get("rest") or "").strip()
+            if name.lower() == "topic":
+                session.topic = collapse_whitespace(rest) or session.topic
+                continue
+            if not skipping and rest:
+                current.append(rest)
+            continue
+
+        if skipping:
             continue
 
         if DELIVERABLE_HINT_RE.match(stripped) and not marker:
@@ -736,6 +758,10 @@ class TableShape:
     topic_col: int | None = None
     unit_col: int | None = None
     body_cols: list[int] = field(default_factory=list)
+    # a column the header calls "due" holds graded work, not readings. keeping
+    # them apart stops "Participation 1" and "Syllabus Quiz Due" being listed
+    # as things to read.
+    due_cols: list[int] = field(default_factory=list)
     from_header: bool = False
 
 
@@ -744,9 +770,15 @@ _DATE_HEADERS = re.compile(r"^\s*(?:date|dates|day|days)\b[^|]*$", re.IGNORECASE
 _TOPIC_HEADERS = re.compile(r"^\s*(?:topic|theme|subject)s?\s*:?\s*$", re.IGNORECASE)
 _UNIT_HEADERS = re.compile(r"^\s*(?:unit|module|section|part)s?\s*:?\s*$", re.IGNORECASE)
 _BODY_HEADERS = re.compile(
-    r"^\s*(?:readings?|assignments?|homework|materials?|notes?|deliverables?|"
-    r"assignments?\s+and\s+due\s+dates?|(?:material|other|work)\s*due|"
-    r"due(?:\s+dates?)?|what.?s\s+due)\s*(?:\([^)]*\))?\s*:?\s*$",
+    r"^\s*(?:readings?|materials?|notes?|"
+    r"assignments?\s+and\s+due\s+dates?)\s*(?:\([^)]*\))?\s*:?\s*$",
+    re.IGNORECASE,
+)
+
+# a column of graded work rather than a column of readings
+_DUE_HEADERS = re.compile(
+    r"^\s*(?:assignments?|homework|deliverables?|(?:material|other|work)\s*due|"
+    r"due(?:\s+dates?)?|what.?s\s+due|exams?|quizzes)\s*(?:\([^)]*\))?\s*:?\s*$",
     re.IGNORECASE,
 )
 
@@ -770,6 +802,9 @@ def _shape_from_header(grid: list[list[str]]) -> TableShape:
             shape.unit_col, recognised = index, recognised + 1
         elif _BODY_HEADERS.match(label):
             shape.body_cols.append(index)
+            recognised += 1
+        elif _DUE_HEADERS.match(label):
+            shape.due_cols.append(index)
             recognised += 1
 
     # two named columns is a header row. one could be a stray word.
@@ -981,6 +1016,16 @@ def _row_to_sessions(
     if not blocks:
         blocks = [(None, "")]
 
+    due_lines: list[str] = []
+    if shape.from_header and shape.due_cols:
+        for i in shape.due_cols:
+            if i < len(row) and row[i].strip():
+                due_lines.extend(
+                    collapse_whitespace(part)
+                    for part in row[i].splitlines()
+                    if part.strip()
+                )
+
     for index, (label, chunk) in enumerate(blocks):
         session = _new_session(len(result.sessions), page, f"{anchor} | {topic} | {chunk}".strip())
         session.week_number = week_number
@@ -990,6 +1035,11 @@ def _row_to_sessions(
         if dates:
             session.meeting_date = dates[min(index, len(dates) - 1)]
         entries, hints = _split_cell_entries(chunk)
+        # a due column is graded work for this meeting, never a reading. it
+        # belongs to the row, so it is attached once rather than to each
+        # meeting the row covers.
+        if due_lines and index == 0:
+            hints = hints + due_lines
         session.deliverable_hints = hints
         _finish(session, entries)
         result.sessions.append(session)

@@ -43,7 +43,9 @@ class TestShapeFromHeader:
         assert shape.week_col == 0
         assert shape.date_cols == [1]
         assert shape.topic_col == 3
-        assert shape.body_cols == [4, 5]
+        # "Material Due" and "Other Due" are graded work, not reading columns
+        assert shape.body_cols == []
+        assert shape.due_cols == [4, 5]
 
     def test_meetings_column_serves_as_week_and_date(self):
         grid = [
@@ -54,7 +56,7 @@ class TestShapeFromHeader:
         assert shape.from_header
         assert shape.week_col == 0
         assert shape.date_cols == [0]
-        assert shape.body_cols == [2]
+        assert shape.due_cols == [2]
 
     def test_one_recognised_label_is_not_a_header(self):
         grid = [
