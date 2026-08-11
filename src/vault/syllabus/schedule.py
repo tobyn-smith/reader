@@ -82,9 +82,12 @@ WEEK_RE = re.compile(
 # continuation is required so a sentence that merely opens with a date is not
 # mistaken for a heading.
 DATE_HEADING_RE = re.compile(
-    r"^\s*(?P<date>(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?"
-    r"\s+\d{1,2}\s*(?:st|nd|rd|th)?)"
-    r"\s*(?:[:.–—-]\s*(?P<rest>.*)|\s+(?P<rest2>[A-Z].*))$",
+    # an optional weekday in front, as in "Wednesday, August 19". without it
+    # those lines fall through and end up listed as readings.
+    r"^\s*(?:(?:mon|tues?|wed(?:nes)?|thur?s?|fri|sat(?:ur)?|sun)[a-z]*\.?,?\s+)?"
+    r"(?P<date>(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?,?"
+    r"\s*\d{1,2}\s*(?:st|nd|rd|th)?)"
+    r"\s*(?:[:.–—-]\s*(?P<rest>.*)|\s+(?P<rest2>[A-Z].*)|(?P<rest3>)$)",
     re.IGNORECASE,
 )
 
