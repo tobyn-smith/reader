@@ -113,12 +113,15 @@ export function format(work, style = 'chicago') {
   return rendered || work.raw_source_text || ''
 }
 
-// how the same work reads in a checklist, where the full citation is too long
-export function short(work) {
+// how the same work reads in a checklist, where the full citation is too long.
+// a work the parser could not read has no author or title to show, so its raw
+// line stands in, clipped so one bad row does not make the whole list ragged.
+export function short(work, limit = 96) {
   const authors = work.authors || []
   const first = authors.length ? authors[0].surname || authors[0].literal : ''
   const year = work.year ? ` ${work.year}` : ''
   const title = work.title || work.container || work.raw_source_text || ''
   const head = [first, year].filter(Boolean).join('')
-  return head ? `${head}, ${title}` : title
+  const out = head ? `${head}, ${title}` : title
+  return out.length > limit ? `${out.slice(0, limit - 1).trimEnd()}...` : out
 }
