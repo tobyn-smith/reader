@@ -71,7 +71,6 @@
   /* missing and overdue read as weight, not colour */
   tr.missing td { font-weight: 700; color: #000; }
   tr.missing td:first-child::before { content: "MISSING  "; }
-  .review-row td { color: #000; }
 
   /* the checklist prints as a checklist: a box to tick with a pen */
   table.checklist input[type="checkbox"] { display: none; }

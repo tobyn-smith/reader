@@ -191,6 +191,29 @@ class TestWeekDescriptions:
         ):
             assert not schedule._looks_like_prose(citation), citation
 
+    def test_scare_quotes_do_not_disguise_a_paragraph(self):
+        """prose puts quotes round a word or two constantly.
+
+        both of these reached a real review page. treating any quotation mark
+        as proof of a title meant a paragraph only had to mention one to be
+        checked off as a reading.
+        """
+        for paragraph in (
+            'The European Union has gone through various "crises" recently: Brexit, '
+            "the so-called refugee crisis, and the COVID-19 pandemic, to name just "
+            "some of them. While often declared dead, it is still around.",
+            "For its member states, the European Union constitutes a unique combination "
+            "of domestic and foreign policy, under the leadership of the High "
+            'Representative, the EU\'s "State Secretary," and an actor in its own right.',
+        ):
+            assert schedule._looks_like_prose(paragraph)
+
+    def test_a_real_quoted_title_still_shields_a_citation(self):
+        assert not schedule._looks_like_prose(
+            'Berg, Kevin. "The U.S. Wants to Make Sure China Cannot Catch Up on '
+            'Quantum Computing," Foreign Policy, an essay on the export control regime'
+        )
+
     def test_a_short_line_is_never_prose(self):
         """brevity is the whole defence for short form references."""
         assert not schedule._looks_like_prose("Okonkwo (12) in Comparative Politics.")

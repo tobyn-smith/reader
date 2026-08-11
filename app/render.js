@@ -249,14 +249,18 @@ export function reviewTable(parse, showAll = false) {
       // fifty clean citations to find four doubtful ones is the work this
       // step is supposed to save.
       if (!low && !showAll) return
-      rows.push(`<tr class="${low ? 'review-row' : ''}">
-        <td class="flagcol">${low ? 'check' : ''}</td>
-        <td>
-          <input type="text" data-session="${index}" data-reading="${ri}"
+      // the flag is a rule down the side rather than the word "check" set
+      // twenty five times. the colour already says it, and repeating it turns
+      // the page into a column of the same word.
+      rows.push(`<li class="rrow${low ? ' needs-check' : ''}">
+        <span class="rnum">${ri + 1}</span>
+        <div class="rbody">
+          <input type="text" class="cite" aria-label="Citation"
+            data-session="${index}" data-reading="${ri}"
             value="${esc(citation(reading.work))}">
-          ${low ? `<div class="secondary source">from: ${esc(reading.raw_source_text)}</div>` : ''}
-        </td>
-      </tr>`)
+          ${low ? `<p class="rsource">${esc(reading.raw_source_text)}</p>` : ''}
+        </div>
+      </li>`)
     })
 
     if (!rows.length) return
@@ -267,8 +271,11 @@ export function reviewTable(parse, showAll = false) {
     ].filter(Boolean).join(' ')
 
     blocks.push(`<section class="week">
-      <h3>${esc(when || 'Unscheduled')} <span class="secondary">${esc(session.topic || '')}</span></h3>
-      <table class="review"><tbody>${rows.join('')}</tbody></table>
+      <h3 class="whead">
+        <span class="when">${esc(when || 'Unscheduled')}</span>
+        <span class="wtopic">${esc(session.topic || '')}</span>
+      </h3>
+      <ol class="rlist">${rows.join('')}</ol>
     </section>`)
   })
 
@@ -277,30 +284,40 @@ export function reviewTable(parse, showAll = false) {
   const empty = parse.sessions.filter((s) => !s.readings.length).length
   const weights = parse.deliverables.weight_total
 
-  const facts = [
-    `${sessions} sessions`,
-    `${readings} readings`,
-    empty ? `${empty} with none` : '',
-    weights ? `weights ${weights}%` : '',
-  ].filter(Boolean).join(' · ')
+  // the numbers read better as a row of labelled figures than as a sentence
+  // of them joined by middots, because they are there to be compared against
+  // the syllabus rather than read as prose
+  const stats = [
+    ['Sessions', sessions, false],
+    ['Readings', readings, false],
+    ['To check', checkCount, checkCount > 0],
+    empty ? ['No readings', empty, false] : null,
+    weights ? ['Weights', `${weights}%`, Math.abs(weights - 100) > 1] : null,
+  ].filter(Boolean)
+
+  const strip = `<dl class="rstats">${stats.map(
+    ([label, value, warn]) => `<div>
+      <dt>${esc(label)}</dt>
+      <dd${warn ? ' class="flagged"' : ''}>${esc(String(value))}</dd>
+    </div>`).join('')}</dl>`
 
   // warnings a person can act on. "4 sessions with no readings" is a fact
-  // about a term that has breaks in it, and is already in the line above.
+  // about a term that has breaks in it, and is already in the figures above.
   const warnings = (parse.warnings || []).filter((w) => !/^\d+ session/.test(w))
 
-  const heading = checkCount
-    ? `<p><strong>${checkCount}</strong> row${checkCount === 1 ? '' : 's'} to check.
-        <span class="secondary">${cleanCount} parsed cleanly.</span>
+  const lead = checkCount
+    ? `<p class="rlead">Showing the ${checkCount} row${checkCount === 1 ? '' : 's'}
+        that need a look. <span class="quiet-note">${cleanCount} parsed cleanly.</span>
         <button type="button" id="toggle-all" class="quiet">${
-          showAll ? 'show only rows to check' : 'show all rows'}</button></p>`
-    : `<p>Nothing needs checking.
+          showAll ? 'show only what needs checking' : 'show all rows'}</button></p>`
+    : `<p class="rlead">Nothing needs checking.
         <button type="button" id="toggle-all" class="quiet">${
           showAll ? 'hide' : 'show all rows'}</button></p>`
 
-  return `<p class="secondary">${esc(facts)}</p>
-    ${heading}
+  return `${strip}
+    ${lead}
     ${warnings.length
-      ? `<ul class="secondary">${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>`
+      ? `<ul class="rwarn">${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>`
       : ''}
     ${blocks.join('')}`
 }

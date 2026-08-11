@@ -101,7 +101,7 @@ a:hover { text-decoration: underline; }
 }
 
 /* data reads in monospace with tabular figures so columns align down the page */
-.when, .num, .flagcol, header nav a, #review-name {
+.when, .num, header nav a, #review-name {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -325,7 +325,6 @@ td.num, th.num { text-align: right; padding-right: 0.2rem; white-space: nowrap; 
 td.when, th.when { white-space: nowrap; color: var(--muted); font-size: var(--small); }
 
 tr.missing td { color: var(--danger); }
-.review-row td { background: var(--sunken); }
 .flagged { color: var(--flag); font-weight: 700; }
 
 ul { margin: 0.25rem 0; padding-left: 1.15rem; }
@@ -363,29 +362,168 @@ section.course-deadlines h3 .secondary { font-weight: 400; margin-left: 0.45rem;
 ol.bibliography { padding-left: 1.4rem; }
 ol.bibliography li { margin-bottom: 0.35rem; }
 
-table.review td.flagcol {
-  width: 3.4rem;
-  color: var(--flag);
-  font-size: var(--small);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+/* the review list.
+   this is the one page where the tool asks for help, so it is built for a
+   single action repeated: read the parsed line, glance at the source it came
+   from, fix it if it is wrong. everything that is not one of those three
+   things is turned down until it disappears. */
+
+.rstats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2.1rem;
+  margin: 0.7rem 0 0.9rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
 }
 
-table.review input[type="text"] { width: 100%; max-width: 44rem; }
-.source { margin-top: 0.2rem; }
-#review .week h3 { margin: 0.9rem 0 0.1rem; }
+.rstats > div { display: flex; flex-direction: column; gap: 0.05rem; }
+
+.rstats dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.rstats dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.rstats dd.flagged { color: var(--flag); }
+
+.rlead { font-size: var(--small); color: var(--muted); margin: 0 0 1rem; }
+.rlead .quiet-note { color: var(--rule-strong); }
+.rlead button.quiet { margin-left: 0.3rem; }
+
+.rwarn {
+  margin: 0 0 1rem;
+  padding-left: 1rem;
+  font-size: var(--small);
+  color: var(--flag);
+}
+
+/* the week header stays put while its rows scroll under it, so it is always
+   clear which week is being corrected */
+#review .week { margin-top: 1.5rem; }
+
+.whead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin: 0 0 0.15rem;
+  padding: 0.35rem 0 0.25rem;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule-strong);
+  font-size: var(--small);
+}
+
+.whead .when {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.whead .wtopic {
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rlist { list-style: none; margin: 0; padding: 0; }
+
+.rrow {
+  display: grid;
+  grid-template-columns: 1.7rem minmax(0, 1fr);
+  gap: 0 0.45rem;
+  padding: 0.4rem 0 0.45rem 0.65rem;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--rule);
+}
+
+.rrow.needs-check { border-left-color: var(--flag); }
+
+.rnum {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--small);
+  color: var(--rule-strong);
+  text-align: right;
+  padding-top: 0.32rem;
+}
+
+/* a citation reads as text until you go to change it. a page of bordered
+   boxes looks like a form to fill in, when the work is to read what is
+   already there and correct the few that are wrong. */
+input.cite {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 0.18rem 0.35rem;
+  background: transparent;
+  font-size: var(--size);
+  line-height: 1.4;
+}
+
+.rrow:hover input.cite { border-color: var(--rule); background: var(--surface); }
+
+input.cite:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* the source line, kept to two lines so twenty five rows still fit on a
+   screen. the whole thing opens when the row is being worked on, which is
+   the only time all of it matters. */
+.rsource {
+  margin: 0.2rem 0 0 0.35rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--rule);
+  font-size: var(--small);
+  line-height: 1.45;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rrow:hover .rsource,
+.rrow:focus-within .rsource {
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+}
 
 /* the accuracy note. plain, permanent, and sitting where the decision is made
    rather than tucked away in a help page. */
 .caveat {
   border-left: 2px solid var(--flag);
-  background: var(--sunken);
-  padding: 0.5rem 0.75rem;
-  margin: 0.6rem 0;
+  padding: 0.1rem 0 0.1rem 0.75rem;
+  margin: 0.7rem 0 1rem;
   font-size: var(--small);
-  color: var(--ink);
-  max-width: 78ch;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 74ch;
 }
+
+.caveat strong { color: var(--ink); font-weight: 700; }
 
 #tools, #data-tools, #accuracy {
   margin-top: 2rem;

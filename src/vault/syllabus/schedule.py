@@ -548,6 +548,17 @@ def _finish(session: SessionEntry, entries: list[str]) -> None:
         session.confidence = min(r.confidence for r in session.readings)
 
 
+# a quoted span long enough to be a title. treating every quotation mark as a
+# citation let whole paragraphs through, because prose scare-quotes a word or
+# two all the time: various "crises", the EU's "State Secretary". a title runs
+# longer than that.
+_QUOTED_SPAN = re.compile(r"[\"“]([^\"”]{4,})[\"”]")
+
+
+def _has_quoted_title(text: str) -> bool:
+    return any(len(m.group(1).split()) >= 4 for m in _QUOTED_SPAN.finditer(text))
+
+
 def _looks_like_prose(text: str) -> bool:
     """a week's description paragraph rather than a reading.
 
@@ -564,7 +575,7 @@ def _looks_like_prose(text: str) -> bool:
         return False
     if CITATION_START_RE.match(flat):
         return False
-    if re.search(r"\b(?:19|20)\d{2}\b|[\"“”]|https?://", flat):
+    if re.search(r"\b(?:19|20)\d{2}\b|https?://", flat) or _has_quoted_title(flat):
         return False
     # a page reference in any of the forms syllabi write it, spelled out
     # included. "Pages 29-37 in ..." is a reading, and only the page marker
