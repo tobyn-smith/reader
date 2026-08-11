@@ -179,3 +179,43 @@ class TestNoKeysNeeded:
         forbidden = {"anthropic", "openai", "google.generativeai"}
         loaded = forbidden & set(sys.modules)
         assert not loaded, f"model sdk imported by the pipeline: {loaded}"
+
+
+class TestHeadingShapes:
+    """heading shapes found in real syllabi, pinned as plain strings so no
+    course material is needed to keep them working."""
+
+    def test_month_comma_day(self):
+        from vault.syllabus.dates import Term, iter_dates
+
+        assert list(iter_dates("February, 5", Term("spring", 2026)))[0].day == 5
+
+    def test_a_year_is_never_read_as_a_day(self):
+        from vault.syllabus.dates import Term, iter_dates
+
+        assert list(iter_dates("August 2020", Term("fall", 2025))) == []
+
+    def test_numbered_meeting_with_leading_date(self):
+        from vault.syllabus import schedule
+
+        assert schedule.is_session_head("1. August 14: Introduction")
+        # kerning can drop the space after the number
+        assert schedule.is_session_head("1.August 14: Introduction")
+
+    def test_numbered_meeting_with_trailing_date(self):
+        from vault.syllabus import schedule
+
+        m = schedule.numbered_dated_heading("3. Europe Today: Unity in Diversity (01/15)")
+        assert m and m.group("number") == "3"
+        assert m.group("topic").startswith("Europe Today")
+
+    def test_section_numbers_are_not_meeting_numbers(self):
+        from vault.syllabus import schedule
+
+        assert schedule.strip_meeting_number("2.1 Elements of Design") == "2.1 Elements of Design"
+
+    def test_labelled_course_number_without_a_subject_prefix(self):
+        from vault.syllabus.frontmatter import LABELLED_CODE_RE
+
+        m = LABELLED_CODE_RE.search("Course Number: 4316 | CRN: 62983")
+        assert m and m.group("code") == "4316"

@@ -148,12 +148,28 @@ build says so and skips instead of failing. CI (ubuntu) always produces them.
 ## Known gaps
 
 Schedule layouts handled: bulleted lists, ruled tables, labelled blocks,
-date-led headings ("January 17th: Module 1"). Anything else degrades to the
-closest parser and shows up as low confidence plus count warnings in review.
+date-led headings ("January 17th: Module 1"), numbered meetings with the date
+either leading ("1. August 14: Topic") or trailing ("1. Topic (01/13)").
+
+Detection picks a parser, then all three run and the fullest reading list
+wins, detection breaking ties. This is not a fallback for failure, it is the
+normal path: a syllabus that prints a summary grid and the real week by week
+listing gives the grid more rows and the listing all the readings, and no
+amount of layout sniffing gets that right up front.
 
 Some syllabi have no weekly schedule in the pdf at all, or only a deadline
 grid with no topics or readings. Those parse to an empty schedule with course
 info and weights still extracted. That is the correct output, not a bug.
+
+Date separators seen in the wild and handled: space, none at all when kerning
+drops it, a period after an abbreviation, and a comma ("February, 5"). Meeting
+numbers may lose the space after them too ("1.August 14"), so that space is
+optional wherever a number prefixes a heading.
+
+A syllabus that never prints its subject prefix, labelling the number instead
+("Course Number: 4316" with the department on another line), gets the bare
+number as its code. Deriving a prefix from the department name would be a
+guess.
 
 One-line-per-row grids have no ruled lines the runs path can see. Plain
 run-start clustering mistakes hanging-indent citation lists for tables, so it
