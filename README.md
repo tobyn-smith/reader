@@ -23,10 +23,7 @@ get tested against the same fixtures.
 
 ## How accurate it is
 
-Worth knowing before you lean on it. This is pattern matching, not a model, and
-people write syllabi in whatever layout occurs to them that morning.
-
-24 real syllabi, parsed and checked by hand:
+Worth knowing before you lean on it. 24 real syllabi, checked by hand:
 
 | | |
 | --- | --- |
@@ -37,34 +34,18 @@ people write syllabi in whatever layout occurs to them that morning.
 | Readings parsed into full citations | 80% |
 | Weights adding up to about 100 | 6 of 10 |
 
-Course code and term are dependable. Reading lists are the weak spot, and the
-reason is worth knowing: most of what fails was never a reading. Week topics,
-prose from under a heading, a grading table's columns, and the week's own
-timetable were all being swept into reading lists and then counted as things
-you hadn't read yet.
+Reading lists are the weak spot. Most of what fails was never a reading in the
+first place: week topics, description paragraphs, columns off a grading table.
+Cleaning that up took it from 66% to 80%.
 
-That was 66% until recently. Keeping non-readings out is what moved it to 80%,
-and there's more of it left. Of the rows that still fail, about a third are
-genuine references in a short form the patterns can't unpick, like "Nye, Part
-II, pp. 113-234" pointing at a book named weeks earlier. The rest is still
-junk that shouldn't be in the list.
-
-Anything it can't read, it shows you verbatim and marks for checking. It doesn't
-drop things quietly and it doesn't invent them. That's what the review step is
-for.
-
-When no schedule turns up it's usually because the PDF hasn't got one, either
-because it lives on the course site or the file is really just a grading table.
-Course info and weights still come out.
+Anything it can't read, it shows you verbatim and marks for checking. It won't
+quietly drop a reading or invent one. No schedule found usually means the PDF
+hasn't got one.
 
 Layouts it knows: bulleted lists, ruled tables, labelled blocks, date-led
-headings, and numbered meetings with the date at either end. Anything stranger
-falls back to the nearest parser and shows up as low confidence.
-
-The command line also asks Crossref about lines it couldn't parse, and offers
-whatever comes back for you to confirm. The gate is strict on purpose, so it
-only recovers about one row in a hundred. The browser doesn't do this, since
-nothing is meant to leave your machine there.
+headings, numbered meetings. The command line also asks Crossref about lines it
+couldn't parse and offers them for you to confirm. The browser doesn't, since
+nothing leaves your machine there.
 
 ## On the command line
 
