@@ -1,7 +1,11 @@
-# builds the public site from data/public.json and publishes it to github
-# pages. the database and the reading pdfs never reach ci, so this job cannot
-# leak them: it can only publish what a reviewed `vault export --public`
-# already put in the repository.
+# publishes two things to github pages from one job:
+#
+#   /       the browser app, which does all its work on the visitor's machine
+#   /demo   a rendered example built from data/public.json
+#
+# the database and the reading pdfs never reach ci, so this job cannot leak
+# them. it can only publish what a reviewed `vault export --public` already put
+# in the repository, and the app itself carries no data at all.
 
 name: pages
 
@@ -9,7 +13,9 @@ on:
   push:
     branches: [main]
     paths:
+      - "app/**"
       - "data/public.json"
+      - "scripts/build_app.py"
       - "src/**"
       - ".github/workflows/pages.yml"
   schedule:
@@ -47,14 +53,23 @@ jobs:
           curl -sL https://github.com/CloudCannon/pagefind/releases/download/v1.3.0/pagefind-v1.3.0-x86_64-unknown-linux-musl.tar.gz | tar xz
           sudo mv pagefind /usr/local/bin/
 
-      - name: build public site and pdfs
+      # the app goes at the root, so a visitor lands straight on the tool
+      - name: build browser app
+        run: python scripts/build_app.py --vendor --site _site
+
+      - name: build demo site and pdfs
         run: |
           test -f data/public.json || { echo "no data/public.json, nothing to publish"; exit 1; }
           vault build --public --pdf
+          mkdir -p _site/demo
+          cp -r _site_public/* _site/demo/
+
+      - name: check nothing private slipped in
+        run: python scripts/check_publish.py _site
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site_public
+          path: _site
 
   deploy:
     needs: build

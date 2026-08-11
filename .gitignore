@@ -25,3 +25,4 @@ _site_public/
 _site_private/
 data/private*
 app/vendor/
+_site/

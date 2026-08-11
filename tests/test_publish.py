@@ -123,3 +123,52 @@ class TestPrivateBuild:
         build(payload, tmp_path / "site", private=True)
         everything = read_everything(tmp_path / "site")
         assert "Model generated" in everything
+
+
+class TestPublishGate:
+    """the ci gate is the last thing between a private field and a public url,
+    so it is checked in both directions: it must pass a clean site and fail a
+    dirty one."""
+
+    def _run(self, site):
+        import subprocess
+        import sys
+
+        return subprocess.run(
+            [sys.executable, "scripts/check_publish.py", str(site)],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_passes_a_clean_site(self, tmp_path):
+        site = tmp_path / "site"
+        site.mkdir()
+        (site / "index.html").write_text("<h1>POLS 6510</h1><p>Week 1</p>", encoding="utf-8")
+        assert self._run(site).returncode == 0
+
+    def test_fails_on_extracted_reading_text(self, tmp_path):
+        site = tmp_path / "site"
+        site.mkdir()
+        (site / "a.html").write_text("<p>chunk_text here</p>", encoding="utf-8")
+        result = self._run(site)
+        assert result.returncode == 1
+        assert "extracted reading text" in result.stdout
+
+    def test_fails_on_an_instructor_email(self, tmp_path):
+        site = tmp_path / "site"
+        site.mkdir()
+        (site / "a.html").write_text("<p>someone@example.edu</p>", encoding="utf-8")
+        assert self._run(site).returncode == 1
+
+    def test_reads_the_text_layer_of_a_pdf_not_its_name(self, tmp_path):
+        pymupdf = pytest.importorskip("pymupdf")
+        site = tmp_path / "site"
+        site.mkdir()
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "brief_markdown leaked into print")
+        doc.save(site / "semester-plan.pdf")
+        doc.close()
+        result = self._run(site)
+        assert result.returncode == 1
+        assert "generated brief" in result.stdout
