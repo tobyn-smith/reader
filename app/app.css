@@ -1,34 +1,50 @@
-/* the theme: quiet paper. a warm off-white sheet in the light, a soft ink dark
-   mode, one accent that always means "you can act here", amber for rows that
-   need checking, red for missing or overdue. nothing else carries colour.
-   system fonts throughout: this page promises files never leave the browser,
-   so it loads nothing from anywhere. */
+/* direction: warm paper. a student stares at reading lists for long stretches,
+   and a warm off-white sheet with near-black ink is the easiest surface to do
+   that on. one committed system, expressed as tokens: swap the values under
+   :root and the whole theme follows. a slate-warm dark variant derives from
+   the same hues for prefers-color-scheme: dark, because forcing light on a
+   dark os is its own kind of glare.
+
+   the color system, and nothing outside it:
+     --paper       page background
+     --surface     cards, fields, buttons
+     --ink         primary text          (16.1:1 on paper)
+     --muted       secondary text        (5.3:1 on paper, aa normal text)
+     --border      hairlines and rules
+     --border-strong  control borders, table head rules
+     --accent      primary actions, links, focus  (5.9:1 on paper)
+     --accent-ink  text on accent fills
+     --danger      destructive actions only       (6.1:1 on paper)
+     --flag        rows needing review
+   colour only ever means something: blue acts, red destroys, amber checks. */
 
 :root {
   --paper: #faf8f4;
+  --surface: #ffffff;
   --ink: #1c1b18;
-  --grey: #6b675f;
-  --rule: #ddd8ce;
-  --rule-strong: #b8b2a6;
+  --muted: #6b675f;
+  --border: #e3ddd2;
+  --border-strong: #b8b2a6;
   --accent: #1a5fb4;
-  --missing: #b3261e;
-  --review: #8a6d00;
-  --field: #ffffff;
+  --accent-ink: #ffffff;
+  --danger: #b3261e;
+  --flag: #8a6d00;
   --size: 15px;
   --small: 13px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #191b1f;
-    --ink: #e8e6e1;
-    --grey: #a09c93;
-    --rule: #35383e;
-    --rule-strong: #4d5158;
+    --paper: #1b1e24;
+    --surface: #242832;
+    --ink: #e9e7e2;
+    --muted: #a5a099;
+    --border: #343945;
+    --border-strong: #4e5461;
     --accent: #8ab4f8;
-    --missing: #f28b82;
-    --review: #d7ba5a;
-    --field: #22252b;
+    --accent-ink: #10131a;
+    --danger: #f28b82;
+    --flag: #d7ba5a;
   }
 }
 
@@ -58,14 +74,14 @@ p { margin: 0.4rem 0; max-width: 80ch; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* reassurance text stays present but quiet */
 .statement, .note, .status, .secondary {
-  color: var(--grey);
+  color: var(--muted);
   font-size: var(--small);
 }
 
-/* header: the name, the promise, and the courses. that is the whole chrome. */
 header {
-  border-bottom: 2px solid var(--rule-strong);
+  border-bottom: 2px solid var(--border-strong);
   padding-bottom: 0.75rem;
 }
 
@@ -89,15 +105,14 @@ header nav a[aria-current="page"] {
   border-bottom-color: var(--accent);
 }
 
-header nav a:hover { text-decoration: none; border-bottom-color: var(--rule-strong); }
+header nav a:hover { text-decoration: none; border-bottom-color: var(--border-strong); }
 
-/* view tabs: an underline marks where you are */
 nav.tabs {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 1.4rem;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--border);
   margin: 0 0 1rem;
 }
 
@@ -109,9 +124,10 @@ nav.tabs button {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  border-radius: 0;
 }
 
-nav.tabs button:hover { border-bottom-color: var(--rule-strong); }
+nav.tabs button:hover { border-bottom-color: var(--border-strong); }
 
 nav.tabs button[aria-current="true"] {
   font-weight: 700;
@@ -120,21 +136,24 @@ nav.tabs button[aria-current="true"] {
 }
 
 nav.tabs .right { margin-left: auto; }
-nav.tabs .right label { color: var(--grey); font-size: var(--small); margin-right: 0.35rem; }
+nav.tabs .right label { color: var(--muted); font-size: var(--small); margin-right: 0.35rem; }
 
 section { margin-top: 1.75rem; }
 
-/* controls inherit the theme; the browser draws the rest */
+/* controls: three visible weights.
+   primary   filled accent, the action the page exists for
+   standard  outlined on surface
+   quiet     text link weight, and danger recolors it for irreversible acts */
 button, input, select, textarea {
   font: inherit;
   color: var(--ink);
-  background: var(--field);
+  background: var(--surface);
 }
 
 select, input[type="text"], input[type="search"] {
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 0.2rem 0.45rem;
 }
 
 select:focus, input:focus, button:focus-visible {
@@ -143,45 +162,95 @@ select:focus, input:focus, button:focus-visible {
 }
 
 button {
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 0.3rem 0.85rem;
   cursor: pointer;
 }
 
 button:hover { border-color: var(--ink); }
-button:disabled { color: var(--grey); border-color: var(--rule); cursor: default; }
+button:disabled { color: var(--muted); border-color: var(--border); cursor: default; }
 
-#confirm { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+button.primary, #confirm {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+button.primary:hover, #confirm:hover { filter: brightness(1.08); border-color: var(--accent); }
+
+/* the file picker is a primary action, so it dresses like one */
+input[type="file"] { border: 0; background: none; color: var(--muted); font-size: var(--small); }
+
+input[type="file"]::file-selector-button {
+  font: inherit;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0.3rem 0.85rem;
+  margin-right: 0.6rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+input[type="file"]::file-selector-button:hover { filter: brightness(1.08); }
 
 button.quiet {
   border: 0;
   background: none;
   padding: 0;
-  color: var(--grey);
+  color: var(--muted);
   font-size: var(--small);
   text-decoration: underline;
+  border-radius: 0;
 }
 
-button.quiet:hover { color: var(--missing); border: 0; }
+button.quiet:hover { color: var(--ink); border: 0; }
+
+/* irreversible actions carry their own color at rest, not only on hover */
+button.danger {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--danger);
+  font-size: var(--small);
+  text-decoration: underline;
+  border-radius: 0;
+}
+
+button.danger:hover { color: var(--danger); filter: brightness(0.85); border: 0; }
 
 label { display: inline-block; margin-right: 0.5rem; }
 label.inline { margin-left: 0.75rem; }
 
+/* the drop zone is the front door: visibly interactive, louder on hover,
+   loudest while a file is being dragged over it */
 .drop {
-  border: 1.5px dashed var(--rule-strong);
-  border-radius: 3px;
-  padding: 1rem 1.1rem;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 1.1rem 1.2rem;
   margin: 0.5rem 0;
-  color: var(--grey);
+  color: var(--muted);
   font-size: var(--small);
 }
 
-.drop label { color: var(--grey); }
-.drop .note { margin: 0.4rem 0 0; }
-.drop[data-active="true"] { border-color: var(--accent); color: var(--ink); }
+.drop:hover { border-color: var(--accent); }
 
-/* tables: the head is quiet, the rule under it is not */
+.drop label { color: var(--ink); font-size: var(--size); }
+.drop .note { margin: 0.4rem 0 0; }
+
+/* set by the dragenter handler while a file is held over the zone */
+.drop[data-active="true"] {
+  border-color: var(--accent);
+  border-style: solid;
+  color: var(--ink);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -191,10 +260,10 @@ table {
 th {
   font-weight: 700;
   font-size: var(--small);
-  color: var(--grey);
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 2px solid var(--rule-strong);
+  border-bottom: 2px solid var(--border-strong);
 }
 
 th, td {
@@ -203,38 +272,38 @@ th, td {
   padding: 0.4rem 0.75rem 0.4rem 0;
 }
 
-td { border-bottom: 1px solid var(--rule); }
+td { border-bottom: 1px solid var(--border); }
 
 td.num, th.num { text-align: right; padding-right: 0.25rem; white-space: nowrap; }
-td.when, th.when { white-space: nowrap; color: var(--grey); }
+td.when, th.when { white-space: nowrap; color: var(--muted); }
 
-tr.missing td { color: var(--missing); }
-.review-row td { color: var(--review); }
+tr.missing td { color: var(--danger); }
+.review-row td { color: var(--flag); }
 
 ul { margin: 0.3rem 0; padding-left: 1.2rem; }
 
-/* the checklist: tick, date, reading, note */
 table.checklist td { padding: 0.45rem 0.75rem 0.45rem 0; }
 table.checklist td.tick { width: 1.6rem; padding-right: 0.4rem; }
 table.checklist td.when { width: 4.5rem; }
 
 input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
 
-.done { color: var(--grey); text-decoration: line-through; }
+.done { color: var(--muted); text-decoration: line-through; }
 
 input.note {
   width: 100%;
   max-width: 36rem;
   margin-top: 0.25rem;
   border: 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
   padding: 0.1rem 0;
   background: transparent;
   font-size: var(--small);
   color: var(--ink);
 }
 
-input.note::placeholder { color: var(--rule-strong); }
+input.note::placeholder { color: var(--border-strong); }
 input.note:focus { border-bottom-color: var(--accent); outline: none; }
 
 section.week { margin-top: 1.4rem; }
@@ -246,22 +315,20 @@ section.course-deadlines h3 .secondary { font-weight: 400; margin-left: 0.5rem; 
 ol.bibliography { padding-left: 1.5rem; }
 ol.bibliography li { margin-bottom: 0.4rem; }
 
-/* review: one row per reading, source text only under doubtful rows */
-table.review td.flagcol { width: 3.5rem; color: var(--review); font-size: var(--small); }
+table.review td.flagcol { width: 3.5rem; color: var(--flag); font-size: var(--small); }
 table.review input[type="text"] { width: 100%; max-width: 46rem; }
 .source { margin-top: 0.25rem; }
 #review .week h3 { margin: 1rem 0 0.15rem; }
 
-/* add pdfs, export and clear fold away once there is a schedule to look at */
 #tools {
   margin-top: 2.5rem;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--border);
   padding-top: 0.6rem;
 }
 
 #tools summary {
   cursor: pointer;
-  color: var(--grey);
+  color: var(--muted);
   font-size: var(--small);
 }
 
@@ -269,8 +336,8 @@ table.review input[type="text"] { width: 100%; max-width: 46rem; }
 #tools[open] summary { margin-bottom: 0.75rem; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: baseline; }
-.controls .quiet:first-of-type { margin-left: auto; }
+.controls .danger:first-of-type { margin-left: auto; }
 
 #review-name { font-weight: 400; }
 
-footer { margin-top: 2rem; color: var(--grey); font-size: var(--small); }
+footer { margin-top: 2rem; color: var(--muted); font-size: var(--small); }
