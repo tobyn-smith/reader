@@ -42,6 +42,12 @@ Anything it can't read, it shows you verbatim and marks for checking. It won't
 quietly drop a reading or invent one. No schedule found usually means the PDF
 hasn't got one.
 
+Which is why everything stays editable. Hit Edit on the week or deadlines view
+and you can fix a citation, add a reading it missed, delete something that
+isn't one, move a due date, or change a weight. Grades re-total as you go.
+Professors move deadlines and no parser catches that, so a tracker you can't
+correct goes stale by week three.
+
 Layouts it knows: bulleted lists, ruled tables, labelled blocks, date-led
 headings, numbered meetings. The command line also asks Crossref about lines it
 couldn't parse and offers them for you to confirm. The browser doesn't, since

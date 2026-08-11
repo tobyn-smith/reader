@@ -80,40 +80,51 @@ export function scheduleView(course) {
     </table>`
 }
 
-export function weekView(course, progress) {
+export function weekView(course, progress, editing = false) {
   const groups = new Map()
-  for (const session of course.parse.sessions) {
+  course.parse.sessions.forEach((session, si) => {
     const key = session.week_number ?? `x${session.ordinal}`
     if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(session)
-  }
+    groups.get(key).push({ session, si })
+  })
 
   const blocks = []
-  for (const [key, sessions] of groups) {
+  for (const [key, entries] of groups) {
     const rows = []
-    for (const session of sessions) {
-      for (const reading of session.readings) {
+    for (const { session, si } of entries) {
+      session.readings.forEach((reading, ri) => {
         const id = readingKey(course, session, reading)
         const saved = progress.get(id) || {}
         const label = session.sub_session_label ? ` ${session.sub_session_label}` : ''
+
+        // in edit mode the reading itself becomes the field. a parser gets
+        // things wrong and professors change their minds, so anything shown
+        // here has to be fixable without reparsing the pdf.
+        const body = editing
+          ? `<input type="text" class="cite" data-edit-reading="${si}.${ri}"
+               value="${esc(citation(reading.work))}" aria-label="Reading">
+             <button type="button" class="rowdel" data-remove-reading="${si}.${ri}"
+               aria-label="Remove this reading">Remove</button>`
+          : `<div class="${saved.read ? 'done' : ''}">${esc(cite.short(reading.work))}</div>
+             ${reading.requirement_level !== 'required'
+               ? `<span class="secondary">${esc(reading.requirement_level)}</span> ` : ''}
+             ${reading.page_range ? `<span class="secondary">pp. ${esc(reading.page_range)}</span> ` : ''}
+             ${reading.access_note ? `<span class="secondary">${esc(reading.access_note)}</span>` : ''}
+             ${reading.content_warning
+               ? `<div class="secondary">Content warning: ${esc(reading.content_warning)}</div>` : ''}
+             <div><input type="text" class="note" data-note="${esc(id)}"
+               value="${esc(saved.note || '')}" placeholder="note"></div>`
+
         rows.push(`<tr class="entry">
-          <td class="tick"><input type="checkbox" data-progress="${esc(id)}"
-            ${saved.read ? 'checked' : ''} aria-label="read"></td>
+          <td class="tick">${editing ? '' : `<input type="checkbox" data-progress="${esc(id)}"
+            ${saved.read ? 'checked' : ''} aria-label="read">`}</td>
           <td class="when">${esc(shortDate(session.meeting_date))}${esc(label)}</td>
-          <td>
-            <div class="${saved.read ? 'done' : ''}">${esc(cite.short(reading.work))}</div>
-            ${reading.requirement_level !== 'required'
-              ? `<span class="secondary">${esc(reading.requirement_level)}</span> ` : ''}
-            ${reading.page_range ? `<span class="secondary">pp. ${esc(reading.page_range)}</span> ` : ''}
-            ${reading.access_note ? `<span class="secondary">${esc(reading.access_note)}</span>` : ''}
-            ${reading.content_warning
-              ? `<div class="secondary">Content warning: ${esc(reading.content_warning)}</div>` : ''}
-            <div><input type="text" class="note" data-note="${esc(id)}"
-              value="${esc(saved.note || '')}" placeholder="note"></div>
-          </td>
+          <td>${body}</td>
         </tr>`)
-      }
+      })
     }
+    const sessions = entries.map((e) => e.session)
+    const firstIndex = entries[0].si
 
     const due = course.parse.deliverables.items
       .filter((d) => sessions.some((s) => s.meeting_date && d.due_date === s.meeting_date))
@@ -130,9 +141,15 @@ export function weekView(course, progress) {
     blocks.push(`<section class="week">
       <h3>${esc(title)} <span class="secondary">${esc(heading)}</span></h3>
       ${rows.length
-        ? `<p class="secondary">${done} of ${rows.length} read</p>
+        ? `${editing ? '' : `<p class="secondary">${done} of ${rows.length} read</p>`}
            <table class="checklist"><tbody>${rows.join('')}</tbody></table>`
-        : `<p class="secondary">${esc(sessions[0].session_type.replace('_', ' '))}</p>`}
+        : editing
+          ? ''
+          : `<p class="secondary">${esc(sessions[0].session_type.replace('_', ' '))}</p>`}
+      ${editing
+        ? `<button type="button" class="addrow" data-add-reading="${firstIndex}">
+             Add a reading to this week</button>`
+        : ''}
       ${due ? `<p class="secondary">Due this week</p><ul>${due}</ul>` : ''}
     </section>`)
   }
@@ -147,7 +164,7 @@ export function courseTag(course) {
   return [term, meta.year].filter(Boolean).join(' ')
 }
 
-export function deadlinesView(courses, activeId) {
+export function deadlinesView(courses, activeId, editing = false) {
   // one section per course. merging every course into one table made the same
   // assignment appear once per parsed edition and detached the weights from
   // the course they belong to, and it also meant switching course changed
@@ -164,44 +181,68 @@ export function deadlinesView(courses, activeId) {
   const sections = ordered.map((course) => {
     const graded = []
     const events = []
-    for (const item of course.parse.deliverables.items) {
+    course.parse.deliverables.items.forEach((item, di) => {
       const when = item.due_date
         ? shortDate(item.due_date)
         : item.recurrence === 'see schedule'
           ? 'see schedule'
           : item.recurrence || ''
+      // a date moved in class is the single most common correction, so in
+      // edit mode the date is a real date field rather than text to retype
       const row = {
         sort: item.due_date || '9999-99-99',
-        html: `<tr>
-          <td class="when">${esc(when)}</td>
-          <td>${esc(item.title)}</td>
-          <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
-        </tr>`,
+        html: editing
+          ? `<tr>
+              <td class="when"><input type="date" data-due-date="${course.id}|${di}"
+                value="${esc(item.due_date || '')}" aria-label="Due date"></td>
+              <td><input type="text" data-due-title="${course.id}|${di}"
+                value="${esc(item.title)}" aria-label="Item"></td>
+              <td class="num"><input type="number" class="pct" min="0" max="100"
+                data-due-weight="${course.id}|${di}"
+                value="${item.weight_percent ?? ''}" aria-label="Weight"></td>
+              <td class="num"><button type="button" class="rowdel"
+                data-remove-due="${course.id}|${di}">Remove</button></td>
+            </tr>`
+          : `<tr>
+              <td class="when">${esc(when)}</td>
+              <td>${esc(item.title)}</td>
+              <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
+            </tr>`,
       }
       // graded work is what the term is assessed on. presentation slots and
       // sign-ups are real dates but not deadlines, and mixing them buries the
-      // few items that carry the grade.
-      if (item.weight_percent) graded.push(row)
+      // few items that carry the grade. while editing, everything is listed
+      // together, because a row cannot be corrected in a table it is hidden
+      // from.
+      if (editing || item.weight_percent) graded.push(row)
       else if (item.due_date) events.push(row)
-    }
+    })
     graded.sort((a, b) => a.sort.localeCompare(b.sort))
     events.sort((a, b) => a.sort.localeCompare(b.sort))
 
     const table = (rows) => `<table>
-        <thead><tr><th class="when">Due</th><th>Item</th><th class="num">Weight</th></tr></thead>
+        <thead><tr><th class="when">Due</th><th>Item</th><th class="num">Weight</th>
+          ${editing ? '<th class="num"></th>' : ''}</tr></thead>
         <tbody>${rows.map((r) => r.html).join('')}</tbody>
       </table>`
 
     const total = course.parse.deliverables.weight_total
     // a shared course code alone cannot tell two editions apart
     const tag = codeCounts.get(course.code) > 1 ? ` ${courseTag(course)}` : ''
+    const off = total && Math.abs(total - 100) > 1
 
     return `<section class="course-deadlines">
       <h3>${esc(course.code)}${esc(tag)}
-        ${total ? `<span class="secondary">weights total ${total}%</span>` : ''}</h3>
-      ${graded.length ? table(graded) : '<p class="secondary">No weighted work found.</p>'}
+        ${total
+          ? `<span class="${off ? 'flagged' : 'secondary'}">adds up to ${total}%</span>`
+          : ''}</h3>
+      ${graded.length ? table(graded) : '<p class="secondary">Nothing weighted found.</p>'}
       ${events.length
         ? `<p class="secondary">On the schedule, not separately weighted</p>${table(events)}`
+        : ''}
+      ${editing
+        ? `<button type="button" class="addrow" data-add-due="${course.id}">
+             Add something due</button>`
         : ''}
     </section>`
   })

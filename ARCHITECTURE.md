@@ -100,6 +100,24 @@ Counts are the main test currency. Fixture tests assert exact per-week reading
 counts. A parser that drops one reading in five passes every other kind of
 check.
 
+## Editing after the parse
+
+The browser app keeps an edit mode on the week and deadlines views. A reading
+can be corrected, added or removed; a due date, title and weight likewise, with
+the weight total recomputed on the spot. Every change writes straight to
+IndexedDB, no save button.
+
+This exists because the parse is a starting point rather than an answer. Two
+things guarantee it: the parser reaches roughly 80% on reading lists, and an
+instructor moving a deadline in week six is invisible to any parser at all. A
+tracker that cannot be corrected is abandoned once it is wrong, which costs
+more than the parsing gains.
+
+A hand-typed reading carries `matched_pattern: "typed_by_hand"` and its text in
+`work.rendered_override`. Both citation renderers honour that override, so a
+correction made in one view shows in all of them, and a later reader can still
+tell parser output from something a person typed.
+
 ## Publishing boundary
 
 Three separate guards:

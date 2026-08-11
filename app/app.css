@@ -148,7 +148,14 @@ nav.tabs {
   margin: 0 0 0.9rem;
 }
 
-nav.tabs button {
+.tabstrip {
+  display: flex;
+  align-items: baseline;
+  gap: 0 1.25rem;
+  min-width: 0;
+}
+
+nav.tabs button[data-view] {
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
@@ -162,16 +169,74 @@ nav.tabs button {
   letter-spacing: 0.06em;
 }
 
-nav.tabs button:hover { color: var(--ink); }
+nav.tabs button[data-view]:hover { color: var(--ink); }
 
-nav.tabs button[aria-current="true"] {
+nav.tabs button[data-view][aria-current="true"] {
   color: var(--ink);
   font-weight: 700;
   border-bottom-color: var(--accent);
 }
 
-nav.tabs .right { margin-left: auto; text-transform: none; }
-nav.tabs .right label { color: var(--muted); font-size: var(--small); margin-right: 0.3rem; }
+nav.tabs .right {
+  margin-left: auto;
+  text-transform: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+nav.tabs .right label { color: var(--muted); font-size: var(--small); }
+
+/* edit mode is a state you are in, so the control that turns it on shows
+   that it is on rather than only changing its label */
+#edit-toggle[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+/* a band down the side of the content while editing, so it is obvious the
+   page is in a different mode and typing will change what is saved */
+body.is-editing #view {
+  border-left: 2px solid var(--accent);
+  padding-left: 0.8rem;
+  margin-left: -0.2rem;
+}
+
+/* rows being edited: the field is the row, and remove sits at the end of it */
+.is-editing td { vertical-align: middle; }
+
+.rowdel {
+  border: 0;
+  background: none;
+  padding: 0 0 0 0.5rem;
+  border-radius: 0;
+  color: var(--danger);
+  font-size: var(--small);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.rowdel:hover { border: 0; filter: brightness(0.85); }
+
+.addrow {
+  margin-top: 0.4rem;
+  border: 1px dashed var(--rule-strong);
+  background: none;
+  color: var(--muted);
+  width: 100%;
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+}
+
+.addrow:hover { border-style: solid; border-color: var(--accent); color: var(--ink); }
+
+.is-editing input[type="text"],
+.is-editing input[type="date"],
+.is-editing input[type="number"] { width: 100%; }
+
+input.pct { width: 4.5rem; text-align: right; }
 
 section { margin-top: 1.5rem; }
 
@@ -554,3 +619,80 @@ input.cite:focus {
 #review-name { font-weight: 400; font-size: var(--small); }
 
 footer { margin-top: 2rem; color: var(--muted); font-size: var(--small); }
+
+/* phones.
+   this gets used standing in a corridor deciding what to read next, so the
+   narrow layout is the one that has to work, not the one that merely fits. */
+@media (max-width: 640px) {
+  body { padding: 1rem 0.85rem 5rem; }
+
+  /* only the views scroll sideways, rather than wrapping onto three rows and
+     pushing the content off the first screen. the controls beside them stay
+     put on their own line, where they can still be found. */
+  .tabstrip {
+    flex: 1 1 100%;
+    overflow-x: auto;
+    gap: 0 1rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabstrip::-webkit-scrollbar { display: none; }
+  nav.tabs button[data-view] { white-space: nowrap; padding: 0.45rem 0 0.5rem; }
+
+  nav.tabs .right {
+    margin-left: 0;
+    flex: 1 1 100%;
+    padding: 0.4rem 0 0.15rem;
+  }
+
+  /* a checklist is week, date, reading. on a phone the date column costs more
+     than it gives, so it sits above the reading instead of beside it. */
+  table.checklist, table.checklist tbody, table.checklist tr, table.checklist td {
+    display: block;
+    width: auto;
+  }
+
+  table.checklist tr {
+    position: relative;
+    padding: 0.55rem 0 0.55rem 1.9rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  table.checklist td { border: 0; padding: 0; }
+
+  table.checklist td.tick {
+    position: absolute;
+    left: 0;
+    top: 0.6rem;
+    width: auto;
+  }
+
+  table.checklist td.when {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.1rem;
+  }
+
+  /* touch targets. a 15px checkbox is a miss as often as a hit. */
+  input[type="checkbox"] { width: 20px; height: 20px; }
+  button { padding: 0.45rem 0.9rem; }
+  .rowdel { padding: 0.35rem 0 0.35rem 0.5rem; }
+
+  /* remaining wide tables scroll inside themselves rather than stretching
+     the page and taking the whole layout sideways with them */
+  #view > table,
+  .course-deadlines table,
+  section.week > table:not(.checklist) {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .rrow { grid-template-columns: 1.4rem minmax(0, 1fr); padding-left: 0.5rem; }
+  .rstats { gap: 0.5rem 1.4rem; }
+  .rstats dd { font-size: 16px; }
+  .whead { flex-wrap: wrap; gap: 0 0.4rem; }
+  .whead .wtopic { white-space: normal; }
+}

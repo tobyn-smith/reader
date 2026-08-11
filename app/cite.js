@@ -117,6 +117,13 @@ export function format(work, style = 'chicago') {
 // a work the parser could not read has no author or title to show, so its raw
 // line stands in, clipped so one bad row does not make the whole list ragged.
 export function short(work, limit = 96) {
+  // a line someone typed or corrected by hand wins everywhere it is shown,
+  // not only in the full citation. otherwise a fix made in the week view
+  // appears to have been thrown away.
+  if (work.rendered_override) {
+    const fixed = work.rendered_override
+    return fixed.length > limit ? `${fixed.slice(0, limit - 1).trimEnd()}...` : fixed
+  }
   const authors = work.authors || []
   const first = authors.length ? authors[0].surname || authors[0].literal : ''
   const year = work.year ? ` ${work.year}` : ''

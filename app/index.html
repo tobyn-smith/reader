@@ -30,12 +30,17 @@
 
 <section id="views" hidden>
   <nav class="tabs">
-    <button type="button" data-view="week">Week</button>
-    <button type="button" data-view="schedule">Schedule</button>
-    <button type="button" data-view="deadlines">Deadlines</button>
-    <button type="button" data-view="bibliography">Bibliography</button>
-    <button type="button" data-view="search">Search</button>
+    <!-- the views scroll sideways on a narrow screen; the controls beside them
+         must not be dragged off with them, so they sit outside the strip -->
+    <div class="tabstrip">
+      <button type="button" data-view="week">Week</button>
+      <button type="button" data-view="schedule">Schedule</button>
+      <button type="button" data-view="deadlines">Deadlines</button>
+      <button type="button" data-view="bibliography">Bibliography</button>
+      <button type="button" data-view="search">Search</button>
+    </div>
     <span class="right">
+      <button type="button" id="edit-toggle" aria-pressed="false" hidden>Edit</button>
       <label for="style-select">References</label>
       <select id="style-select"></select>
     </span>

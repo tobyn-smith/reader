@@ -19,6 +19,9 @@ const state = {
   // review opens on the rows that need a decision, not on everything
   reviewShowAll: false,
   currentView: 'week',
+  // no parser reads every syllabus, and dates move mid term, so anything on
+  // screen can be corrected by hand. off by default to keep the read view clean.
+  editing: false,
 }
 
 let extractWorker = null
@@ -333,6 +336,79 @@ function drawStyleSelect() {
   styles.value = view.style
 }
 
+function activeCourse() {
+  return state.courses.find((c) => c.id === state.active) || state.courses[0]
+}
+
+function dueTarget(token) {
+  const [id, index] = token.split('|')
+  return { course: state.courses.find((c) => c.id === id), index: Number(index) }
+}
+
+// a reading typed by hand has no citation to parse, so the typed line is the
+// citation. it is marked as hand-entered so it is never treated as parser
+// output later.
+function blankReading(session) {
+  return {
+    ordinal: session.readings.length,
+    requirement_level: 'required',
+    page_range: null, access_note: null, content_warning: null,
+    raw_source_text: '', confidence: 1,
+    work: { authors: [], title: null, work_type: 'unknown',
+            rendered_override: '', matched_pattern: 'typed_by_hand',
+            signature: '', confidence: 1 },
+  }
+}
+
+function retotal(course) {
+  const items = course.parse.deliverables.items
+  const weights = items.map((i) => i.weight_percent).filter((w) => w || w === 0)
+  course.parse.deliverables.weight_total =
+    weights.length ? Math.round(weights.reduce((a, b) => a + b, 0) * 100) / 100 : 0
+}
+
+async function saveCourse(course) {
+  await store.putCourse(course)
+  draw()
+}
+
+// every editable field routes through here, so adding one is a matter of
+// naming it rather than wiring another listener
+async function handleEdit(el) {
+  if (el.dataset.editReading !== undefined) {
+    const [si, ri] = el.dataset.editReading.split('.').map(Number)
+    const course = activeCourse()
+    const work = course.parse.sessions[si].readings[ri].work
+    work.rendered_override = el.value.trim()
+    await saveCourse(course)
+    return
+  }
+  if (el.dataset.dueTitle !== undefined) {
+    const { course, index } = dueTarget(el.dataset.dueTitle)
+    course.parse.deliverables.items[index].title = el.value.trim()
+    await saveCourse(course)
+    return
+  }
+  if (el.dataset.dueDate !== undefined) {
+    const { course, index } = dueTarget(el.dataset.dueDate)
+    course.parse.deliverables.items[index].due_date = el.value || null
+    await saveCourse(course)
+    return
+  }
+  if (el.dataset.dueWeight !== undefined) {
+    const { course, index } = dueTarget(el.dataset.dueWeight)
+    const raw = el.value.trim()
+    course.parse.deliverables.items[index].weight_percent = raw === '' ? null : Number(raw)
+    retotal(course)
+    await saveCourse(course)
+  }
+}
+
+function focusLast(selector) {
+  const all = document.querySelectorAll(selector)
+  if (all.length) all[all.length - 1].focus()
+}
+
 function draw() {
   drawNav()
   const course = state.courses.find((c) => c.id === state.active) || state.courses[0]
@@ -343,14 +419,22 @@ function draw() {
   $('views').hidden = false
   drawStyleSelect()
 
+  // editing only means something where there are rows to correct
+  const editable = state.currentView === 'week' || state.currentView === 'deadlines'
+  const editing = state.editing && editable
+  $('edit-toggle').hidden = !editable
+  $('edit-toggle').textContent = editing ? 'Done editing' : 'Edit'
+  $('edit-toggle').setAttribute('aria-pressed', String(editing))
+  document.body.classList.toggle('is-editing', editing)
+
   const target = $('view')
   if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
-  else if (state.currentView === 'week') target.innerHTML = view.weekView(course, state.progress)
-  else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active)
+  else if (state.currentView === 'week') target.innerHTML = view.weekView(course, state.progress, editing)
+  else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active, editing)
   else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
   else if (state.currentView === 'search') drawSearch(target)
 
-  for (const button of document.querySelectorAll('.tabs button')) {
+  for (const button of document.querySelectorAll('.tabs button[data-view]')) {
     button.setAttribute('aria-current', String(button.dataset.view === state.currentView))
   }
 
@@ -478,8 +562,59 @@ async function boot() {
       return
     }
     const note = e.target.closest('input[data-note]')
-    if (note) await setProgress(note.dataset.note, { note: note.value })
+    if (note) {
+      await setProgress(note.dataset.note, { note: note.value })
+      return
+    }
+    await handleEdit(e.target)
   })
+
+  // corrections are saved as they are made, same as a tick. nothing here is
+  // destructive enough to want a confirm step except removing a row, and that
+  // is undone by typing it back.
+  $('view').addEventListener('click', async (e) => {
+    const del = e.target.closest('[data-remove-reading]')
+    if (del) {
+      const [si, ri] = del.dataset.removeReading.split('.').map(Number)
+      const course = activeCourse()
+      course.parse.sessions[si].readings.splice(ri, 1)
+      await saveCourse(course)
+      return
+    }
+    const add = e.target.closest('[data-add-reading]')
+    if (add) {
+      const course = activeCourse()
+      const session = course.parse.sessions[Number(add.dataset.addReading)]
+      session.readings.push(blankReading(session))
+      await saveCourse(course)
+      focusLast('input[data-edit-reading]')
+      return
+    }
+    const dueDel = e.target.closest('[data-remove-due]')
+    if (dueDel) {
+      const { course, index } = dueTarget(dueDel.dataset.removeDue)
+      course.parse.deliverables.items.splice(index, 1)
+      retotal(course)
+      await saveCourse(course)
+      return
+    }
+    const dueAdd = e.target.closest('[data-add-due]')
+    if (dueAdd) {
+      const course = state.courses.find((c) => c.id === dueAdd.dataset.addDue)
+      course.parse.deliverables.items.push({
+        title: '', due_date: null, weight_percent: null,
+        recurrence: null, requirements_text: '', confidence: 1,
+      })
+      await saveCourse(course)
+      focusLast('input[data-due-title]')
+      return
+    }
+  })
+
+  $('edit-toggle').onclick = () => {
+    state.editing = !state.editing
+    draw()
+  }
 
   document.querySelector('.tabs').onclick = (e) => {
     const button = e.target.closest('button[data-view]')
