@@ -90,8 +90,10 @@ DATE_HEADING_RE = re.compile(
 
 
 # a numbered meeting, as in "1. August 14: Introduction". the number belongs to
-# the list, not to the date, so it is removed before matching.
-_MEETING_NUMBER_RE = re.compile(r"^\s*\(?\d{1,2}[.)]\s+")
+# the list, not to the date, so it is removed before matching. the space after
+# the number is optional: tight kerning loses it, giving "1.August 14". a
+# following capital is required, which keeps section numbers like "2.1" intact.
+_MEETING_NUMBER_RE = re.compile(r"^\s*\(?\d{1,2}[.)]\s*(?=[A-Za-z])")
 
 
 def strip_meeting_number(text: str) -> str:
@@ -101,7 +103,7 @@ def strip_meeting_number(text: str) -> str:
 # a numbered meeting that puts its date at the end instead of the front:
 # "1. Introduction (01/13)". the number and the trailing date bracket the topic.
 NUMBERED_DATED_RE = re.compile(
-    r"^\s*\(?(?P<number>\d{1,2})[.)]\s+(?P<topic>[^()]{2,90}?)\s*"
+    r"^\s*\(?(?P<number>\d{1,2})[.)]\s*(?=[A-Za-z])(?P<topic>[^()]{2,90}?)\s*"
     r"\((?P<date>(?:\d{1,2}\s*/\s*\d{1,2}(?:\s*/\s*\d{2,4})?"
     r"|(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?,?\s*\d{1,2}[^)]{0,12}))\)"
     r"\s*[:.]?\s*$",
@@ -301,13 +303,25 @@ def parse(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> SchedulePa
 
 
 def _score(parsed: ScheduleParse) -> tuple[int, int]:
-    """sessions first, then readings. a schedule is its meetings."""
-    return len(parsed.sessions), sum(len(s.readings) for s in parsed.sessions)
+    """readings first, then sessions.
+
+    a syllabus that carries both a summary grid and the real listing gives the
+    grid more rows and the listing all the readings. the reading list is the
+    thing the tool exists to produce, so it decides.
+    """
+    return sum(len(s.readings) for s in parsed.sessions), len(parsed.sessions)
 
 
 def _thin(parsed: ScheduleParse) -> bool:
-    sessions, readings = _score(parsed)
-    return sessions == 0 or (sessions < 4 and readings == 0)
+    """worth asking the other parsers about.
+
+    no sessions at all, or sessions that carry almost nothing, which is what a
+    summary grid looks like next to the real schedule.
+    """
+    readings, sessions = _score(parsed)
+    if sessions == 0:
+        return True
+    return readings < sessions * 0.34
 
 
 def _find_important_dates(doc: ExtractedDoc, term: Term | None) -> list[DatedEntry]:
