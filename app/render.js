@@ -23,6 +23,16 @@ export function shortDate(iso) {
   return `${Number(month)}/${Number(day)}`
 }
 
+// a reading's identity for stored progress and for matching. the citation
+// signature is the stable choice across re-parses, but a reading no pattern
+// claimed has an empty one, and every such reading in a course would then
+// share a key: ticking one ticked them all. those fall back to their position.
+export function readingKey(course, session, reading) {
+  const signature = (reading.work.signature || '').replace(/\|/g, '').trim()
+  if (signature) return `${course.id}::${reading.work.signature}`
+  return `${course.id}::s${session.ordinal}r${reading.ordinal}`
+}
+
 export function sortKey(work) {
   const first = (work.authors || [])[0]
   return ((first && (first.surname || first.literal)) || work.title || '').toLowerCase()
@@ -83,7 +93,7 @@ export function weekView(course, progress) {
     const rows = []
     for (const session of sessions) {
       for (const reading of session.readings) {
-        const id = `${course.id}::${reading.work.signature}`
+        const id = readingKey(course, session, reading)
         const saved = progress.get(id) || {}
         const label = session.sub_session_label ? ` ${session.sub_session_label}` : ''
         rows.push(`<tr class="entry">

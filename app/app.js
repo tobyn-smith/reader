@@ -208,7 +208,7 @@ function candidateWorks() {
     for (const session of course.parse.sessions) {
       for (const reading of session.readings) {
         works.push({
-          id: `${course.id}::${reading.work.signature}`,
+          id: view.readingKey(course, session, reading),
           title: reading.work.title,
           year: reading.work.year,
           authors: reading.work.authors,

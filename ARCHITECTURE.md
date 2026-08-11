@@ -204,6 +204,15 @@ running the browser code path in python. The app itself was exercised by hand:
 parse, review, confirm, views, matching, reload persistence, and a check that
 no request leaves the origin while a file is processed.
 
+Know what the parity tests cannot see. They feed runs.py a payload built from
+pymupdf spans, which is the right shape but not the same data pdf.js produces.
+A whole class of bug lives in that difference: pdf.js reports a column gap as
+a whitespace run many times wider than a space, where pymupdf has already
+expanded it, so a grading table that read correctly in every test came out
+with one weight instead of four in a real browser. Anything touching runs.py
+needs checking in a browser, not only under pytest, and the cases found that
+way get pinned directly in test_runs_parity.py rather than through a fixture.
+
 ## Running locally
 
     python -m venv .venv && .venv/Scripts/activate     # or bin/activate
