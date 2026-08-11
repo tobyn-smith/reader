@@ -5,6 +5,29 @@ and your reading PDFs each week. It keeps the schedule, the citations, the
 deadlines and the full text in one searchable place, and tells you each week
 what you have, what is missing, and what is due.
 
+There are two ways to use it.
+
+## In a browser
+
+<https://tobyn-smith.github.io/reader/>
+
+Drag in a syllabus PDF and you get back the schedule, the readings as proper
+citations, the deadlines and a bibliography, ready to print or save as a PDF.
+Nothing to install, no account, no Python.
+
+Your files are read in the browser and are never uploaded. There is no server
+and no upload endpoint, so there is nothing to store or leak. Everything you
+parse is kept in that browser only, and a "Clear all data" button removes it.
+Export to JSON to move it to another machine.
+
+The parser is the same Python the command line uses, compiled to WebAssembly
+and run in a worker, so both paths give the same answers. The fixture suite
+checks exactly that.
+
+## On the command line
+
+For batch work: a folder of readings, full text search, and publishing a site.
+
 It has two halves that share one database:
 
 **Syllabus intake.** Give it a syllabus PDF. It pulls out the course info, the
@@ -85,8 +108,9 @@ details, plus a guide for reaching your private build from a phone.
 
 ## Make it yours
 
-The demo at `tobyn-smith.github.io/reader` is built from the invented courses
-in `tests/fixtures/`. The repo holds no real coursework. To run your own:
+The demo at `tobyn-smith.github.io/reader/demo/` is built from the invented
+courses in `tests/fixtures/`. The repo holds no real coursework. To run your
+own:
 
 1. Fork the repo. In Settings, Pages, set the source to GitHub Actions.
 2. Run `vault syllabus your-syllabus.pdf` for each course and review the parse.
