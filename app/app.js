@@ -4,6 +4,7 @@
 import * as store from './store.js'
 import * as view from './render.js'
 import * as cite from './cite.js'
+import { PARSER_VERSION } from './version.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -100,7 +101,7 @@ function onParseMessage(event) {
     if (result.kind === 'syllabus') {
       job.kind = 'syllabus'
       note(job, 'syllabus, ready to review')
-      state.queue.push({ name: job.name, parse: result })
+      state.queue.push({ name: job.name, parse: result, bytes: job.bytes })
       if (!state.pending) nextReview()
     } else {
       job.kind = 'reading'
@@ -236,6 +237,7 @@ function submit(files) {
     state.files.push(job)
     waiting.set(id, job)
     file.arrayBuffer().then((buffer) => {
+      job.bytes = buffer.slice(0)
       ew.postMessage({ type: 'extract', id, name: file.name, buffer }, [buffer])
     })
   }
@@ -265,11 +267,18 @@ async function confirmParse() {
   }
 
   const code = parse.course.code || state.pending.name.replace(/\.pdf$/i, '')
+  const id = parse.file_hash || code
+  // a re-read of the same file lands on the same id and replaces in place;
+  // if this parse somehow lacks bytes, the copy already stored is kept
+  const prior = state.courses.find((c) => c.id === id)
   const course = {
-    id: parse.file_hash || code,
+    id,
     code,
     title: parse.course.title || '',
+    name: state.pending.name,
     parse,
+    pdf: state.pending.bytes || (prior && prior.pdf) || null,
+    parserVersion: PARSER_VERSION,
   }
   await store.putCourse(course)
   state.courses = await store.listCourses()
@@ -423,6 +432,9 @@ function draw() {
   $('welcome').hidden = !welcome
   $('tools').hidden = welcome
   $('tools').open = !course
+  // the small print stands open on the homepage. a visitor deciding whether
+  // to trust the tool should not have to know to click for the numbers.
+  if (welcome) $('accuracy').open = true
   if (!course) {
     $('views').hidden = true
     return
@@ -441,6 +453,23 @@ function draw() {
   // the record header and the rail belong to the ledger, and are cleared on
   // every other view so the sheet does not carry an index of nothing
   $('record').innerHTML = view.recordHeader(course)
+
+  // a course parsed by an older bundle can be better now. the stored pdf
+  // makes the re-read one click; a course saved before pdfs were kept has to
+  // be dropped again. either way it goes through review, so nothing changes
+  // without being looked at, and ticks survive on unchanged readings.
+  if (course.parserVersion !== PARSER_VERSION) {
+    $('record').insertAdjacentHTML('beforeend',
+      `<p class="stale-note">This course was read by an older version of the
+        parser.${course.pdf
+          ? ' <button type="button" id="reparse" class="quiet">Read it again</button>'
+          : ' Drop its syllabus PDF again to refresh it.'}</p>`)
+    const again = $('reparse')
+    if (again) again.onclick = () => {
+      submit([new File([course.pdf], course.name || 'syllabus.pdf',
+        { type: 'application/pdf' })])
+    }
+  }
 
   const target = $('view')
   if (state.currentView === 'week') {

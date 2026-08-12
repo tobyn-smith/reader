@@ -29,7 +29,8 @@ get tested against the same fixtures.
 
 ## How accurate it is
 
-Worth knowing before you lean on it. 24 real syllabi, checked by hand:
+Worth knowing before you lean on it. Tested on over 35 real syllabi;
+scores as of 12 August 2026:
 
 | | |
 | --- | --- |

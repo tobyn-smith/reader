@@ -136,11 +136,16 @@ export async function clearAll() {
 }
 
 export async function exportAll() {
+  // the stored pdf bytes stay out of the backup: an arraybuffer turns into
+  // an empty object under json anyway, and a backup should stay small enough
+  // to email. a restored course simply asks for the file again if a re-read
+  // is ever wanted.
+  const courses = (await listCourses()).map(({ pdf, ...rest }) => rest)
   return {
     format: 'seminar-vault',
     version: 1,
     exported: new Date().toISOString(),
-    courses: await listCourses(),
+    courses,
     documents: await listDocuments(),
     progress: await listProgress(),
   }

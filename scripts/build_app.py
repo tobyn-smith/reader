@@ -71,6 +71,20 @@ def build_bundle() -> Path:
 
     size = target.stat().st_size / 1024
     print(f"vault.zip  {size:.0f} kB")
+
+    # the parser's fingerprint, readable without booting pyodide. the app
+    # stamps each saved parse with it, and a stored course whose stamp differs
+    # from the running bundle is offered a re-read. content hash, not a hand
+    # bumped number, so it can never be forgotten.
+    import hashlib
+
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()[:12]
+    (APP / "version.js").write_text(
+        "// written by scripts/build_app.py, the hash of the parser bundle\n"
+        f"export const PARSER_VERSION = '{digest}'\n",
+        encoding="utf-8",
+    )
+    print(f"parser version {digest}")
     return target
 
 
