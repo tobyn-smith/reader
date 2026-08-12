@@ -817,9 +817,10 @@ ol.bibliography li {
   flex-wrap: wrap;
   border-top: 2px solid var(--rule);
   padding-top: 8px;
-  margin: 18px 0 6px;
+  margin: 18px 0 10px;
   font-size: 21px;
   letter-spacing: 0.04em;
+  max-width: 74rem;
 }
 
 .course-grades > h3 .flagged, .course-grades > h3 .secondary,
@@ -831,15 +832,62 @@ ol.bibliography li {
   text-transform: none;
 }
 
+/* the work on the left, the figures on the right. stacked, the three numbers
+   a student actually wants sat under a full-width table as three sentences of
+   prose, and the right half of a wide screen held nothing at all. */
+.gradebody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 268px;
+  gap: 0 40px;
+  align-items: start;
+  max-width: 74rem;
+}
+
+.gradework { min-width: 0; }
+
+.gradesum { border-left: 1px solid var(--hair); padding-left: 22px; }
+
+/* the summary column carries its own measure. a paragraph in a 268px column
+   does not need the 76ch cap the page sets for body text. */
+.gradesum p { max-width: none; }
+
+/* the figures as a fact list, in the same idiom as the record header */
+.sumfacts { margin: 0 0 12px; }
+
+.sumfacts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.sumfacts dt {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--faint);
+}
+
+.sumfacts dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ink);
+}
+
 /* the number the page exists to show. it is set at the size of a heading
    because a student opening this view is looking for one figure. */
 .standing {
   display: flex;
   align-items: baseline;
   gap: 9px;
-  margin: 8px 0 3px;
-  padding-top: 7px;
-  border-top: 2px solid var(--rule);
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--rule);
 }
 
 .standing-figure { font-family: var(--mono); font-size: 34px; line-height: 1; }
@@ -856,20 +904,26 @@ ol.bibliography li {
 /* the numbers belong beside the thing they describe. left to itself the
    weight sat against the right edge of a wide monitor, a hand's width from
    the assignment it weighs. */
-table.marks { table-layout: fixed; max-width: 62rem; }
-table.marks th.when, table.marks td.when { width: 92px; }
-table.marks th.num, table.marks td.num { width: 96px; }
+table.marks { table-layout: fixed; }
+table.marks th.when, table.marks td.when { width: 88px; }
+table.marks th.num, table.marks td.num { width: 92px; }
+table.marks th.src, table.marks td.src { width: 108px; }
 table.marks .pct { width: 100%; text-align: right; }
 
 .targetrow {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px 8px;
   margin: 9px 0 0;
   padding-top: 7px;
   border-top: 1px solid var(--hair);
+  max-width: none;
 }
+
+/* in the narrow summary column the label sits over its control rather than
+   beside it, or the sentence after it is squeezed to two words a line */
+.gradesum .targetrow { border-top: 0; padding-top: 0; margin-top: 4px; }
 
 .targetrow label {
   font-family: var(--display);
@@ -1074,6 +1128,12 @@ input[type="file"]::file-selector-button {
   .c-pp   { width: 48px; }
   .c-stat { width: 56px; }
   table.ledger td { padding-right: 8px; }
+}
+
+@media (max-width: 1100px) {
+  /* under this the fact column is narrower than its own labels */
+  .gradebody { grid-template-columns: minmax(0, 1fr); gap: 14px 0; }
+  .gradesum { border-left: 0; padding-left: 0; }
 }
 
 @media (max-width: 900px) {

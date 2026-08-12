@@ -544,14 +544,20 @@ export function gradesView(courses, activeId) {
     const target = Number(course.grade_target ?? cutoffs[0][1])
     const targetLetter = grades.letterFor(target, cutoffs)
 
-    const rows = items
+    const graded = items
       .map((item, di) => ({ item, di }))
       .filter(({ item }) => item.weight_percent)
       .sort((a, b) =>
         (a.item.due_date || '9999-99-99').localeCompare(b.item.due_date || '9999-99-99')
       )
+
+    // a course that dates none of its graded work does not need a due column
+    // standing empty down the whole table
+    const dated = graded.some(({ item }) => item.due_date)
+
+    const rows = graded
       .map(({ item, di }) => `<tr>
-        <td class="when">${esc(shortDate(item.due_date))}</td>
+        ${dated ? `<td class="when">${esc(shortDate(item.due_date))}</td>` : ''}
         <td>${esc(item.title)}</td>
         <td class="num">${item.weight_percent}%</td>
         <td class="num"><input type="number" class="pct" min="0" step="0.1"
@@ -574,16 +580,36 @@ export function gradesView(courses, activeId) {
     // hundred, and against a total of 150 it reads as nonsense: "full marks on
     // the rest finishes you on 145%". those lines wait for a believable total.
     const off = st.totalWeight && Math.abs(st.totalWeight - 100) > 1
-    const headline = st.average === null
+
+    // the figures go in a fact column beside the table rather than under it as
+    // sentences. three numbers a student wants at a glance were costing three
+    // lines of prose apiece and left the right half of the page empty.
+    const summary = st.average === null
       ? `<p class="secondary">Type a mark beside anything that has come back and
           the total works itself out.</p>`
       : `<p class="standing"><span class="standing-figure">${st.average}%</span>
-          <span class="standing-letter">${esc(letter)}</span></p>
-        <p class="secondary">Your average on marked work, which covers
-          ${st.gradedWeight}% of the ${off ? 'weight listed' : 'course grade'}.</p>
-        ${off ? '' : `<p class="secondary">Scoring zero on everything left would
-          finish you on ${st.banked}%. Full marks on everything left would finish
-          you on ${st.ceiling}%.</p>`}`
+           <span class="standing-letter">${esc(letter)}</span></p>
+         <dl class="sumfacts">
+           <div><dt>Marked so far</dt><dd>${st.gradedWeight}%</dd></div>
+           ${off ? '' : `<div><dt>Worst case</dt><dd>${st.banked}%</dd></div>
+           <div><dt>Best case</dt><dd>${st.ceiling}%</dd></div>`}
+         </dl>`
+
+    const aiming = off
+      ? `<p class="secondary">Fix the weights under Deadlines and this will work
+          out what you need for a target grade.</p>`
+      : `<p class="targetrow">
+          <label for="target-${esc(course.id)}">Aiming for</label>
+          <select id="target-${esc(course.id)}" data-target="${course.id}">
+            ${cutoffs.filter(([, floor]) => floor > 0)
+              .map(([name, floor]) =>
+                `<option value="${floor}" ${floor === target ? 'selected' : ''}>${name}</option>`)
+              .join('')}
+          </select>
+          <span class="targetsay">${st.average === null
+            ? 'Type a mark or two and this fills in.'
+            : targetLine(st, target, targetLetter)}</span>
+        </p>`
 
     return `<section class="course-grades">
       <h3>${esc(course.code)}
@@ -591,51 +617,40 @@ export function gradesView(courses, activeId) {
           ? `<span class="flagged">weights add up to ${st.totalWeight}%, so these
               figures are only as good as that</span>`
           : ''}</h3>
-      ${headline}
-      <table class="marks">
-        <thead><tr><th class="when">Due</th><th>Item</th>
-          <th class="num">Weight</th><th class="num">Your mark</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p class="targetrow">
-        <label for="scale-${esc(course.id)}">Scale</label>
-        <select id="scale-${esc(course.id)}" data-scale="${course.id}">
-          ${Object.entries(grades.SCALES).map(([key, s]) =>
-            `<option value="${key}" ${key === scaleKind ? 'selected' : ''}>${s.name}</option>`)
-            .join('')}
-          <option value="custom" ${scaleKind === 'custom' ? 'selected' : ''}>Custom cutoffs</option>
-        </select>
-        ${scaleKind === 'custom'
-          ? `<span class="cuts">${Object.keys(grades.POINTS)
-              .filter((name) => name !== 'F')
-              .map((name) => {
-                const row = (course.grade_scale.cutoffs || []).find(([l]) => l === name)
-                return `<label class="cut">${name}<input type="number" min="0" max="120"
-                  step="0.1" data-cut="${course.id}|${name}" value="${row ? row[1] : ''}"
-                  aria-label="Lowest percent for ${name}"></label>`
-              }).join('')}
-            <span class="cutnote">Lowest percent for each letter. Leave it blank
-              if your course doesn't give that letter.</span></span>`
-          : `<span class="targetsay secondary">${cutoffs
-              .filter(([, floor]) => floor > 0)
-              .map(([name, floor]) => `${name} ${floor}`)
-              .join(' &middot; ')}</span>`}
-      </p>
-      ${off
-        ? `<p class="secondary">Fix the weights under Deadlines and this will
-            work out what you need for a target grade.</p>`
-        : `<p class="targetrow">
-            <label for="target-${esc(course.id)}">Aiming for</label>
-            <select id="target-${esc(course.id)}" data-target="${course.id}">
-              ${cutoffs.filter(([, floor]) => floor > 0)
-                .map(([name, floor]) =>
-                  `<option value="${floor}" ${floor === target ? 'selected' : ''}>${name}</option>`)
+      <div class="gradebody">
+        <div class="gradework">
+          <table class="marks">
+            <thead><tr>${dated ? '<th class="when">Due</th>' : ''}<th>Item</th>
+              <th class="num">Weight</th><th class="num">Your mark</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <p class="targetrow">
+            <label for="scale-${esc(course.id)}">Scale</label>
+            <select id="scale-${esc(course.id)}" data-scale="${course.id}">
+              ${Object.entries(grades.SCALES).map(([key, s]) =>
+                `<option value="${key}" ${key === scaleKind ? 'selected' : ''}>${s.name}</option>`)
                 .join('')}
+              <option value="custom" ${scaleKind === 'custom' ? 'selected' : ''}>Custom cutoffs</option>
             </select>
-            <span class="targetsay">${st.average === null
-              ? 'Type a mark or two and this fills in.'
-              : targetLine(st, target, targetLetter)}</span>
-          </p>`}
+            ${scaleKind === 'custom'
+              ? `<span class="cuts">${Object.keys(grades.POINTS)
+                  .filter((name) => name !== 'F')
+                  .map((name) => {
+                    const row = (course.grade_scale.cutoffs || []).find(([l]) => l === name)
+                    return `<label class="cut">${name}<input type="number" min="0" max="120"
+                      step="0.1" data-cut="${course.id}|${name}" value="${row ? row[1] : ''}"
+                      aria-label="Lowest percent for ${name}"></label>`
+                  }).join('')}
+                <span class="cutnote">Lowest percent for each letter. Leave it blank
+                  if your course doesn't give that letter.</span></span>`
+              : `<span class="targetsay secondary">${cutoffs
+                  .filter(([, floor]) => floor > 0)
+                  .map(([name, floor]) => `${name} ${floor}`)
+                  .join(' &middot; ')}</span>`}
+          </p>
+        </div>
+        <aside class="gradesum">${summary}${aiming}</aside>
+      </div>
     </section>`
   })
 
@@ -656,7 +671,7 @@ export function gradesView(courses, activeId) {
           `<option value="${name}" ${name === chosen ? 'selected' : ''}>${name}</option>`)
           .join('')}
       </select></td>
-      <td class="secondary">${computed && !course.grade_letter
+      <td class="secondary src">${computed && !course.grade_letter
         ? `from your marks` : course.grade_letter ? 'set by you' : ''}</td>
     </tr>`
   }).join('')
@@ -674,21 +689,30 @@ export function gradesView(courses, activeId) {
     ${sections.join('')}
     <section class="course-grades">
       <h3>Term GPA</h3>
-      <table class="marks">
-        <thead><tr><th>Course</th><th class="num">Credits</th>
-          <th class="num">Grade</th><th></th></tr></thead>
-        <tbody>${gpaRows}</tbody>
-      </table>
-      <p class="standing">
-        ${gpa.gpa === null
-          ? '<span class="secondary">Set a grade on at least one course.</span>'
-          : `<span class="standing-figure">${gpa.gpa}</span>
-             <span class="standing-letter">GPA</span>`}
-      </p>
-      ${gpa.gpa === null ? '' : `<p class="secondary">Across ${gpa.counted}
-        ${gpa.counted === 1 ? 'course' : 'courses'} and ${gpa.credits} credit
-        hours. Four point scale, no D plus or D minus, which is how UGA counts
-        it. Set each course's scale above to match its syllabus.</p>`}
+      <div class="gradebody">
+        <div class="gradework">
+          <table class="marks">
+            <thead><tr><th>Course</th><th class="num">Credits</th>
+              <th class="num">Grade</th><th class="src"></th></tr></thead>
+            <tbody>${gpaRows}</tbody>
+          </table>
+        </div>
+        <aside class="gradesum">
+          <p class="standing">
+            ${gpa.gpa === null
+              ? '<span class="secondary">Set a grade on at least one course.</span>'
+              : `<span class="standing-figure">${gpa.gpa}</span>
+                 <span class="standing-letter">GPA</span>`}
+          </p>
+          ${gpa.gpa === null ? '' : `<dl class="sumfacts">
+            <div><dt>Courses</dt><dd>${gpa.counted}</dd></div>
+            <div><dt>Credit hours</dt><dd>${gpa.credits}</dd></div>
+          </dl>
+          <p class="secondary">Four point scale, no D plus or D minus, which is
+            how UGA counts it. Set each course's scale above to match its
+            syllabus.</p>`}
+        </aside>
+      </div>
     </section>`
 }
 
