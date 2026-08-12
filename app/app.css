@@ -210,21 +210,33 @@ body {
 
 .rail-index { list-style: none; margin: 0; padding: 0; }
 
+/* the topic sets in the serif, not the mono. a monospaced face fits about
+   eleven characters in this column, which turned every entry into an
+   ellipsis; the serif fits roughly twice that in the same width. */
 .rail-index a {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 20px;
-  gap: 0 6px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 0 7px;
   padding: 1px 0;
-  font-family: var(--mono);
-  font-size: 11.5px;
   color: var(--mid);
   text-decoration: none;
-  line-height: 1.6;
+  line-height: 1.5;
 }
+
+.rail-n { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.rail-t { font-family: var(--body); font-size: 12.5px; }
 
 .rail-index a:hover { color: var(--ink); background: var(--tint); }
 .rail-index .is-current a { color: var(--ink); font-weight: 500; }
-.rail-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* two lines rather than an ellipsis. two thirds of these topics are longer
+   than the column and an index of half-words is not an index. */
+.rail-t {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .rail-c { text-align: right; color: var(--faint); }
 .rail-c.is-flag { color: var(--flag); }
 
@@ -348,14 +360,20 @@ tr.rec:hover > td { background: var(--tint); }
   white-space: nowrap;
 }
 
+/* the status column is empty for the ordinary case. before term starts every
+   reading is unread, so labelling all of them said nothing and coloured the
+   whole page. only a reading wanted this week is marked. */
 .c-stat {
   font-family: var(--display);
   font-weight: 700;
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--flag);
+  color: var(--faint);
 }
+
+.c-stat.is-due { color: var(--flag); }
+.rail-n.is-flag { color: var(--flag); }
 
 /* a record held reads quieter, not crossed out */
 tr.struck .c-stat { color: var(--faint); }

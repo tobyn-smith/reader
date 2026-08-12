@@ -114,6 +114,9 @@ export function weekView(course, progress, editing = false) {
 
   const stamps = []
   const rows = []
+  // records are numbered on their own, not by position in the table, which
+  // also counts the week separators spliced between them
+  let entryNo = 0
   let held = 0
   let heldTotal = 0
   let pagesDone = 0
@@ -156,23 +159,37 @@ export function weekView(course, progress, editing = false) {
              <input type="text" class="note" data-note="${esc(id)}"
                value="${esc(saved.note || '')}" placeholder="\u2014">`
 
+        entryNo += 1
+        // the date belongs to the week, and is printed on its separator. it is
+        // repeated on a record only where a week meets more than once and this
+        // one falls on a different day.
+        const ownDate = session.meeting_date && session.meeting_date !== start
+          ? shortDate(session.meeting_date) : ''
+        // not held is the state nearly every row is in before term starts, so
+        // it is not an exception and takes no accent. only a reading wanted
+        // within the week does.
+        const wanted = !saved.read && days !== null && days >= -6 && days <= 7
         rows.push(`<tr class="rec${saved.read ? ' struck' : ''}">
           <td class="c-tick">${editing
             ? `<button type="button" class="rowdel" data-remove-reading="${si}.${ri}"
-                 aria-label="Strike this entry">\u00d7</button>`
+                 aria-label="Remove this entry">\u00d7</button>`
             : `<input type="checkbox" data-progress="${esc(id)}"
                  ${saved.read ? 'checked' : ''} aria-label="Held">`}</td>
-          <td class="c-num">${String(rows.length + 1).padStart(3, '0')}</td>
-          <td class="c-date">${esc(shortDate(session.meeting_date))}</td>
+          <td class="c-num">${String(entryNo).padStart(2, '0')}</td>
+          <td class="c-date">${esc(ownDate)}</td>
           <td class="c-title">${cited}</td>
           <td class="c-src">${esc(sourceOf(reading))}</td>
           <td class="c-pp">${esc(reading.page_range || '')}</td>
-          <td class="c-stat">${saved.read ? 'Held' : 'Not held'}</td>
+          <td class="c-stat${wanted ? ' is-due' : ''}">${
+            saved.read ? 'Held' : wanted ? 'Due' : ''}</td>
         </tr>`)
       })
     }
 
-    const flagged = due.length > 0 || (days !== null && days >= -6 && days <= 7)
+    // a week is marked only when something is actually due in it. marking
+    // every current week too meant the accent was on screen constantly, which
+    // is the same as it meaning nothing.
+    const flagged = due.length > 0
     index.push({ n: title, topic, count, flagged })
     stamps.push({ row: rows.length, days })
 
@@ -260,23 +277,31 @@ function sourceOf(reading) {
 export function recordHeader(course) {
   const p = course.parse
   const readings = p.sessions.reduce((n, s) => n + s.readings.length, 0)
-  const policy = (p.ai_stance || 'not stated').replace(/_/g, ' ')
+  const policy = (p.ai_stance || '').replace(/_/g, ' ')
   const restricted = /prohibit|restrict|ban|not permitted/i.test(policy)
+  // front matter often keeps its own label on the value it captured, so a
+  // course reads "Title: Comparative Politics". the label is stripped for display.
+  const title = (course.title || p.course?.title || '')
+    .replace(/^\s*(course\s+)?title\s*[:–-]\s*/i, '')
+    .trim()
+  // a fact with nothing behind it is dropped rather than printed as a dash.
+  // six columns of em dashes is a grid that says nothing loudly.
   const facts = [
-    ['Term', course.term || p.course?.term || '—'],
-    ['Instructor', p.course?.instructor || '—'],
-    ['Meets', p.course?.meeting_pattern || '—'],
-    ['Weeks', String(p.sessions.length)],
-    ['Readings', String(readings)],
-    ['AI policy', policy],
-  ]
+    ['Term', course.term || p.course?.term, false],
+    ['Instructor', p.course?.instructor, false],
+    ['Meets', p.course?.meeting_pattern, false],
+    ['Weeks', String(p.sessions.length), false],
+    ['Readings', String(readings), false],
+    ['AI policy', p.ai_stance ? policy : null, restricted],
+  ].filter(([, v]) => v)
+
   return `<header class="record">
     <div class="record-id">
       <h2 class="record-code">${esc(course.code || 'Untitled')}</h2>
-      <p class="record-title">${esc(course.title || p.course?.title || '')}</p>
+      ${title ? `<p class="record-title">${esc(title)}</p>` : ''}
     </div>
     <dl class="record-facts">
-      ${facts.map(([k, v], i) => `<div${i === 5 && restricted ? ' class="is-flag"' : ''}>
+      ${facts.map(([k, v, flag]) => `<div${flag ? ' class="is-flag"' : ''}>
         <dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}
     </dl>
   </header>`
@@ -285,11 +310,12 @@ export function recordHeader(course) {
 // the left rail: where you are, what you hold, what falls next.
 export function railView(course, ledger, courses) {
   const { index, current, holdings } = ledger
+  // the count column is dropped. it repeated what the ledger already shows and
+  // took a third of the width the topic needed to be legible.
   const entries = index.map((w, i) => `<li class="${i === current ? 'is-current' : ''}">
-      <a href="#w${i}" data-jump="${i}">
-        <span class="rail-n">${esc(w.n)}</span>
+      <a href="#w${i}" data-jump="${i}" title="${esc(w.topic)}">
+        <span class="rail-n${w.flagged ? ' is-flag' : ''}">${esc(w.n)}</span>
         <span class="rail-t">${esc(w.topic || '—')}</span>
-        <span class="rail-c${w.flagged ? ' is-flag' : ''}">${w.count || '—'}</span>
       </a></li>`).join('')
 
   const notHeld = holdings.heldTotal - holdings.held
