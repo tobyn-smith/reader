@@ -707,12 +707,6 @@ async function boot() {
   $('welcome').hidden = state.courses.length > 0
   $('tools').hidden = state.courses.length === 0
 
-  // the cover figures link here: the panel opens before the jump so the
-  // reader lands on the table, not on a closed fold
-  $('accuracy-link').onclick = () => {
-    $('accuracy').open = true
-  }
-
   $('review-table').addEventListener('click', (e) => {
     if (!e.target.closest('#toggle-all')) return
     state.reviewShowAll = !state.reviewShowAll

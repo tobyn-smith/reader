@@ -1074,65 +1074,30 @@ input[type="file"]::file-selector-button {
    gets the page: what this is on the left, where to drop the file on the
    right. */
 
+/* the cover is kept shallow on purpose: the accuracy table under it must
+   land inside the first screen, because trust should not require scrolling */
 .welcome-grid {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
-  gap: 52px;
+  gap: 44px;
   align-items: center;
-  padding: 54px 0 34px;
+  padding: 22px 0 18px;
   border-bottom: 3px solid var(--rule);
 }
 
 .welcome-head {
-  margin: 0 0 12px;
+  margin: 0;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 52px;
-  line-height: 0.96;
+  font-size: 38px;
+  line-height: 0.98;
   text-transform: uppercase;
   letter-spacing: 0.01em;
 }
 
-.welcome-lead {
-  font-size: 18px;
-  line-height: 1.55;
-  max-width: 44ch;
-  margin: 0 0 10px;
-}
-
-p.welcome-lead.secondary { font-size: 13px; }
-
-/* the accuracy figures sit on the cover itself, in the same idiom as the
-   record header facts, sized to be read from across the room */
-.welcome-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 38px;
-  margin: 18px 0 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--hair);
-}
-
-.welcome-facts dt {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--faint);
-}
-
-.welcome-facts dd {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 26px;
-  line-height: 1.1;
-  color: var(--ink);
-}
-
 .welcome-drop {
   border: 1px dashed var(--mid);
-  padding: 56px 30px;
+  padding: 22px 28px;
   text-align: center;
 }
 
@@ -1144,16 +1109,16 @@ p.welcome-lead.secondary { font-size: 13px; }
 .welcome-drop-line {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: 19px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin: 0 0 4px;
+  margin: 0 0 3px;
 }
 
 .welcome-drop button {
-  margin: 8px 0;
+  margin: 6px 0;
   font-size: 13.5px;
-  padding: 9px 20px;
+  padding: 8px 18px;
   background: var(--ink);
   color: var(--paper);
   border-color: var(--ink);
@@ -1170,10 +1135,10 @@ p.welcome-lead.secondary { font-size: 13px; }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0 36px;
   margin: 0;
-  padding: 18px 0 8px;
+  padding: 12px 0 2px;
 }
 
-.welcome-steps li { border-top: 1px solid var(--hair); padding-top: 9px; }
+.welcome-steps li { border-top: 1px solid var(--hair); padding-top: 7px; }
 
 .step-n {
   display: block;
