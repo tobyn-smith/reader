@@ -240,6 +240,19 @@ def find_schedule_start(lines: list[Line]) -> int | None:
     first_marker = _first_week_of_the_schedule(lines)
 
     if first_marker is None:
+        # an explicit heading outranks a guess. a single date-led line used to
+        # win here, and a deadline calendar printed above the schedule is a
+        # column of date-led lines: it captured the zone and every entry in it
+        # became a session. a heading naming the schedule is the document
+        # saying where the schedule is, so it is asked first.
+        #
+        # the block gate is opened: one syllabus buried its heading mid-block
+        # behind policy prose, which left the whole document as front matter.
+        for line in lines:
+            if is_heading(line.text, starts_block=True) and classify_heading(line.text) == SCHEDULE:
+                return line.index
+
+    if first_marker is None:
         for line in lines:
             text = strip_leading_marker(line.stripped)[0]
             if _DATE_LED.match(text):
@@ -255,14 +268,6 @@ def find_schedule_start(lines: list[Line]) -> int | None:
             first_marker = dated[0]
 
     if first_marker is None:
-        # no structural marker anywhere, so a keyword heading is the only hope.
-        # the block gate is opened here: this fallback exists precisely for a
-        # title-case "Course Schedule" heading, and one real syllabus buried
-        # that heading mid-block behind policy prose, which left the whole
-        # document as front matter and the parse with zero sessions.
-        for line in lines:
-            if is_heading(line.text, starts_block=True) and classify_heading(line.text) == SCHEDULE:
-                return line.index
         return None
 
     # a schedule heading can sit well above the first week when a "what to do
