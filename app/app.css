@@ -1494,6 +1494,31 @@ p code, td code, li code { background: var(--tint); padding: 0 4px; }
 .welcome-drop button:hover { background: var(--paper); color: var(--ink); }
 .welcome-drop .secondary { max-width: none; }
 
+/* the way to the written page, directly under the headline. it sits above the
+   steps because someone who wants it on their own machine wants to know that
+   before being walked through dropping a file in. */
+.welcome-run {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  margin: 12px 0 0;
+}
+
+.welcome-run a {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  text-decoration: none;
+  border-bottom: 2px solid var(--rule);
+  padding-bottom: 1px;
+}
+
+.welcome-run a:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.welcome-run .secondary { font-size: 12px; }
+
 /* the three steps sit under the headline as an index: number, title, line.
    stacked, ruled in the hairline weight, nothing boxed. this is what fills
    the column so the cover has no dead space to begin with. */
