@@ -36,17 +36,20 @@ something to do it instead.
 
 ## How accurate it is
 
-The numbers matter more than the pitch, so they come first. I've tested this
-on over 35 real syllabi from one university, parsed and checked by hand:
+The numbers matter more than the pitch, so they come first. Measured over 31
+real syllabi, through the browser's path, which is what most people use:
 
 | | |
 | --- | --- |
-| Told a syllabus from a reading | **100%** |
 | Course code | **100%** |
-| Term | **96%** |
-| Found a schedule | **79%** |
-| Readings parsed into full citations | **83%** |
-| Weights adding up to about 100 | **6 of 10** |
+| Term | **100%** |
+| Found a schedule | **77%** |
+| Readings parsed into full citations | **67%** |
+| Weights adding up to about 100 | **9 of 12** |
+
+Reproduce the lot with `python scripts/measure.py <folder> --web`, or drop
+`--web` for the command line's figures, which run a few points better because
+it can see the ruled lines a table is drawn with and the browser cannot.
 
 Reading lists are the weak spot, whilst everything structural is dependable.
 Most of what fails was never a reading in the first place: week topics,

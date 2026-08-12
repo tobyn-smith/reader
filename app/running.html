@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Running it yourself · Tobyn's Schedule Reader</title>
+<meta name="description" content="How to run Schedule Reader on your own machine.">
+<link rel="stylesheet" href="vendor/fonts.css">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="print.css" media="print">
+</head>
+<body class="doc">
+
+<header class="masthead">
+  <h1><a href="./">Tobyn's Schedule Reader</a></h1>
+  <p class="masthead-note"><strong>Note:</strong> This is built for humanities
+  classes.</p>
+</header>
+
+<main class="prose">
+
+  <h2 class="doc-head">Running it yourself</h2>
+
+  <p class="doc-lead">The website does everything most people need, and it needs
+  nothing installed. This page is for when you want the whole thing on your own
+  machine: a folder of readings rather than one syllabus at a time, search
+  across all of it, and your own published copy.</p>
+
+  <p class="secondary">It's all local. No keys, no account, no server of mine
+  anywhere in it.</p>
+
+  <h3>What you'll need</h3>
+
+  <p>Python 3.11 or newer, and git. That's the lot.</p>
+
+  <h3>Getting it set up</h3>
+
+  <pre class="cmd"><code>git clone https://github.com/tobyn-smith/reader
+cd reader
+python -m venv .venv
+.venv/Scripts/activate
+pip install -e ".[dev]"</code></pre>
+
+  <p class="secondary">On macOS or Linux the fourth line is
+  <code>source .venv/bin/activate</code> instead. If you're going to send
+  changes back, add <code>git config core.hooksPath .githooks</code> so the
+  pre-commit hook can stop your coursework wandering into a commit.</p>
+
+  <h3>The commands you'll actually use</h3>
+
+  <table class="doc-table">
+    <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>vault syllabus syllabus.pdf</code></td>
+        <td>Reads a syllabus, shows you what it found, saves it once you're happy.</td>
+      </tr>
+      <tr>
+        <td><code>vault ingest readings/</code></td>
+        <td>Adds a folder of reading PDFs and matches them to the schedule. Safe to run again.</td>
+      </tr>
+      <tr>
+        <td><code>vault status</code></td>
+        <td>This week: what you've got, what's missing, what's due.</td>
+      </tr>
+      <tr>
+        <td><code>vault search "commitment problem"</code></td>
+        <td>Full text, across every reading you've taken in.</td>
+      </tr>
+      <tr>
+        <td><code>vault build --public --pdf</code></td>
+        <td>Builds the site, exactly as GitHub Pages serves it.</td>
+      </tr>
+      <tr>
+        <td><code>vault serve</code></td>
+        <td>Opens the private build, the one with everything in it.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Where your things live</h3>
+
+  <p>Your database, PDFs and caches sit in <code>~/.seminar-vault/</code>, well
+  outside the repository, so nothing you're reading for a class can end up in a
+  commit by accident.</p>
+
+  <h3>Optional extras</h3>
+
+  <p class="secondary">One feature each, and everything else carries on working
+  without them.</p>
+
+  <table class="doc-table">
+    <thead><tr><th>Package</th><th>Gets you</th></tr></thead>
+    <tbody>
+      <tr><td><code>ocrmypdf</code></td><td>Scanned PDFs with no text layer.</td></tr>
+      <tr><td><code>pagefind</code></td><td>Search on the built site.</td></tr>
+      <tr><td><code>weasyprint</code></td><td>Print PDFs locally. CI builds them either way.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Publishing your own copy</h3>
+
+  <ol class="doc-steps">
+    <li>Fork it, then Settings, Pages, and set the source to GitHub Actions.</li>
+    <li>Run <code>vault syllabus your-syllabus.pdf</code> for each course and
+      check the parse before saving it.</li>
+    <li>Run <code>vault ingest your-readings/</code> as the term goes on.</li>
+    <li>Run <code>vault export --public</code>, read what it kept and what it
+      dropped, then commit <code>data/public.json</code>. Pushing publishes.</li>
+  </ol>
+
+  <p>Nothing reaches the public site unless it's named on an allowlist, and the
+  tests fail if something new turns up in there. Schedules, citations, deadlines
+  and bibliographies are allowed out. Reading text, notes and your instructor's
+  contact details stay on your machine. The allowlist, the CI setup and the
+  hook all carry over to your fork.</p>
+
+  <h3>Running the tests</h3>
+
+  <pre class="cmd"><code>pytest -q</code></pre>
+
+  <p class="secondary">Offline, no keys. The fixtures are invented syllabi
+  copying the layouts real ones use: bulleted schedules with odd glyph markers,
+  ruled tables with two meetings a week, labelled topic blocks, two-column
+  articles, and one scan with no text layer at all. They assert exact reading
+  counts per week, because a parser quietly losing one reading in five otherwise
+  looks perfectly healthy.</p>
+
+  <h3>One thing worth knowing</h3>
+
+  <p>The command line and the website run the same Python, compiled to
+  WebAssembly for the browser. They don't get quite the same information out of
+  a PDF, though: on your machine it can see the ruled lines a table is drawn
+  with, and in the browser it can't, so a handful of files come out slightly
+  better on the command line. The
+  <a href="./#accuracy">accuracy figures</a> on the front page are the browser's,
+  since that's what most people are using.</p>
+
+  <p class="secondary"><code>ARCHITECTURE.md</code> in the repository has the
+  rest of it, including what the parser gets wrong and why.</p>
+
+  <p class="doc-back"><a href="./">Back to the reader</a></p>
+
+</main>
+
+<footer class="colophon">
+  <p class="colophon-contrib">Want to help or contribute? Head over to
+    <a href="https://tobyn-smith.github.io/me/">my personal page</a> and send
+    me an email. :)</p>
+</footer>
+
+</body>
+</html>

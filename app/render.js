@@ -770,9 +770,8 @@ export function gradesView(courses, activeId) {
             <div><dt>Courses</dt><dd>${gpa.counted}</dd></div>
             <div><dt>Credit hours</dt><dd>${gpa.credits}</dd></div>
           </dl>
-          <p class="secondary">Four point scale, no D plus or D minus, which is
-            how UGA counts it. Set each course's scale above to match its
-            syllabus.</p>`}
+          <p class="secondary">Four point scale, with no D plus or D minus. Set
+            each course's scale above to match its syllabus.</p>`}
         </aside>
       </div>
     </section>`

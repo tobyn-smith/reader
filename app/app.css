@@ -1175,6 +1175,68 @@ input[type="file"]::file-selector-button {
 
 .controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 
+/* ---- the written pages -------------------------------------------------
+   prose rather than a record, so it takes a measure and a little more air
+   than the ledger. same rules, same weights, nothing new introduced. */
+
+body.doc .masthead h1 a { text-decoration: none; color: inherit; }
+body.doc .masthead { border-bottom: 3px solid var(--rule); }
+
+main.prose { max-width: 74ch; padding: 6px 0 0; }
+
+.doc-head {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 30px 0 12px;
+}
+
+.doc-lead { font-size: 18px; line-height: 1.55; margin: 0 0 10px; }
+
+main.prose h3 {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  border-top: 2px solid var(--rule);
+  padding-top: 8px;
+  margin: 30px 0 8px;
+}
+
+main.prose p { margin: 0 0 10px; }
+
+/* a command is a thing you copy, so it is set apart by a rule down its left
+   rather than a box, and it scrolls on its own if the line is long */
+pre.cmd {
+  margin: 8px 0 12px;
+  padding: 9px 0 9px 14px;
+  border-left: 3px solid var(--rule);
+  background: var(--tint);
+  overflow-x: auto;
+}
+
+pre.cmd code { font-size: 12.5px; line-height: 1.7; }
+
+code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+p code, td code, li code { background: var(--tint); padding: 0 4px; }
+
+.doc-table { table-layout: auto; }
+.doc-table td:first-child { white-space: nowrap; width: 1%; padding-right: 20px; }
+.doc-table td { vertical-align: top; }
+/* a long command must not drag the page wider than the screen */
+.doc-table td:first-child code { overflow-wrap: anywhere; }
+
+.doc-steps { padding-left: 20px; margin: 8px 0 12px; }
+.doc-steps li { margin-bottom: 6px; }
+
+.doc-back { margin-top: 26px; padding-top: 10px; border-top: 2px solid var(--rule); }
+
 /* ---- colophon ---------------------------------------------------------- */
 
 .colophon {
@@ -1268,7 +1330,23 @@ input[type="file"]::file-selector-button {
     max-width: 40ch;
   }
 
-  .masthead, .coursebar, main, footer { display: none !important; }
+  /* the written pages are prose and read perfectly well on a phone. the gate
+     is here for the ledger, which has no honest narrow form, so it applies to
+     the app and not to everything wearing the same stylesheet. */
+  body:not(.doc) .masthead,
+  body:not(.doc) .coursebar,
+  body:not(.doc) main,
+  body:not(.doc) footer { display: none !important; }
+
+  body.doc #smallgate { display: none; }
+  body.doc main.prose { max-width: none; }
+  body.doc .doc-head { font-size: 30px; }
+
+  /* a command is longer than a phone is wide. the block scrolls on its own
+     and the table stops holding its first column open, so the page itself
+     never has to scroll sideways. */
+  body.doc .doc-table td:first-child { white-space: normal; width: auto; }
+  body.doc pre.cmd code { white-space: pre; }
 }
 
 /* ---- first load --------------------------------------------------------

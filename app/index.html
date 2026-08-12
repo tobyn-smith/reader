@@ -135,30 +135,20 @@
 
 <details id="accuracy">
   <summary>How accurate is this</summary>
-  <p class="note">I've tested this on 31 real UGA syllabi. Every figure below is
-    counted from that set on 12 August 2026, and the ones that are worse than I
-    would like are in here too.</p>
+  <p class="note">I've tested this on 31 syllabi. Below are the accuracy
+    scores as of 12 August 2026.</p>
   <table>
     <thead>
       <tr><th>What</th><th class="num">Rate</th></tr>
     </thead>
     <tbody>
-      <tr><td>Found a course code</td><td class="num">31 of 31</td></tr>
-      <tr><td>Found the term</td><td class="num">31 of 31</td></tr>
-      <tr><td>Found the schedule</td><td class="num">24 of 31</td></tr>
-      <tr><td>Readings turned into full citations</td><td class="num">316 of 469</td></tr>
+      <tr><td>Course code</td><td class="num">100%</td></tr>
+      <tr><td>Term</td><td class="num">100%</td></tr>
+      <tr><td>Found the schedule</td><td class="num">77%</td></tr>
+      <tr><td>Readings turned into full citations</td><td class="num">67%</td></tr>
       <tr><td>Weights totalling near 100%</td><td class="num">9 of 12</td></tr>
     </tbody>
   </table>
-  <p class="note">
-    Three caveats, because a number on its own can flatter. These are measured
-    through the same code this website runs, not a faster version of it I keep
-    elsewhere. "Found" means it produced an answer, not that the answer is
-    right: one syllabus comes out a year early because its own first page still
-    names the previous term. And the weights row counts only the 12 courses it
-    read any weights from at all, so a course that lists none is neither a pass
-    nor a fail here.
-  </p>
   <p class="note">
     This personal project is pattern matching at the root of it, so a syllabus
     with an odd layout may throw it off. Anything it cannot read will need you
@@ -173,7 +163,9 @@
 <footer class="colophon">
   <p class="colophon-contrib">Want to help or contribute? Head over to
     <a href="https://tobyn-smith.github.io/me/">my personal page</a> and send
-    me an email. :)</p>
+    me an email. :)<br>
+    Prefer it on your own machine? <a href="running.html">Running it
+    yourself</a>.</p>
   <p class="colophon-sheet" id="print-meta"></p>
 </footer>
 

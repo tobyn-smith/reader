@@ -6,7 +6,7 @@
 
 // grade points are a property of the letter, not of where an instructor draws
 // the line for it. an A- is 3.7 however it was earned, so this table is shared
-// by every scale. there is no A+ or D+/D-, which is how uga counts it.
+// by every scale. there is no A+, and no D+ or D-.
 export const POINTS = {
   A: 4.0, 'A-': 3.7,
   'B+': 3.3, B: 3.0, 'B-': 2.7,
