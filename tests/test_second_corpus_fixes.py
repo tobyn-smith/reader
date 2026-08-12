@@ -181,6 +181,99 @@ class TestNumericDateUnderBareWeek:
         assert (d.month, d.day) == (8, 18)
 
 
+class TestWeightRowsTheBrowserSees:
+    """the two extraction paths hand the same table over differently.
+
+    the command line has pdfplumber and keeps a grading table's columns as runs
+    of spaces; the browser has positioned text runs and often collapses the
+    same gap to one space, or keeps the section heading on the first row. the
+    weights were read from the spacing, so the same syllabus totalled 100 on
+    one path and 0 or 50 on the other. the website runs the second one.
+    """
+
+    def test_heading_sharing_the_first_row(self):
+        from vault.syllabus.deliverables import (INLINE_SECTION_LABEL_RE,
+                                                 TABLE_WEIGHT_RE)
+        raw = "Grading Scheme:      Participation            50%"
+        label = INLINE_SECTION_LABEL_RE.match(raw)
+        assert label
+        m = TABLE_WEIGHT_RE.match(raw[label.end():])
+        assert m and m.group("title") == "Participation" and m.group("weight") == "50"
+
+    def test_a_title_ending_in_a_colon_is_not_a_heading(self):
+        """"Essay 1: 20%" names the assignment; nothing may be stripped."""
+        from vault.syllabus.deliverables import INLINE_SECTION_LABEL_RE
+        assert not INLINE_SECTION_LABEL_RE.match("Essay 1: 20%")
+
+    def test_single_space_row(self):
+        from vault.syllabus.deliverables import LINE_WEIGHT_RE
+        for raw, title, weight in (
+            ("Quizzes 30%", "Quizzes", "30"),
+            ("Assignments 40%", "Assignments", "40"),
+            ("Exam 1 15%", "Exam 1", "15"),
+            ("Late within one day 20%", "Late within one day", "20"),
+        ):
+            m = LINE_WEIGHT_RE.match(raw)
+            assert m, raw
+            assert m.group("title") == title and m.group("weight") == weight
+
+    def test_prose_ending_in_a_percentage_is_not_a_row(self):
+        from vault.syllabus.deliverables import LINE_WEIGHT_RE
+        for raw in (
+            "The final exam for this course is worth 30%",
+            "A late submission without a valid excuse is docked 20%",
+        ):
+            assert not LINE_WEIGHT_RE.match(raw), raw
+
+    def test_a_grade_scale_row_is_not_a_weights_row(self):
+        from vault.syllabus.deliverables import LINE_WEIGHT_RE
+        assert not LINE_WEIGHT_RE.match("94 – 100% A 76 – 79.99% C+")
+
+
+class TestDistinctAssignmentsStayApart:
+    def test_two_titles_whose_only_shared_word_survives_the_stop_list(self):
+        """"Policy Memos" and "Policy Report", both worth 30, are two things."""
+        from vault.syllabus.deliverables import Deliverable, _same_assignment
+        a = Deliverable(title="Policy Memos", weight_percent=30.0)
+        b = Deliverable(title="Policy Report", weight_percent=30.0)
+        assert not _same_assignment(a, b)
+
+    def test_the_same_assignment_written_twice_still_merges(self):
+        from vault.syllabus.deliverables import Deliverable, _same_assignment
+        a = Deliverable(title="Policy Memos", weight_percent=30.0)
+        b = Deliverable(title="Weekly Policy Memos", weight_percent=30.0)
+        assert _same_assignment(a, b)
+
+    def test_a_midterm_and_a_final_are_not_one_exam(self):
+        from vault.syllabus.deliverables import Deliverable, _same_assignment
+        a = Deliverable(title="Midterm Exam", weight_percent=30.0)
+        b = Deliverable(title="Final Exam", weight_percent=30.0)
+        assert not _same_assignment(a, b)
+
+
+class TestExtraCreditSitsOnTop:
+    def test_bonus_is_not_counted_into_the_hundred(self):
+        from vault.syllabus.deliverables import Deliverable, DeliverableSet, _check_weights
+        result = DeliverableSet(items=[
+            Deliverable(title="Weekly Assessments", weight_percent=40.0),
+            Deliverable(title="Exams (3)", weight_percent=40.0),
+            Deliverable(title="Activities", weight_percent=20.0),
+            Deliverable(title="optional extra credit assignment", weight_percent=3.0),
+        ])
+        _check_weights(result)
+        assert result.weight_total == 100.0
+        assert result.weight_warning is None
+
+    def test_the_bonus_keeps_its_own_weight(self):
+        from vault.syllabus.deliverables import Deliverable, DeliverableSet, _check_weights
+        bonus = Deliverable(title="Bonus quiz", weight_percent=5.0)
+        result = DeliverableSet(items=[
+            Deliverable(title="Final paper", weight_percent=100.0), bonus])
+        _check_weights(result)
+        assert result.weight_total == 100.0
+        assert bonus.weight_percent == 5.0
+
+
 class TestStarredAssignmentRows:
     """a recurring assignment printed among the readings.
 

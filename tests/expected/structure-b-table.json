@@ -10,7 +10,7 @@
   "ai_stance": "unstated",
   "session_count": 6,
   "reading_counts": {"1": 1, "2": 2, "3": 1},
-  "weight_total": 103.0,
+  "weight_total": 100.0,
   "sub_sessions": {
     "2": ["T", "TR"],
     "3": ["T", "TR"]

@@ -65,6 +65,25 @@ GRADE_LETTER_PREFIX_RE = re.compile(
     r"^(?:=?\s*[A-F][+-]?|\d{1,3}(?:\s*[-–]\s*\d{1,3})?)\s+(?=[A-Za-z])"
 )
 ORPHAN_WEIGHT_RE = re.compile(r"^\s*=?\s*(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*$")
+
+# the section heading printed in the first column of its own first row, as in
+# "Grading Scheme:      Participation            50%". the row is a normal
+# weights row wearing the heading, and anchored matching threw the whole line
+# away. the gap after the colon is what says this is a column rather than a
+# title that happens to end in one, so "Essay 1: 20%" is left alone.
+INLINE_SECTION_LABEL_RE = re.compile(r"^(?P<label>[A-Za-z][A-Za-z ]{2,28}):\s{2,}(?=\S)")
+
+# a whole line that is nothing but a name and a percentage: "Quizzes 30%".
+# the columns of a grading table only survive as runs of spaces when the
+# extractor happens to leave them, and one path collapses the very gaps the
+# other keeps, so the same table scored 100 on the command line and nothing at
+# all in the browser. anchoring both ends is what makes a single space safe
+# here: prose does not end this way. the word cap keeps a sentence like "the
+# final exam is worth 30%" from being read as a title.
+LINE_WEIGHT_RE = re.compile(
+    r"^\s*(?P<title>[A-Za-z][\w&'’/,.()+-]*(?:[ ][\w&'’/,.()+-]+){0,3})"
+    r"\s+(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*$"
+)
 EXTRA_CREDIT_RE = re.compile(
     r"(?P<title>[\w ]*extra credit[\w ]*)\s*\+?\s*(?P<weight>\d{1,3})\s*%", re.IGNORECASE
 )
@@ -195,7 +214,12 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
     previous_page = zone.start_page
     for line in zone.lines:
         raw = line.text.rstrip()
-        m = TABLE_WEIGHT_RE.match(raw)
+        # a heading sharing the first row of its own table is dropped, but only
+        # when a real weights row is left behind once it goes
+        label = INLINE_SECTION_LABEL_RE.match(raw)
+        if label and TABLE_WEIGHT_RE.match(raw[label.end():]):
+            raw = raw[label.end():]
+        m = TABLE_WEIGHT_RE.match(raw) or LINE_WEIGHT_RE.match(raw)
         if m:
             title = _clean_title(m.group("title"))
             weight = float(m.group("weight"))
@@ -512,7 +536,26 @@ def _same_assignment(a: Deliverable, b: Deliverable) -> bool:
     # "Final Exam", both worth thirty, ended up as a single row.
     if len(shared) < 2 and shared != left and shared != right:
         return False
-    return len(shared) / min(len(left), len(right)) >= 0.6
+    if len(shared) / min(len(left), len(right)) < 0.6:
+        return False
+
+    # when a title carries only one distinctive word, the stop list has taken
+    # the word that told the two apart: "Policy Memos" and "Policy Report" both
+    # come down to "policy", match on it, and one of them, thirty per cent of
+    # the course, disappears. the full titles get the casting vote.
+    if min(len(left), len(right)) < 2:
+        whole_left, whole_right = _title_words(a.title), _title_words(b.title)
+        if not whole_left or not whole_right:
+            return False
+        overlap = whole_left & whole_right
+        return len(overlap) / min(len(whole_left), len(whole_right)) >= 0.6
+    return True
+
+
+def _title_words(title: str) -> set[str]:
+    """every word of a title, stop list and all."""
+    bare = re.sub(r"\([^)]*\)", " ", title.lower())
+    return {w for w in re.findall(r"[a-z]{3,}", bare) if w not in {"and", "the", "for"}}
 
 
 def _merge(seen: dict[str, Deliverable], item: Deliverable) -> None:
@@ -593,9 +636,16 @@ def _format_notes(zones: list[Zone]) -> list[str]:
     return notes
 
 
+_BONUS_TITLE_RE = re.compile(r"\b(?:extra\s+credit|bonus)\b", re.IGNORECASE)
+
+
 def _check_weights(result: DeliverableSet) -> None:
     """weights should land near 100. a miss is reported, never silently fixed."""
-    weights = [i.weight_percent for i in result.items if i.weight_percent]
+    # extra credit sits on top of the hundred rather than inside it, so adding
+    # it in reported a course whose weights were exactly right as five over.
+    # the item keeps its weight; it just does not count towards the total.
+    weights = [i.weight_percent for i in result.items
+               if i.weight_percent and not _BONUS_TITLE_RE.search(i.title or "")]
     total = round(sum(weights), 2)
     result.weight_total = total
     # these are read by a student, not by whoever wrote the parser. say what
