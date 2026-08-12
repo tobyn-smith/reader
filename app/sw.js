@@ -2,7 +2,7 @@
 // the first visit. nothing the visitor loads is ever cached, because nothing
 // the visitor loads ever reaches this worker.
 
-const CACHE = 'schedule-reader-v35'
+const CACHE = 'schedule-reader-v36'
 
 const SHELL = [
   './',

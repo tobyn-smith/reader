@@ -206,6 +206,11 @@ body {
   align-items: start;
 }
 
+/* only the ledger has a rail. the rest of the views get the whole width
+   rather than an empty column and a permanent indent. */
+.sheet.no-rail { grid-template-columns: minmax(0, 1fr); }
+.sheet.no-rail > #view { padding-left: 0; }
+
 .rail {
   position: sticky;
   top: 0;
@@ -388,7 +393,11 @@ table.ledger td.c-tick { padding-left: 8px; padding-right: 0; }
 }
 
 /* a source wraps like everything else. "A Very Short Introd..." on four rows
-   running is not a source, and the row has the height to spare. */
+   running is not a source, and the row has the height to spare.
+
+   the clamp goes on a span inside the cell, not on the cell. a td given
+   display:-webkit-box stops being a table cell, and the browser then let a
+   clipped third line bleed under the row rule instead of hiding it. */
 td.c-src {
   font-family: var(--body);
   font-size: 13px;
@@ -396,6 +405,9 @@ td.c-src {
   color: var(--mid);
   line-height: 1.3;
   word-break: break-word;
+}
+
+td.c-src > span {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -727,10 +739,50 @@ td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--hair); vertical-ali
 
 .flagged, tr.missing td { color: var(--flag); }
 
+/* the schedule table: the week column is a label, not a paragraph, and the
+   topic wants enough room to say a title on one or two lines rather than
+   five. the readings take what is left, which is most of it. */
+table.schedule { table-layout: fixed; }
+table.schedule .wk { width: 88px; }
+table.schedule .topic { width: 24%; }
+
+table.schedule td.wk {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink);
+}
+
+.wk-date {
+  display: block;
+  font-family: var(--mono);
+  font-weight: 400;
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--mid);
+}
+
+/* readings in a table cell are a list of citations, not bullets to scan */
+table.schedule ul { margin: 0; padding-left: 15px; }
+table.schedule li.entry { margin-bottom: 4px; line-height: 1.45; }
+table.schedule li.entry:last-child { margin-bottom: 0; }
+
 ol, ul { margin: 4px 0; padding-left: 18px; }
 
-ol.bibliography { list-style: none; padding-left: 0; }
-ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px; font-size: 13px; }
+/* a citation list is prose, and prose set to the full width of a wide monitor
+   is a line the eye loses its place on. the hanging indent stays. */
+ol.bibliography { list-style: none; padding-left: 0; max-width: 96ch; }
+
+ol.bibliography li {
+  padding-left: 22px;
+  text-indent: -22px;
+  margin-bottom: 7px;
+  font-size: 14px;
+  line-height: 1.5;
+}
 
 /* deadline bands */
 .band {
@@ -801,8 +853,13 @@ ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px;
   color: var(--faint);
 }
 
-table.marks { table-layout: auto; }
-table.marks .pct { width: 5.5em; }
+/* the numbers belong beside the thing they describe. left to itself the
+   weight sat against the right edge of a wide monitor, a hand's width from
+   the assignment it weighs. */
+table.marks { table-layout: fixed; max-width: 62rem; }
+table.marks th.when, table.marks td.when { width: 92px; }
+table.marks th.num, table.marks td.num { width: 96px; }
+table.marks .pct { width: 100%; text-align: right; }
 
 .targetrow {
   display: flex;
@@ -1080,7 +1137,7 @@ input[type="file"]::file-selector-button {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
   gap: 44px;
-  align-items: center;
+  align-items: start;
   padding: 22px 0 18px;
   border-bottom: 3px solid var(--rule);
 }
@@ -1127,34 +1184,36 @@ input[type="file"]::file-selector-button {
 .welcome-drop button:hover { background: var(--paper); color: var(--ink); }
 .welcome-drop .secondary { max-width: none; }
 
-/* the three-step strip under the cover: numbered like an index, ruled in the
-   hairline weight, nothing boxed */
+/* the three steps sit under the headline as an index: number, title, line.
+   stacked, ruled in the hairline weight, nothing boxed. this is what fills
+   the column so the cover has no dead space to begin with. */
 .welcome-steps {
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 36px;
-  margin: 0;
-  padding: 12px 0 2px;
+  margin: 16px 0 0;
+  padding: 0;
 }
 
-.welcome-steps li { border-top: 1px solid var(--hair); padding-top: 7px; }
+.welcome-steps li {
+  display: grid;
+  grid-template-columns: 16px 128px minmax(0, 1fr);
+  gap: 0 12px;
+  align-items: baseline;
+  border-top: 1px solid var(--hair);
+  padding: 8px 0 7px;
+}
 
 .step-n {
-  display: block;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--faint);
 }
 
 .step-t {
-  display: block;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  margin: 2px 0 4px;
 }
 
 .welcome-steps p {
@@ -1162,7 +1221,6 @@ input[type="file"]::file-selector-button {
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--mid);
-  max-width: 36ch;
 }
 
 /* a stored parse older than the running parser */

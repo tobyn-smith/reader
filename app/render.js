@@ -91,16 +91,25 @@ export function scheduleView(course) {
           })
           .join('')}</ul>`
       : `<span class="secondary">${esc(session.session_type.replace('_', ' '))}</span>`
+    // the week and its date on separate lines. run together and wrapped by a
+    // narrow column they read as one number: "Week" over "1 1/13".
+    const when = [
+      session.week_number ? `Week ${session.week_number}` : '',
+      session.sub_session_label || '',
+    ].filter(Boolean).join(' ')
     return `<tr>
-      <td>${esc(weekLabel(session))}</td>
+      <td class="wk">${esc(when || (session.meeting_date ? '' : 'Unscheduled'))}
+        ${session.meeting_date
+          ? `<span class="wk-date">${esc(shortDate(session.meeting_date))}</span>` : ''}</td>
       <td>${esc(session.topic || '')}</td>
       <td>${readings}</td>
     </tr>`
   })
 
   return `<h2>${esc(course.code)} schedule</h2>
-    <table>
-      <thead><tr><th>Week</th><th>Topic</th><th>Readings</th></tr></thead>
+    <table class="schedule">
+      <thead><tr><th class="wk">Week</th><th class="topic">Topic</th>
+        <th>Readings</th></tr></thead>
       <tbody>${rows.join('')}</tbody>
     </table>`
 }
@@ -192,7 +201,7 @@ export function weekView(course, progress, editing = false) {
           <td class="c-num">${String(entryNo).padStart(2, '0')}</td>
           <td class="c-date">${esc(ownDate)}</td>
           <td class="c-title">${cited}</td>
-          <td class="c-src">${esc(sourceOf(reading))}</td>
+          <td class="c-src"><span>${esc(sourceOf(reading))}</span></td>
           <td class="c-pp">${esc(reading.page_range || '')}</td>
           <td class="c-stat${wanted ? ' is-due' : ''}">${
             saved.read ? 'Read' : wanted ? 'Due' : ''}</td>
@@ -446,7 +455,7 @@ export function deadlinesView(courses, activeId, editing = false) {
     graded.sort((a, b) => a.sort.localeCompare(b.sort))
     events.sort((a, b) => a.sort.localeCompare(b.sort))
 
-    const table = (rows) => `<table>
+    const table = (rows) => `<table class="marks">
         <thead><tr><th class="when">Due</th><th>Item</th><th class="num">Weight</th>
           ${editing ? '<th class="num"></th>' : ''}</tr></thead>
         <tbody>${rows.map((r) => r.html).join('')}</tbody>

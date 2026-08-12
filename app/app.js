@@ -587,11 +587,15 @@ function draw() {
   }
 
   const target = $('view')
+  $('sheet').classList.toggle('no-rail', state.currentView !== 'week')
   if (state.currentView === 'week') {
     const ledger = view.weekView(course, state.progress, editing)
     target.innerHTML = ledger.html
     $('rail').innerHTML = view.railView(course, ledger, state.courses)
   } else {
+    // the rail belongs to the ledger. emptying it left its 168px column
+    // standing, so every other view opened indented by a blank strip and gave
+    // up a fifth of the page for nothing.
     $('rail').innerHTML = ''
     if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
     else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active, editing)
