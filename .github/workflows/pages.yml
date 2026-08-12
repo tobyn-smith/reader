@@ -48,10 +48,18 @@ jobs:
           sudo apt-get install -qy libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
           pip install -q -e . weasyprint
 
+      # piping curl straight into tar hides a failed download: curl exits
+      # quietly, tar gets half a file and the whole deploy dies on "unexpected
+      # end of file". this fetches to disk, retries, and fails on an http error
+      # rather than on the corrupt tarball two steps later.
       - name: install pagefind
         run: |
-          curl -sL https://github.com/CloudCannon/pagefind/releases/download/v1.3.0/pagefind-v1.3.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+          curl -sSfL --retry 5 --retry-all-errors --retry-delay 3 \
+            -o pagefind.tar.gz \
+            https://github.com/CloudCannon/pagefind/releases/download/v1.3.0/pagefind-v1.3.0-x86_64-unknown-linux-musl.tar.gz
+          tar xzf pagefind.tar.gz
           sudo mv pagefind /usr/local/bin/
+          rm pagefind.tar.gz
 
       # the app goes at the root, so a visitor lands straight on the tool
       - name: build browser app
