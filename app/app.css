@@ -82,14 +82,6 @@ body {
   letter-spacing: 0.22em;
 }
 
-.docline {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  letter-spacing: 0.01em;
-  color: var(--mid);
-}
-
 /* ---- course bar -------------------------------------------------------- */
 
 .coursebar {
@@ -1012,4 +1004,16 @@ p.welcome-lead.secondary { font-size: 13px; }
   font-family: var(--mono);
   font-size: 12px;
   color: var(--mid);
+}
+
+/* the reading count rides the topic line in words, not a bare digit under
+   the status header */
+.sep-count {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  color: var(--faint);
+  margin-left: 8px;
 }

@@ -187,14 +187,14 @@ export function weekView(course, progress, editing = false) {
             ? `<button type="button" class="rowdel" data-remove-reading="${si}.${ri}"
                  aria-label="Remove this entry">\u00d7</button>`
             : `<input type="checkbox" data-progress="${esc(id)}"
-                 ${saved.read ? 'checked' : ''} aria-label="Held">`}</td>
+                 ${saved.read ? 'checked' : ''} aria-label="Mark as read">`}</td>
           <td class="c-num">${String(entryNo).padStart(2, '0')}</td>
           <td class="c-date">${esc(ownDate)}</td>
           <td class="c-title">${cited}</td>
           <td class="c-src">${esc(sourceOf(reading))}</td>
           <td class="c-pp">${esc(reading.page_range || '')}</td>
           <td class="c-stat${wanted ? ' is-due' : ''}">${
-            saved.read ? 'Held' : wanted ? 'Due' : ''}</td>
+            saved.read ? 'Read' : wanted ? 'Due' : ''}</td>
         </tr>`)
       })
     }
@@ -213,12 +213,13 @@ export function weekView(course, progress, editing = false) {
         <td class="c-tick sep-n" colspan="2">${esc(title)}</td>
         <td class="c-date sep-d">${esc(shortDate(start))}</td>
         <td class="c-title sep-t" colspan="3">
-          <span class="sep-topic">${esc(topic || 'No topic listed')}</span>
+          <span class="sep-topic">${esc(topic || 'No topic listed')}
+            ${count ? `<span class="sep-count">${count} reading${count === 1 ? '' : 's'}</span>` : ''}</span>
           ${due.length
             ? `<span class="sep-sub">${due.map((d) => esc(d.title)).join('; ')} due</span>`
             : ''}
         </td>
-        <td class="c-stat sep-c${flagged ? ' is-flag' : ''}">${count || '\u2014'}</td>
+        <td class="c-stat sep-c${flagged ? ' is-flag' : ''}">${flagged ? 'Due' : ''}</td>
       </tr>`
 
     // the separator has to precede this week's records, which are already in
@@ -338,14 +339,12 @@ export function railView(course, ledger, courses) {
         <span class="rail-t">${esc(w.topic || '—')}</span>
       </a></li>`).join('')
 
-  const notHeld = holdings.heldTotal - holdings.held
   const rows = [
-    ['Readings', `${holdings.held}/${holdings.heldTotal}`, false],
-    // plenty of syllabi record no page ranges at all. "0/0" states a total
-    // that was never counted, so an em dash says so instead.
-    ['Pages', holdings.pagesTotal ? `${holdings.pagesDone}/${holdings.pagesTotal}` : '—', false],
-    ['Held', String(holdings.held), false],
-    ['Not held', String(notHeld), notHeld > 0],
+    ['Read', `${holdings.held} of ${holdings.heldTotal}`, false],
+    // plenty of syllabi record no page ranges at all. "0 of 0" states a
+    // total that was never counted, so an em dash says so instead.
+    ['Pages', holdings.pagesTotal
+      ? `${holdings.pagesDone} of ${holdings.pagesTotal}` : '—', false],
   ]
 
   const upcoming = []
@@ -364,7 +363,7 @@ export function railView(course, ledger, courses) {
       <ol class="rail-index">${entries}</ol>
     </details>
     <section class="rail-sec">
-      <h3>Holdings</h3>
+      <h3>Progress</h3>
       <dl class="rail-facts">
         ${rows.map(([k, v, flag]) => `<div><dt>${esc(k)}</dt>
           <dd${flag ? ' class="is-flag"' : ''}>${esc(v)}</dd></div>`).join('')}
