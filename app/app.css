@@ -367,7 +367,6 @@ table.ledger td {
 
 table.ledger td.c-tick { padding-left: 8px; padding-right: 0; }
 
-tr.rec:hover > td { background: var(--tint); }
 
 .c-num, .c-date, .c-pp {
   font-family: var(--mono);
@@ -452,7 +451,6 @@ tr.rec:has(+ tr.sep) > td { border-bottom: 0; }
 /* jumping from the index must not park a week under the sticky header */
 tr.sep { scroll-margin-top: 26px; }
 
-tr.sep:hover > td { background: var(--paper); }
 
 .sep-n {
   font-family: var(--display);
@@ -590,7 +588,7 @@ input.note {
   opacity: 0;
 }
 
-tr:hover input.note, input.note:focus, input.note:not(:placeholder-shown) {
+input.note:focus, input.note:not(:placeholder-shown) {
   height: auto;
   opacity: 1;
   margin-top: 2px;
