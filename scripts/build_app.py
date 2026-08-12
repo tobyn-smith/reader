@@ -79,10 +79,12 @@ def build_bundle() -> Path:
     # every course stale on every deploy even with nothing changed.
     import hashlib
 
+    # windows checkouts carry crlf and ci carries lf, so line endings are
+    # normalised or the two platforms stamp the same source differently
     hasher = hashlib.sha256()
     for path in sorted((ROOT / "src" / "vault").rglob("*.py")):
-        hasher.update(str(path.relative_to(ROOT)).encode())
-        hasher.update(path.read_bytes())
+        hasher.update(str(path.relative_to(ROOT)).replace("\\", "/").encode())
+        hasher.update(path.read_bytes().replace(b"\r\n", b"\n"))
     digest = hasher.hexdigest()[:12]
     (APP / "version.js").write_text(
         "// written by scripts/build_app.py, the hash of the parser bundle\n"
