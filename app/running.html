@@ -17,131 +17,139 @@
   classes.</p>
 </header>
 
-<main class="prose">
+<div class="doc-sheet">
 
-  <h2 class="doc-head">Running it yourself</h2>
+  <nav class="doc-rail" aria-label="On this page">
+    <h3>On this page</h3>
+    <ol class="doc-index">
+      <li><a href="#need">What you need</a></li>
+      <li><a href="#setup">Setting it up</a></li>
+      <li><a href="#commands">The commands</a></li>
+      <li><a href="#files">Where your files go</a></li>
+      <li><a href="#extras">Optional extras</a></li>
+      <li><a href="#publishing">Publishing your own</a></li>
+      <li><a href="#tests">Tests</a></li>
+      <li><a href="#difference">Browser vs terminal</a></li>
+    </ol>
+    <p class="doc-railback"><a href="./">Back to the reader</a></p>
+  </nav>
 
-  <p class="doc-lead">The website does everything most people need, and it needs
-  nothing installed. This page is for when you want the whole thing on your own
-  machine: a folder of readings rather than one syllabus at a time, search
-  across all of it, and your own published copy.</p>
+  <main class="prose">
 
-  <p class="secondary">It's all local. No keys, no account, no server of mine
-  anywhere in it.</p>
+    <h2 class="doc-head">Running it yourself</h2>
 
-  <h3>What you'll need</h3>
+    <p class="doc-lead">The website covers what most people need and installs
+    nothing. Run it on your own machine if you want the rest of it: a folder of
+    readings in one go, search across all of them, and your own published copy.</p>
 
-  <p>Python 3.11 or newer, and git. That's the lot.</p>
+    <h3 id="need">What you need</h3>
 
-  <h3>Getting it set up</h3>
+    <p>Python 3.11 or newer, and git.</p>
 
-  <pre class="cmd"><code>git clone https://github.com/tobyn-smith/reader
+    <h3 id="setup">Setting it up</h3>
+
+    <pre class="cmd"><code>git clone https://github.com/tobyn-smith/reader
 cd reader
 python -m venv .venv
 .venv/Scripts/activate
 pip install -e ".[dev]"</code></pre>
 
-  <p class="secondary">On macOS or Linux the fourth line is
-  <code>source .venv/bin/activate</code> instead. If you're going to send
-  changes back, add <code>git config core.hooksPath .githooks</code> so the
-  pre-commit hook can stop your coursework wandering into a commit.</p>
+    <p>On macOS or Linux, activate with <code>source .venv/bin/activate</code>
+    instead. If you plan to send changes back, run
+    <code>git config core.hooksPath .githooks</code> as well.</p>
 
-  <h3>The commands you'll actually use</h3>
+    <h3 id="commands">The commands</h3>
 
-  <table class="doc-table">
-    <thead><tr><th>Command</th><th>What it does</th></tr></thead>
-    <tbody>
-      <tr>
-        <td><code>vault syllabus syllabus.pdf</code></td>
-        <td>Reads a syllabus, shows you what it found, saves it once you're happy.</td>
-      </tr>
-      <tr>
-        <td><code>vault ingest readings/</code></td>
-        <td>Adds a folder of reading PDFs and matches them to the schedule. Safe to run again.</td>
-      </tr>
-      <tr>
-        <td><code>vault status</code></td>
-        <td>This week: what you've got, what's missing, what's due.</td>
-      </tr>
-      <tr>
-        <td><code>vault search "commitment problem"</code></td>
-        <td>Full text, across every reading you've taken in.</td>
-      </tr>
-      <tr>
-        <td><code>vault build --public --pdf</code></td>
-        <td>Builds the site, exactly as GitHub Pages serves it.</td>
-      </tr>
-      <tr>
-        <td><code>vault serve</code></td>
-        <td>Opens the private build, the one with everything in it.</td>
-      </tr>
-    </tbody>
-  </table>
+    <table class="doc-table">
+      <tbody>
+        <tr>
+          <td><code>vault syllabus syllabus.pdf</code></td>
+          <td>Reads a syllabus and shows you what it found. Nothing is saved
+            until you say so.</td>
+        </tr>
+        <tr>
+          <td><code>vault ingest readings/</code></td>
+          <td>Takes in a folder of reading PDFs and matches them to the
+            schedule. Safe to run again.</td>
+        </tr>
+        <tr>
+          <td><code>vault status</code></td>
+          <td>This week: what you have, what's missing, what's due.</td>
+        </tr>
+        <tr>
+          <td><code>vault search "commitment problem"</code></td>
+          <td>Full text, across every reading you've taken in.</td>
+        </tr>
+        <tr>
+          <td><code>vault build --public --pdf</code></td>
+          <td>Builds the site the way GitHub Pages serves it.</td>
+        </tr>
+        <tr>
+          <td><code>vault serve</code></td>
+          <td>Opens the private build, with everything in it.</td>
+        </tr>
+      </tbody>
+    </table>
 
-  <h3>Where your things live</h3>
+    <h3 id="files">Where your files go</h3>
 
-  <p>Your database, PDFs and caches sit in <code>~/.seminar-vault/</code>, well
-  outside the repository, so nothing you're reading for a class can end up in a
-  commit by accident.</p>
+    <p>Your database, PDFs and caches sit in <code>~/.seminar-vault/</code>,
+    outside the repository. Coursework can't end up in a commit by accident.</p>
 
-  <h3>Optional extras</h3>
+    <h3 id="extras">Optional extras</h3>
 
-  <p class="secondary">One feature each, and everything else carries on working
-  without them.</p>
+    <table class="doc-table">
+      <tbody>
+        <tr><td><code>ocrmypdf</code></td><td>Scanned PDFs with no text layer.</td></tr>
+        <tr><td><code>pagefind</code></td><td>Search on the built site.</td></tr>
+        <tr><td><code>weasyprint</code></td><td>Print PDFs locally. CI builds them anyway.</td></tr>
+      </tbody>
+    </table>
 
-  <table class="doc-table">
-    <thead><tr><th>Package</th><th>Gets you</th></tr></thead>
-    <tbody>
-      <tr><td><code>ocrmypdf</code></td><td>Scanned PDFs with no text layer.</td></tr>
-      <tr><td><code>pagefind</code></td><td>Search on the built site.</td></tr>
-      <tr><td><code>weasyprint</code></td><td>Print PDFs locally. CI builds them either way.</td></tr>
-    </tbody>
-  </table>
+    <p>One feature each. Everything else works without them.</p>
 
-  <h3>Publishing your own copy</h3>
+    <h3 id="publishing">Publishing your own</h3>
 
-  <ol class="doc-steps">
-    <li>Fork it, then Settings, Pages, and set the source to GitHub Actions.</li>
-    <li>Run <code>vault syllabus your-syllabus.pdf</code> for each course and
-      check the parse before saving it.</li>
-    <li>Run <code>vault ingest your-readings/</code> as the term goes on.</li>
-    <li>Run <code>vault export --public</code>, read what it kept and what it
-      dropped, then commit <code>data/public.json</code>. Pushing publishes.</li>
-  </ol>
+    <ol class="doc-steps">
+      <li>Fork it, then Settings, Pages, source: GitHub Actions.</li>
+      <li>Run <code>vault syllabus your-syllabus.pdf</code> for each course and
+        check the parse.</li>
+      <li>Run <code>vault ingest your-readings/</code> as term goes on.</li>
+      <li>Run <code>vault export --public</code>, read what it kept and dropped,
+        then commit <code>data/public.json</code>. Pushing publishes.</li>
+    </ol>
 
-  <p>Nothing reaches the public site unless it's named on an allowlist, and the
-  tests fail if something new turns up in there. Schedules, citations, deadlines
-  and bibliographies are allowed out. Reading text, notes and your instructor's
-  contact details stay on your machine. The allowlist, the CI setup and the
-  hook all carry over to your fork.</p>
+    <p>Only what's on the allowlist reaches the public site, and the tests fail
+    if anything new turns up there. Schedules, citations, deadlines and
+    bibliographies go out. Reading text, notes and your instructor's contact
+    details stay on your machine.</p>
 
-  <h3>Running the tests</h3>
+    <h3 id="tests">Tests</h3>
 
-  <pre class="cmd"><code>pytest -q</code></pre>
+    <pre class="cmd"><code>pytest -q</code></pre>
 
-  <p class="secondary">Offline, no keys. The fixtures are invented syllabi
-  copying the layouts real ones use: bulleted schedules with odd glyph markers,
-  ruled tables with two meetings a week, labelled topic blocks, two-column
-  articles, and one scan with no text layer at all. They assert exact reading
-  counts per week, because a parser quietly losing one reading in five otherwise
-  looks perfectly healthy.</p>
+    <p>Offline, no keys. The test files are syllabi I made up in the same
+    layouts real ones use. They check the exact number of readings in each week,
+    so a parser that drops one gets caught.</p>
 
-  <h3>One thing worth knowing</h3>
+    <h3 id="difference">Browser vs terminal</h3>
 
-  <p>The command line and the website run the same Python, compiled to
-  WebAssembly for the browser. They don't get quite the same information out of
-  a PDF, though: on your machine it can see the ruled lines a table is drawn
-  with, and in the browser it can't, so a handful of files come out slightly
-  better on the command line. The
-  <a href="./#accuracy">accuracy figures</a> on the front page are the browser's,
-  since that's what most people are using.</p>
+    <p>Both run the same Python. The browser can't see the ruled lines a table
+    is drawn with, so a few files come out better in the terminal. The
+    <a href="./#accuracy">figures on the front page</a> are the browser's.</p>
 
-  <p class="secondary"><code>ARCHITECTURE.md</code> in the repository has the
-  rest of it, including what the parser gets wrong and why.</p>
+    <p>Measure it yourself against your own syllabi:</p>
 
-  <p class="doc-back"><a href="./">Back to the reader</a></p>
+    <pre class="cmd"><code>python scripts/measure.py ~/your-syllabi --web</code></pre>
 
-</main>
+    <p>Drop <code>--web</code> for the terminal's numbers.
+    <code>ARCHITECTURE.md</code> in the repository has the rest, including what
+    the parser gets wrong.</p>
+
+    <p class="doc-back"><a href="./">Back to the reader</a></p>
+
+  </main>
+</div>
 
 <footer class="colophon">
   <p class="colophon-contrib">Want to help or contribute? Head over to

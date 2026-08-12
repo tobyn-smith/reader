@@ -1182,7 +1182,77 @@ input[type="file"]::file-selector-button {
 body.doc .masthead h1 a { text-decoration: none; color: inherit; }
 body.doc .masthead { border-bottom: 3px solid var(--rule); }
 
-main.prose { max-width: 74ch; padding: 6px 0 0; }
+/* the same two column sheet the ledger uses: an index that stays put on the
+   left, the reading on the right. a page of prose alone left half a wide
+   screen empty and gave no sense of how much there was. */
+.doc-sheet {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-items: start;
+}
+
+.doc-rail {
+  position: sticky;
+  top: 0;
+  border-right: 1px solid var(--rule);
+  padding: 20px 18px 30px 0;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.doc-rail h3 {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--faint);
+  border: 0;
+  padding: 0;
+}
+
+.doc-index { list-style: none; margin: 0; padding: 0; counter-reset: doc; }
+
+.doc-index li { counter-increment: doc; }
+
+.doc-index a {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 0 8px;
+  padding: 3px 0;
+  color: var(--mid);
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.doc-index a::before {
+  content: counter(doc, decimal-leading-zero);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.doc-index a:hover { color: var(--ink); background: var(--tint); }
+
+.doc-railback {
+  margin: 14px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid var(--hair);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+/* the column is wide enough for the tables, and the running text keeps its own
+   measure inside it. a line of prose set to the full width of a monitor is one
+   the eye loses; a table squeezed to the width of a paragraph is one that
+   wraps for no reason. */
+main.prose { max-width: 62rem; padding: 20px 0 0 26px; }
+
+main.prose > p,
+main.prose > ol,
+main.prose > ul { max-width: 68ch; }
 
 .doc-head {
   font-family: var(--display);
@@ -1194,14 +1264,16 @@ main.prose { max-width: 74ch; padding: 6px 0 0; }
   margin: 30px 0 12px;
 }
 
-.doc-lead { font-size: 18px; line-height: 1.55; margin: 0 0 10px; }
+.doc-lead { font-size: 18px; line-height: 1.55; margin: 0 0 10px; max-width: 60ch; }
 
 main.prose h3 {
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   border-top: 2px solid var(--rule);
   padding-top: 8px;
-  margin: 30px 0 8px;
+  margin: 32px 0 10px;
+  /* jumping from the index must not tuck a heading under the top of the page */
+  scroll-margin-top: 12px;
 }
 
 main.prose p { margin: 0 0 10px; }
@@ -1339,7 +1411,7 @@ p code, td code, li code { background: var(--tint); padding: 0 4px; }
   body:not(.doc) footer { display: none !important; }
 
   body.doc #smallgate { display: none; }
-  body.doc main.prose { max-width: none; }
+  body.doc main.prose { max-width: none; padding: 14px 0 0; }
   body.doc .doc-head { font-size: 30px; }
 
   /* a command is longer than a phone is wide. the block scrolls on its own
@@ -1347,6 +1419,21 @@ p code, td code, li code { background: var(--tint); padding: 0 4px; }
      never has to scroll sideways. */
   body.doc .doc-table td:first-child { white-space: normal; width: auto; }
   body.doc pre.cmd code { white-space: pre; }
+}
+
+/* the index needs a column of its own to be worth having */
+@media (max-width: 860px) {
+  .doc-sheet { grid-template-columns: minmax(0, 1fr); }
+  main.prose { padding-left: 0; }
+  .doc-rail {
+    position: static;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    padding: 12px 0 10px;
+  }
+  .doc-index { columns: 2; }
+  .doc-railback { display: none; }
 }
 
 /* ---- first load --------------------------------------------------------
