@@ -293,7 +293,10 @@ def _marker_for(position: int, text: str, markers: list[tuple[int, str]]) -> str
 # real syllabus and pushed the weight total to 500.
 _APPARATUS_RE = re.compile(
     r"^\s*(?:total|totals?|sum|on[\s-]?time|late\s+(?:within|after|by)\b|"
-    r"(?:\d+\s*)?days?\s+late)\b",
+    r"(?:\d+\s*)?days?\s+late|"
+    # the heading of the grading section itself, picked up with the 100 beside
+    # it and reported as an assignment worth the whole course
+    r"grading\s+(?:polic|scale|criteria|rubric|breakdown|summar))",
     re.IGNORECASE,
 )
 

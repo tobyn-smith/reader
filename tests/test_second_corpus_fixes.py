@@ -234,7 +234,8 @@ class TestGradingApparatus:
         from vault.syllabus.deliverables import _APPARATUS_RE
 
         for title in ("TOTAL", "Total", "On-time", "On time",
-                      "Late within one day", "Late after four days", "2 days late"):
+                      "Late within one day", "Late after four days", "2 days late",
+                      "Grading Policies", "Grading Scale", "Grading summary"):
             assert _APPARATUS_RE.match(title), title
 
     def test_real_assignments_survive(self):
