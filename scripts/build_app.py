@@ -17,6 +17,7 @@ import io
 import shutil
 import sys
 import re
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -95,10 +96,26 @@ def build_bundle() -> Path:
     return target
 
 
-def fetch(url: str) -> bytes:
+def fetch(url: str, attempts: int = 4) -> bytes:
+    """download, retrying a dropped connection.
+
+    every asset here comes from someone else's cdn, and a release build died
+    twice in one afternoon on a connection closed mid-handshake. one flaky
+    socket should cost a few seconds, not the whole deploy.
+    """
     print(f"fetching {url}")
-    with urllib.request.urlopen(url) as response:
-        return response.read()
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response:
+                return response.read()
+        except Exception as exc:
+            if attempt == attempts:
+                raise
+            wait = 2 ** attempt
+            print(f"  {type(exc).__name__}, retrying in {wait}s "
+                  f"({attempt} of {attempts - 1})")
+            time.sleep(wait)
+    raise AssertionError("unreachable")
 
 
 # the three families the theme is built on, latin subset only. fetched at
