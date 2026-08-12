@@ -213,3 +213,59 @@ class TestGradingApparatus:
         for title in ("Quizzes", "Assignments", "Exam 1", "Late Antiquity Essay",
                       "Latin America Memo"):
             assert not _APPARATUS_RE.match(title), title
+
+
+class TestScheduleZoneStart:
+    """which signal is allowed to say where the schedule begins.
+
+    a deadline calendar printed above the schedule is a column of date-led
+    lines. when a single such line could start the zone, that block captured
+    it and every entry inside became a session: one real syllabus parsed to
+    34 sessions in the browser against 27 on the command line, with four
+    phantom duplicate-date warnings. the two extractors split lines slightly
+    differently, so only one of them tripped it, which is what made the bug
+    look like a browser problem rather than a precedence problem.
+    """
+
+    def _lines(self, *texts):
+        from vault.syllabus import zones
+        return [zones.Line(1, i, t, starts_block=True) for i, t in enumerate(texts)]
+
+    def test_heading_wins_over_a_dated_deadline_block(self):
+        from vault.syllabus import zones
+        lines = self._lines(
+            "Assignments and deadlines",
+            "February, 5  NO CLASS",
+            "February, 19  Deadline Essay Outline",
+            "February, 26  MIDTERM EXAM",
+            # as the source prints it: a heading has to look like one, and
+            # sentence case fails the title-case test on its own
+            "THEMATIC OUTLINE",
+            "1. Introduction (01/13)",
+            "2. Europe Today (01/15)",
+        )
+        start = zones.find_schedule_start(lines)
+        assert lines[start].text == "THEMATIC OUTLINE"
+
+    def test_dates_still_start_a_schedule_that_has_no_heading(self):
+        from vault.syllabus import zones
+        lines = self._lines(
+            "Some front matter about the course",
+            "January 13: Introduction",
+            "January 15: Europe Today",
+            "January 20: European Integration",
+        )
+        start = zones.find_schedule_start(lines)
+        assert start is not None
+        assert "January 13" in lines[start].text
+
+    def test_week_markers_still_outrank_everything(self):
+        from vault.syllabus import zones
+        lines = self._lines(
+            "Course schedule",
+            "Week 1: Introduction",
+            "Week 2: Europe Today",
+        )
+        start = zones.find_schedule_start(lines)
+        # the heading just above the first week is pulled in, not skipped
+        assert lines[start].text in ("Course schedule", "Week 1: Introduction")
