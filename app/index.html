@@ -14,9 +14,10 @@
      plain statement instead of a broken page -->
 <div id="smallgate" role="status">
   <p class="smallgate-mark">Schedule Reader</p>
-  <p>This needs a bigger screen.</p>
-  <p class="smallgate-sub">Open it on a laptop or desktop. Anything you have
-  saved is still here, it just will not fit on a screen this size.</p>
+  <p>Due to the technicality of the website, I've restricted it to bigger
+  screens only. :)</p>
+  <p class="smallgate-sub">Anything you saved is still here. Open it on a
+  laptop or desktop to pick it back up.</p>
 </div>
 
 <header class="masthead">
@@ -27,6 +28,27 @@
 <nav id="nav" class="coursebar" hidden></nav>
 
 <main>
+
+<!-- the first thing a new visitor sees. the one action that matters gets the
+     whole page, not a folded panel -->
+<section id="welcome" hidden>
+  <div class="welcome-grid">
+    <div>
+      <h2 class="welcome-head">Your term, off the syllabus</h2>
+      <p class="welcome-lead">Drop a syllabus PDF and get the week-by-week
+      schedule, every reading as a citation, and the deadlines, all in one
+      ledger you can correct and print.</p>
+      <p class="welcome-lead secondary">Files are read right here in your
+      browser. Nothing uploads, nothing leaves your machine.</p>
+    </div>
+    <div id="welcome-drop" class="welcome-drop">
+      <p class="welcome-drop-line">Drop your syllabus here</p>
+      <p class="secondary">or</p>
+      <button type="button" id="welcome-choose">Choose a file</button>
+      <p class="secondary">Readings and more courses can follow in any order.</p>
+    </div>
+  </div>
+</section>
 
 <section id="review" hidden>
   <h2>Review <span id="review-name" class="secondary"></span></h2>

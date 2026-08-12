@@ -105,8 +105,21 @@ export function scheduleView(course) {
 }
 
 export function weekView(course, progress, editing = false) {
+  // the ledger runs in date order, not parse order. a deadlines list at the
+  // top of a syllabus parses into dated week-less rows, and in parse order
+  // they all sat above week 1; by date they interleave where they belong.
+  // only a mostly-dated schedule is sorted, so a dateless course keeps its
+  // written order.
+  let ordered = course.parse.sessions.map((session, si) => ({ session, si }))
+  const datedCount = ordered.filter((e) => e.session.meeting_date).length
+  if (datedCount >= 3 && datedCount >= ordered.length * 0.8) {
+    ordered = [...ordered].sort((a, b) =>
+      String(a.session.meeting_date || '9999').localeCompare(
+        String(b.session.meeting_date || '9999')) || a.si - b.si)
+  }
+
   const groups = new Map()
-  course.parse.sessions.forEach((session, si) => {
+  ordered.forEach(({ session, si }) => {
     const key = session.week_number ?? `x${session.ordinal}`
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key).push({ session, si })
@@ -346,10 +359,10 @@ export function railView(course, ledger, courses) {
   upcoming.sort((a, b) => a.days - b.days)
 
   return `<nav class="rail" aria-label="Index">
-    <section class="rail-sec">
-      <h3>Index</h3>
+    <details class="rail-sec rail-fold">
+      <summary>Index</summary>
       <ol class="rail-index">${entries}</ol>
-    </section>
+    </details>
     <section class="rail-sec">
       <h3>Holdings</h3>
       <dl class="rail-facts">

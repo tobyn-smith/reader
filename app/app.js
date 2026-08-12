@@ -225,6 +225,8 @@ function candidateWorks() {
 
 function submit(files) {
   const { extractWorker: ew } = workers()
+  $('welcome').hidden = true
+  $('tools').open = true
   status('intake-status', `${files.length} file(s) queued`)
 
   for (const file of files) {
@@ -412,6 +414,10 @@ function focusLast(selector) {
 function draw() {
   drawNav()
   const course = state.courses.find((c) => c.id === state.active) || state.courses[0]
+  // the first visit gets the welcome and its big drop target; once a course
+  // exists, or a parse is waiting on review, the ledger takes over
+  $('welcome').hidden = Boolean(course) || Boolean(state.pending) || state.files.length > 0
+  $('tools').open = !course
   if (!course) {
     $('views').hidden = true
     return
@@ -544,6 +550,10 @@ async function boot() {
   }
 
   wireDropZone('file-drop', 'file-input')
+  wireDropZone('welcome-drop', 'file-input')
+  $('welcome-choose').onclick = () => $('file-input').click()
+  // a fresh visit shows the welcome, not a folded panel
+  $('welcome').hidden = state.courses.length > 0
 
   $('review-table').addEventListener('click', (e) => {
     if (!e.target.closest('#toggle-all')) return
