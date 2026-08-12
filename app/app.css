@@ -10,6 +10,9 @@
      1px   between reading rows, in --hair
    nothing else draws a line, and nothing is boxed, rounded or shadowed.
 
+   every text token clears wcag aa on its paper: dark ink 17.9, mid 7.2,
+   faint 5.2; light ink 20.7, mid 9.2, faint 5.2. re-measure on any change.
+
    --flag marks three things only: a file not held, an overdue item, a
    restricted ai policy. a completed row goes --faint and stays upright: no
    strike, no tick, no green. */
@@ -18,7 +21,7 @@
   --paper: #0D0D0B;
   --ink:   #EDE8DA;
   --mid:   #A39D8E;
-  --faint: #6E695E;
+  --faint: #8A8478;
   --hair:  #2B2924;
   --rule:  #EDE8DA;
   --flag:  #D2704A;
@@ -34,7 +37,7 @@
     --paper: #FFFDF8;
     --ink:   #000000;
     --mid:   #4A4640;
-    --faint: #8A857C;
+    --faint: #706B60;
     --hair:  #C9C3B8;
     --rule:  #000000;
     --flag:  #7A1F1A;
@@ -166,7 +169,7 @@ body {
 .record-facts dt {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--faint);
@@ -207,7 +210,7 @@ body {
   margin: 0 0 5px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--faint);
@@ -228,8 +231,8 @@ body {
   line-height: 1.5;
 }
 
-.rail-n { font-family: var(--mono); font-size: 11px; color: var(--faint); }
-.rail-t { font-family: var(--body); font-size: 12.5px; }
+.rail-n { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+.rail-t { font-family: var(--body); font-size: 13px; }
 
 .rail-index a:hover { color: var(--ink); background: var(--tint); }
 .rail-index .is-current a { color: var(--ink); font-weight: 500; }
@@ -318,7 +321,7 @@ table.ledger thead th {
   color: var(--paper);
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   text-align: left;
@@ -340,7 +343,7 @@ table.ledger thead th:first-child { padding-left: 8px; }
 .c-stat { width: 84px; }
 
 table.ledger td {
-  padding: 5px 10px 5px 0;
+  padding: 6px 10px 6px 0;
   vertical-align: top;
   border-bottom: 1px solid var(--hair);
 }
@@ -351,7 +354,7 @@ tr.rec:hover > td { background: var(--tint); }
 
 .c-num, .c-date, .c-pp {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--mid);
 }
 
@@ -372,7 +375,7 @@ tr.rec:hover > td { background: var(--tint); }
 .c-stat {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--faint);
@@ -393,7 +396,7 @@ tr.struck .c-title, tr.struck .c-src { color: var(--faint); }
 .c-title {
   font-family: var(--body);
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 1.45;
   word-break: break-word;
 }
 
@@ -402,7 +405,7 @@ tr.struck .c-title, tr.struck .c-src { color: var(--faint); }
 .cwarn {
   display: block;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--flag);
@@ -440,7 +443,7 @@ tr.sep:hover > td { background: var(--paper); }
 
 .sep-d {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--mid);
   vertical-align: bottom;
 }
@@ -559,7 +562,7 @@ input.note {
   border: 0;
   padding: 0;
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--mid);
   height: 0;
   opacity: 0;
@@ -633,7 +636,7 @@ nav.tabs .right { display: flex; align-items: center; gap: 8px; }
 nav.tabs .right label {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--faint);
@@ -671,7 +674,7 @@ table { width: 100%; border-collapse: collapse; }
 th {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   text-align: left;
@@ -682,7 +685,7 @@ th {
 
 td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
 
-.when, .num { font-family: var(--mono); font-size: 10.5px; color: var(--mid); }
+.when, .num { font-family: var(--mono); font-size: 11.5px; color: var(--mid); }
 .num { text-align: right; }
 
 .flagged, tr.missing td { color: var(--flag); }
@@ -700,7 +703,7 @@ ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px;
   margin: 14px 0 2px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--faint);
@@ -728,7 +731,7 @@ ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px;
 .rstats dt {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--faint);
@@ -737,7 +740,7 @@ ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px;
 .rstats dd { margin: 0; font-family: var(--mono); font-size: 17px; }
 .rstats dd.flagged { color: var(--flag); }
 
-.rlead { font-family: var(--mono); font-size: 10.5px; color: var(--mid); margin: 0 0 10px; }
+.rlead { font-family: var(--mono); font-size: 12px; color: var(--mid); margin: 0 0 10px; }
 .rwarn { margin: 0 0 10px; padding-left: 16px; font-size: 12px; color: var(--flag); }
 
 .whead {
@@ -768,7 +771,7 @@ ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px;
 }
 
 .rrow.needs-check { border-left-color: var(--flag); }
-.rnum { font-family: var(--mono); font-size: 10.5px; color: var(--faint); text-align: right; }
+.rnum { font-family: var(--mono); font-size: 11.5px; color: var(--faint); text-align: right; }
 
 .rsource {
   margin: 2px 0 0;
@@ -817,10 +820,10 @@ summary:hover { color: var(--ink); }
 
 .drop { border: 1px dashed var(--hair); padding: 12px 14px; margin: 8px 0; }
 .drop:hover, .drop[data-active="true"] { border-color: var(--flag); border-style: solid; }
-.drop label { font-family: var(--display); font-weight: 700; font-size: 11px;
+.drop label { font-family: var(--display); font-weight: 700; font-size: 13px;
               text-transform: uppercase; letter-spacing: 0.12em; }
 
-input[type="file"] { border: 0; font-family: var(--mono); font-size: 10.5px; color: var(--mid); }
+input[type="file"] { border: 0; font-family: var(--mono); font-size: 11.5px; color: var(--mid); }
 
 input[type="file"]::file-selector-button {
   font-family: var(--mono);
@@ -887,66 +890,42 @@ input[type="file"]::file-selector-button {
   .record-code { font-size: 34px; }
 }
 
-/* a seven column ledger does not survive 375px. rather than shrink it until
-   every column is unreadable, the table stops being a table: each record
-   becomes a block with the citation first and its details under it, and the
-   week separators stay as the rules between them. the reading is still the
-   thing you came for, and it gets the full width. */
-@media (max-width: 640px) {
-  body { padding: 0 12px; }
-  .record-code { font-size: 27px; }
-  .record { padding: 10px 0 9px; }
-  .record-facts { justify-content: flex-start; gap: 3px 18px; }
-  .record-facts > div { text-align: left; }
-  .rail-index { columns: 1; }
-  .tabstrip { overflow-x: auto; scrollbar-width: none; }
-  .tabstrip::-webkit-scrollbar { display: none; }
-  nav.tabs button[data-view] { white-space: nowrap; }
+/* ---- the small-screen gate ---------------------------------------------
+   the ledger has no honest phone form, and a broken table helps nobody. under
+   720px wide (or a phone held sideways) the app hides and a plain statement
+   shows instead. everything saved stays saved; only the viewport is refused. */
 
-  table.ledger, table.ledger tbody, table.ledger tr, table.ledger td { display: block; }
-  table.ledger thead { display: none; }
-  table.ledger { table-layout: auto; }
+#smallgate { display: none; }
 
-  tr.rec {
-    position: relative;
-    padding: 8px 0 8px 26px;
-    border-bottom: 1px solid var(--hair);
+@media (max-width: 719px), ((max-height: 480px) and (max-width: 1000px)) {
+  #smallgate {
+    display: block;
+    padding: 18vh 24px 0;
+    text-align: left;
   }
 
-  table.ledger td { border: 0; padding: 0; }
-
-  /* the tick sits in the margin it was given, beside the citation */
-  tr.rec td.c-tick {
-    position: absolute;
-    left: 0;
-    top: 9px;
-    width: auto;
-    padding: 0;
+  #smallgate .smallgate-mark {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    border-bottom: 3px solid var(--rule);
+    padding-bottom: 8px;
+    margin: 0 0 14px;
   }
 
-  /* number, date, source, pages and status run together as one meta line
-     under the citation, each labelled by what it is rather than by a column */
-  tr.rec td.c-num, tr.rec td.c-date, tr.rec td.c-src,
-  tr.rec td.c-pp, tr.rec td.c-stat {
-    display: inline;
-    width: auto;
+  #smallgate p {
+    margin: 0 0 6px;
+    font-family: var(--body);
+    font-size: 17px;
   }
 
-  tr.rec td.c-title { display: block; margin-bottom: 2px; }
-  tr.rec td.c-num::after { content: " · "; color: var(--faint); }
-  tr.rec td.c-date:not(:empty)::after { content: " · "; color: var(--faint); }
-  tr.rec td.c-pp:not(:empty)::before { content: "pp. "; }
-  tr.rec td.c-pp:not(:empty)::after { content: " · "; color: var(--faint); }
-  tr.rec td.c-src:not(:empty)::after { content: " · "; color: var(--faint); }
-  tr.rec td.c-stat:not(:empty) { font-size: 10.5px; }
+  #smallgate .smallgate-sub {
+    font-size: 13px;
+    color: var(--mid);
+    max-width: 40ch;
+  }
 
-  tr.rec.empty { padding-left: 0; }
-  tr.rec.empty td.c-stat { display: none; }
-
-  tr.sep { padding-top: 10px; border-top: 2px solid var(--rule); }
-  tr.sep > td { border: 0; padding: 0; background: none; }
-  tr.sep td.c-tick { position: static; }
-  .sep-n { display: inline-block; margin-right: 8px; }
-  .sep-d { display: inline-block; }
-  tr.sep td.c-stat { display: none; }
+  .masthead, .coursebar, main, footer { display: none !important; }
 }
