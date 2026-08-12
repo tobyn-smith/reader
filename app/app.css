@@ -98,6 +98,8 @@ body {
   color: var(--faint);
 }
 
+.masthead-note strong { color: var(--ink); font-weight: 700; }
+
 /* selected text keeps the ledger's two colours rather than the browser blue */
 ::selection { background: var(--ink); color: var(--paper); }
 
