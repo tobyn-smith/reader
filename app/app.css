@@ -283,8 +283,74 @@ body {
 .rail-c { text-align: right; color: var(--faint); }
 .rail-c.is-flag { color: var(--flag); }
 
+/* the filters live in the rail rather than in a bar over the ledger: the rail
+   is the ledger's control column and already had the room, so nothing new is
+   added across the top of the page. */
+.rail-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.chip {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 3px 8px;
+  border: 1px solid var(--hair);
+  color: var(--mid);
+}
+
+.chip:hover { background: var(--tint); color: var(--ink); border-color: var(--mid); }
+
+.chip[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
 .rail-facts { margin: 0; }
 .rail-facts > div { display: flex; justify-content: space-between; gap: 6px; }
+
+/* a ruled bar, squared off, filled in the ink. no rounding, no gradient, no
+   second colour: it is a measure printed on a record, not a status light. */
+.meter { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; margin-bottom: 7px; }
+
+.meter .bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  margin-top: 3px;
+  border: 1px solid var(--hair);
+  background: var(--tint);
+}
+
+.meter .bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.rail-keys { margin: 0; }
+
+.rail-keys > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+.rail-keys dt {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.rail-keys dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+}
 
 .rail-facts dt {
   font-family: var(--mono);
@@ -433,6 +499,14 @@ td.c-src > span {
 /* a record held reads quieter, not crossed out */
 tr.struck .c-stat { color: var(--faint); }
 tr.struck .c-title, tr.struck .c-src { color: var(--faint); }
+
+/* where the keyboard is. a tint and a rule in the left margin, in the ink
+   rather than the accent: this is a place in a document, not a warning. */
+tr.rec.is-cursor > td { background: var(--tint); }
+
+tr.rec.is-cursor > td.c-tick {
+  box-shadow: inset 3px 0 0 var(--ink);
+}
 
 /* a week with nothing assigned is not a file that is missing. only the three
    named conditions take the accent, so this one stays out of it. */
@@ -617,10 +691,21 @@ input.note {
   opacity: 0;
 }
 
-input.note:focus, input.note:not(:placeholder-shown) {
+/* it also opens on the row the keyboard is on, and on anything already read.
+   hidden until focused, nobody knew the field was there at all; shown on every
+   row, thirty empty note lines are the loudest thing on the page. a record you
+   have read is exactly where a note gets written. */
+input.note:focus,
+input.note:not(:placeholder-shown),
+tr.is-cursor input.note,
+tr.struck input.note {
   height: auto;
   opacity: 1;
   margin-top: 2px;
+}
+
+tr.struck input.note::placeholder, tr.is-cursor input.note::placeholder {
+  color: var(--faint);
 }
 
 input.cite { width: 100%; font-size: 13px; }

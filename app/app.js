@@ -24,6 +24,10 @@ const state = {
   // no parser reads every syllabus, and dates move mid term, so anything on
   // screen can be corrected by hand. off by default to keep the read view clean.
   editing: false,
+  // which records the ledger is showing. off means all of them.
+  filter: { unread: false, required: false, soon: false },
+  // the row the keyboard is on, held as a reading id so it survives a redraw
+  cursor: null,
 }
 
 let extractWorker = null
@@ -534,6 +538,50 @@ function restoreFocus(token) {
   if (el.select) el.select()
 }
 
+// ---- the keyboard cursor ---------------------------------------------------
+
+function cursorRows() {
+  return [...document.querySelectorAll('#view tr.rec[data-row]')]
+}
+
+function paintCursor() {
+  const rows = cursorRows()
+  for (const row of rows) row.classList.remove('is-cursor')
+  if (!state.cursor) return
+  const found = rows.find((r) => r.dataset.row === state.cursor)
+  if (found) found.classList.add('is-cursor')
+  else state.cursor = null
+}
+
+function moveCursor(step) {
+  const rows = cursorRows()
+  if (!rows.length) return
+  const at = rows.findIndex((r) => r.dataset.row === state.cursor)
+  const next = at < 0
+    ? (step > 0 ? 0 : rows.length - 1)
+    : Math.min(rows.length - 1, Math.max(0, at + step))
+  state.cursor = rows[next].dataset.row
+  paintCursor()
+  rows[next].scrollIntoView({ block: 'nearest' })
+}
+
+function cursorRow() {
+  return state.cursor
+    ? cursorRows().find((r) => r.dataset.row === state.cursor)
+    : null
+}
+
+// ---- deadlines as a calendar file ------------------------------------------
+
+function drawCalendarButton() {
+  const button = $('calendar')
+  const rows = grades.datedDeadlines(state.courses)
+  button.hidden = rows.length === 0
+  if (rows.length) {
+    button.textContent = `Add ${rows.length} deadline${rows.length === 1 ? '' : 's'} to a calendar`
+  }
+}
+
 function draw() {
   const focused = focusToken(document.activeElement)
   drawNav()
@@ -589,9 +637,9 @@ function draw() {
   const target = $('view')
   $('sheet').classList.toggle('no-rail', state.currentView !== 'week')
   if (state.currentView === 'week') {
-    const ledger = view.weekView(course, state.progress, editing)
+    const ledger = view.weekView(course, state.progress, editing, state.filter)
     target.innerHTML = ledger.html
-    $('rail').innerHTML = view.railView(course, ledger, state.courses)
+    $('rail').innerHTML = view.railView(course, ledger, state.courses, state.filter)
   } else {
     // the rail belongs to the ledger. emptying it left its 168px column
     // standing, so every other view opened indented by a blank strip and gave
@@ -609,6 +657,8 @@ function draw() {
   }
 
   restoreFocus(focused)
+  paintCursor()
+  drawCalendarButton()
 
   // the document line and the sheet number: a record identifies itself
   const stamp = new Date().toISOString().slice(0, 10)
@@ -813,11 +863,74 @@ async function boot() {
 
   // the index scrolls the ledger to a week rather than navigating anywhere
   $('rail').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-filter]')
+    if (chip) {
+      const key = chip.dataset.filter
+      if (key === 'clear') state.filter = { unread: false, required: false, soon: false }
+      else state.filter[key] = !state.filter[key]
+      draw()
+      return
+    }
     const jump = e.target.closest('[data-jump]')
     if (!jump) return
     e.preventDefault()
     const row = document.querySelector(`tr.sep[data-week="${jump.dataset.jump}"]`)
     if (row) row.scrollIntoView({ block: 'start' })
+  })
+
+  // the ledger is a document you work down in one sitting, so it takes the
+  // keys a document reader takes. anything typed into a field is left alone,
+  // and so is any browser or os shortcut.
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return
+    const el = document.activeElement
+    const typing = el && (el.tagName === 'INPUT' || el.tagName === 'SELECT'
+      || el.tagName === 'TEXTAREA' || el.isContentEditable)
+    if (typing) {
+      if (e.key === 'Escape') el.blur()
+      return
+    }
+    if ($('views').hidden) return
+
+    const views = ['week', 'schedule', 'deadlines', 'grades', 'bibliography', 'search']
+    if (/^[1-6]$/.test(e.key)) {
+      state.currentView = views[Number(e.key) - 1]
+      draw()
+      return
+    }
+    if (e.key === '/') {
+      e.preventDefault()
+      state.currentView = 'search'
+      draw()
+      const box = $('q')
+      if (box) box.focus()
+      return
+    }
+    if (state.currentView !== 'week') return
+
+    if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); moveCursor(1); return }
+    if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); moveCursor(-1); return }
+    if (e.key === 't') {
+      const here = document.querySelector('tr.sep.current') || document.querySelector('tr.sep')
+      if (here) here.scrollIntoView({ block: 'start' })
+      return
+    }
+    const row = cursorRow()
+    if (!row) return
+    if (e.key === ' ') {
+      e.preventDefault()
+      const tick = row.querySelector('input[data-progress]')
+      if (tick) {
+        tick.checked = !tick.checked
+        tick.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+      return
+    }
+    if (e.key === 'n') {
+      e.preventDefault()
+      const note = row.querySelector('input[data-note]')
+      if (note) note.focus()
+    }
   })
 
   document.querySelector('.tabs').onclick = (e) => {
@@ -837,6 +950,19 @@ async function boot() {
     const a = document.createElement('a')
     a.href = url
     a.download = 'schedule-reader.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  $('calendar').onclick = () => {
+    const rows = grades.datedDeadlines(state.courses)
+    if (!rows.length) return
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '')
+    const blob = new Blob([grades.toIcs(rows, stamp)], { type: 'text/calendar' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'deadlines.ics'
     a.click()
     URL.revokeObjectURL(url)
   }

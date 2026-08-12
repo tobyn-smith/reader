@@ -114,7 +114,7 @@ export function scheduleView(course) {
     </table>`
 }
 
-export function weekView(course, progress, editing = false) {
+export function weekView(course, progress, editing = false, filter = {}) {
   // the ledger runs in date order, not parse order. a deadlines list at the
   // top of a syllabus parses into dated week-less rows, and in parse order
   // they all sat above week 1; by date they interleave where they belong.
@@ -159,9 +159,12 @@ export function weekView(course, progress, editing = false) {
     const due = course.parse.deliverables.items.filter((d) =>
       sessions.some((s) => s.meeting_date && d.due_date === s.meeting_date))
 
+    // a filter never changes what the course holds, only what is drawn, so the
+    // totals below are counted before anything is hidden
+    const weekSoon = days !== null && days >= -6 && days <= 30
     let count = 0
     let doneHere = 0
-    const body = []
+    const weekRows = []
     for (const { session, si } of entries) {
       session.readings.forEach((reading, ri) => {
         const id = readingKey(course, session, reading)
@@ -172,6 +175,10 @@ export function weekView(course, progress, editing = false) {
         pagesTotal += pages
         if (saved.read) { doneHere += 1; held += 1; pagesDone += pages }
 
+        if (filter.unread && saved.read) return
+        if (filter.required && reading.requirement_level !== 'required') return
+        if (filter.soon && !weekSoon) return
+
         const cited = editing
           ? `<input type="text" class="cite" data-edit-reading="${si}.${ri}"
                value="${esc(citation(reading.work))}" aria-label="Entry">`
@@ -180,7 +187,8 @@ export function weekView(course, progress, editing = false) {
                ? `<span class="cwarn">Content warning \u00b7 ${esc(reading.content_warning)}</span>`
                : ''}
              <input type="text" class="note" data-note="${esc(id)}"
-               value="${esc(saved.note || '')}" placeholder="\u2014">`
+               value="${esc(saved.note || '')}" placeholder="Add a note"
+               aria-label="Note">`
 
         entryNo += 1
         // the date belongs to the week, and is printed on its separator. it is
@@ -192,7 +200,7 @@ export function weekView(course, progress, editing = false) {
         // it is not an exception and takes no accent. only a reading wanted
         // within the week does.
         const wanted = !saved.read && days !== null && days >= -6 && days <= 7
-        rows.push(`<tr class="rec${saved.read ? ' struck' : ''}">
+        weekRows.push(`<tr class="rec${saved.read ? ' struck' : ''}" data-row="${esc(id)}">
           <td class="c-tick">${editing
             ? `<button type="button" class="rowdel" data-remove-reading="${si}.${ri}"
                  aria-label="Remove this entry">\u00d7</button>`
@@ -208,6 +216,12 @@ export function weekView(course, progress, editing = false) {
         </tr>`)
       })
     }
+
+    // with a filter on, a week that keeps nothing is dropped whole. leaving
+    // the heading behind would fill the screen with empty weeks, which is the
+    // thing the filter was turned on to get away from.
+    const filtering = filter.unread || filter.required || filter.soon
+    if (filtering && !weekRows.length) continue
 
     // a week is marked only when something is actually due in it. marking
     // every current week too meant the accent was on screen constantly, which
@@ -232,9 +246,7 @@ export function weekView(course, progress, editing = false) {
         <td class="c-stat sep-c${flagged ? ' is-flag' : ''}">${flagged ? 'Due' : ''}</td>
       </tr>`
 
-    // the separator has to precede this week's records, which are already in
-    // the list, so it is spliced in ahead of them
-    rows.splice(rows.length - count, 0, sep)
+    rows.push(sep, ...weekRows)
 
     if (!count) {
       rows.push(`<tr class="rec empty"><td class="c-tick"></td><td class="c-num"></td>
@@ -252,6 +264,15 @@ export function weekView(course, progress, editing = false) {
     }
   }
 
+  // a filter that matches nothing has to say so, and say how to get back. an
+  // empty table reads as a course that lost its readings.
+  if (!rows.length) {
+    rows.push(`<tr class="rec empty"><td class="c-tick"></td><td class="c-num"></td>
+      <td class="c-date"></td>
+      <td class="c-title" colspan="4"><em>Nothing matches what you asked for.
+        Turn a filter off under Show to bring the ledger back.</em></td></tr>`)
+  }
+
   const upcoming = stamps.filter((s) => s.days !== null && s.days >= -6)
   const currentIdx = upcoming.length
     ? stamps.indexOf(upcoming.reduce((b, s) => (s.days < b.days ? s : b)))
@@ -263,7 +284,10 @@ export function weekView(course, progress, editing = false) {
       `<tr class="sep current" data-week="${currentIdx}">`)
   }
 
+  const shown = rows.filter((r) => r.startsWith('<tr class="rec') && !r.includes('empty')).length
+
   return {
+    shown,
     html: `<table class="ledger">
       <thead><tr>
         <th class="c-tick"></th>
@@ -339,7 +363,7 @@ export function recordHeader(course) {
 }
 
 // the left rail: where you are, what you hold, what falls next.
-export function railView(course, ledger, courses) {
+export function railView(course, ledger, courses, filter = {}) {
   const { index, current, holdings } = ledger
   // the count column is dropped. it repeated what the ledger already shows and
   // took a third of the width the topic needed to be legible.
@@ -349,13 +373,29 @@ export function railView(course, ledger, courses) {
         <span class="rail-t">${esc(w.topic || '—')}</span>
       </a></li>`).join('')
 
-  const rows = [
-    ['Read', `${holdings.held} of ${holdings.heldTotal}`, false],
-    // plenty of syllabi record no page ranges at all. "0 of 0" states a
-    // total that was never counted, so an em dash says so instead.
-    ['Pages', holdings.pagesTotal
-      ? `${holdings.pagesDone} of ${holdings.pagesTotal}` : '—', false],
+  // a bar reads at a glance where a fraction has to be worked out. it is ruled
+  // and squared off like everything else, and the figure stays beside it: the
+  // bar is the impression, the numbers are the record.
+  const meter = (label, done, total) => {
+    if (!total) {
+      return `<div class="meter"><dt>${esc(label)}</dt><dd>—</dd></div>`
+    }
+    const pct = Math.round((done / total) * 100)
+    return `<div class="meter">
+      <dt>${esc(label)}</dt>
+      <dd>${done} of ${total}</dd>
+      <div class="bar" role="img" aria-label="${pct}% of ${label.toLowerCase()} done">
+        <span style="width:${pct}%"></span>
+      </div>
+    </div>`
+  }
+
+  const toggles = [
+    ['unread', 'Unread'],
+    ['required', 'Required'],
+    ['soon', 'Next 30 days'],
   ]
+  const filtering = toggles.some(([key]) => filter[key])
 
   const upcoming = []
   for (const c of courses) {
@@ -373,10 +413,22 @@ export function railView(course, ledger, courses) {
       <ol class="rail-index">${entries}</ol>
     </details>
     <section class="rail-sec">
+      <h3>Show</h3>
+      <div class="rail-filters">
+        ${toggles.map(([key, label]) => `<button type="button" class="chip"
+          data-filter="${key}" aria-pressed="${filter[key] ? 'true' : 'false'}">
+          ${esc(label)}</button>`).join('')}
+      </div>
+      ${filtering
+        ? `<p class="rail-none">${ledger.shown} of ${holdings.heldTotal} shown ·
+            <button type="button" class="quiet" data-filter="clear">show all</button></p>`
+        : ''}
+    </section>
+    <section class="rail-sec">
       <h3>Progress</h3>
       <dl class="rail-facts">
-        ${rows.map(([k, v, flag]) => `<div><dt>${esc(k)}</dt>
-          <dd${flag ? ' class="is-flag"' : ''}>${esc(v)}</dd></div>`).join('')}
+        ${meter('Read', holdings.held, holdings.heldTotal)}
+        ${meter('Pages', holdings.pagesDone, holdings.pagesTotal)}
       </dl>
     </section>
     <section class="rail-sec">
@@ -386,6 +438,16 @@ export function railView(course, ledger, courses) {
             <span class="rail-due-d${d.days <= 7 ? ' is-flag' : ''}">${esc(shortDate(d.date))}</span>
             <span class="rail-due-t">${esc(d.title)}</span></li>`).join('')}</ul>`
         : '<p class="rail-none">None</p>'}
+    </section>
+    <section class="rail-sec">
+      <h3>Keys</h3>
+      <dl class="rail-keys">
+        <div><dt>J K</dt><dd>move</dd></div>
+        <div><dt>Space</dt><dd>tick off</dd></div>
+        <div><dt>N</dt><dd>note</dd></div>
+        <div><dt>T</dt><dd>this week</dd></div>
+        <div><dt>/</dt><dd>search</dd></div>
+      </dl>
     </section>
   </nav>`
 }

@@ -117,6 +117,82 @@ export function neededFor(st, target) {
   return round(((target - st.earned) / st.remaining) * 100)
 }
 
+// ---- calendar --------------------------------------------------------------
+
+// a deadline with no date cannot be put in a calendar, and guessing one is
+// worse than leaving it out, so only dated items travel. everything is built
+// here as plain text: no network, nothing leaves the machine until the visitor
+// saves the file themselves.
+
+const icsEscape = (text) => String(text ?? '')
+  .replace(/\\/g, '\\\\')
+  .replace(/;/g, '\\;')
+  .replace(/,/g, '\\,')
+  .replace(/\r?\n/g, '\\n')
+
+// rfc 5545 wants lines folded at 75 octets, continued by a leading space
+function fold(line) {
+  if (line.length <= 73) return line
+  const parts = [line.slice(0, 73)]
+  let rest = line.slice(73)
+  while (rest.length > 72) {
+    parts.push(' ' + rest.slice(0, 72))
+    rest = rest.slice(72)
+  }
+  if (rest) parts.push(' ' + rest)
+  return parts.join('\r\n')
+}
+
+const plainDate = (iso) => String(iso).slice(0, 10).replace(/-/g, '')
+
+function nextDay(iso) {
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number)
+  const at = new Date(Date.UTC(y, m - 1, d + 1))
+  return `${at.getUTCFullYear()}${String(at.getUTCMonth() + 1).padStart(2, '0')}${String(at.getUTCDate()).padStart(2, '0')}`
+}
+
+/** which deadlines across these courses can honestly be put in a calendar. */
+export function datedDeadlines(courses) {
+  const out = []
+  for (const course of courses || []) {
+    for (const item of course.parse?.deliverables?.items || []) {
+      if (!item.due_date || !/^\d{4}-\d{2}-\d{2}/.test(item.due_date)) continue
+      out.push({ code: course.code, title: item.title, date: item.due_date,
+                 weight: item.weight_percent ?? null })
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/** an all day event per deadline. `stamp` is passed in so this stays pure. */
+export function toIcs(rows, stamp) {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//schedule reader//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+  ]
+  rows.forEach((row, i) => {
+    const summary = `${row.code}: ${row.title}`
+    lines.push(
+      'BEGIN:VEVENT',
+      fold(`UID:${plainDate(row.date)}-${i}-schedule-reader`),
+      `DTSTAMP:${stamp}`,
+      // an all day event is a date with no time, and DTEND is exclusive
+      `DTSTART;VALUE=DATE:${plainDate(row.date)}`,
+      `DTEND;VALUE=DATE:${nextDay(row.date)}`,
+      fold(`SUMMARY:${icsEscape(summary)}`),
+      fold(`DESCRIPTION:${icsEscape(
+        row.weight ? `Worth ${row.weight}% of the course grade.` : 'From your syllabus.')}`),
+      'TRANSP:TRANSPARENT',
+      'END:VEVENT'
+    )
+  })
+  lines.push('END:VCALENDAR')
+  return lines.join('\r\n') + '\r\n'
+}
+
 /** credit weighted term gpa over the courses that have a letter. */
 export function termGpa(rows) {
   let points = 0

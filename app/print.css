@@ -69,6 +69,8 @@
 
   /* status carries no colour on paper, so it carries weight instead */
   .c-stat { font-weight: 700; }
+  /* the keyboard cursor is a screen thing and prints as a stray grey band */
+  tr.rec.is-cursor > td { background: transparent !important; box-shadow: none !important; }
   tr.struck .c-stat, tr.struck .c-title, tr.struck .c-src { color: #666; font-weight: 400; }
   .cwarn { color: #000; font-weight: 700; }
 
