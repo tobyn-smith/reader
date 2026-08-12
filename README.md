@@ -15,9 +15,11 @@ Drop a syllabus PDF and get the week-by-week schedule, every reading as a
 proper citation, the deadlines, and a bibliography you can print. No install,
 no account, no upload.
 
-Built for reading-heavy courses: international affairs, political science,
-history, English, the humanities generally, where the syllabus is a long list
-of citations and the work is keeping up with it.
+I built this for reading-heavy courses: international affairs, political
+science, history, English, the humanities generally, where the syllabus is a
+long list of citations and the entire job is keeping up with it. Every term
+starts with the same hour of copying dates into a calendar, so I wrote
+something to do it instead.
 
 ---
 
@@ -27,15 +29,15 @@ of citations and the work is keeping up with it.
 | --- | --- |
 | **One ledger** | Every week, every reading, one continuous table. Columns stay aligned from week 1 to week 15. |
 | **Real citations** | Chicago, APA, MLA, Harvard or APSR, switchable after the fact. |
-| **Deadlines that mean something** | Banded overdue / next 7 days / later, with "in 3 days" rather than a bare date. |
-| **Correct anything** | Fix a citation, add a reading it missed, move a due date. Grades re-total as you go. |
+| **Deadlines that mean something** | Banded overdue / next 7 days / later, and "in 3 days" rather than a bare date. |
+| **Correct anything** | Fix a citation, add a reading it missed, move a due date. Weights re-total as you go. |
 | **Print it** | Black on white, named after the course, checkboxes you can tick with a pen. |
 | **Nothing leaves** | Files are read in your browser. There is no server and no upload endpoint. |
 
 ## How accurate it is
 
-Worth knowing before you lean on it. Tested on over 35 real syllabi from one
-university, parsed and checked by hand:
+The numbers matter more than the pitch, so they come first. I've tested this
+on over 35 real syllabi from one university, parsed and checked by hand:
 
 | | |
 | --- | --- |
@@ -46,23 +48,25 @@ university, parsed and checked by hand:
 | Readings parsed into full citations | **83%** |
 | Weights adding up to about 100 | **6 of 10** |
 
-Reading lists are the weak spot. Most of what fails was never a reading in the
-first place: week topics, description paragraphs, columns off a grading table.
-Cleaning that up took it from 66% to 83%.
+Reading lists are the weak spot, whilst everything structural is dependable.
+Most of what fails was never a reading in the first place: week topics,
+description paragraphs, columns lifted off a grading table. Keeping those out
+took it from 66% to 83%.
 
-Anything it can't read, it shows you verbatim and marks for checking. It won't
-quietly drop a reading or invent one. No schedule found usually means the PDF
-hasn't got one.
+Anything it cannot read, it shows you verbatim and marks for checking. It will
+not quietly drop a reading or invent one. Where no schedule turns up, the PDF
+usually has not got one.
 
 Which is why everything stays editable. Instructors move deadlines and no
-parser catches that, so a tracker you can't correct goes stale by week three.
-Courses parsed by an older version offer to re-read themselves.
+parser catches that, so a tracker you cannot correct goes stale by week three.
+Courses read by an older version offer to read themselves again.
 
 ---
 
 ## On the command line
 
-For bulk work: a folder of readings, full text search, publishing a site.
+The command line is for bulk work: a folder of readings, full text search,
+and publishing a site.
 
 ```bash
 vault syllabus syllabus.pdf     # parse, review, save
@@ -95,10 +99,10 @@ due
   POLS 6510  Reading Memo & Participation  weekly on thursday 09:00
 ```
 
-It all runs locally with no keys. There's an optional model layer that writes
-reading briefs and does nothing else; skip it and the rest still works. Where a
-course bans AI, briefs are off for that course. Nothing here writes anything
-you'd submit.
+It all runs locally with no keys. There is an optional model layer that writes
+reading briefs and does nothing else, so skip it and the rest still works.
+Where a course bans AI, briefs are off for that course, and nothing here writes
+anything you would submit.
 
 ## Install
 
@@ -122,21 +126,24 @@ well outside the repo, so coursework can't wander into a commit.
 
 ## How it works
 
-The same Python parses your syllabus whether you run the command line or the
-browser, compiled to WebAssembly for the latter, so both give the same answers.
-Parsing is deterministic pattern matching: every extracted row records which
-rule produced it, and a line no rule claims goes to review unparsed rather than
-being guessed at. A wrong citation looks finished; a flagged one doesn't.
+Parsing is deterministic pattern matching, and that choice governs everything
+else. Every extracted row records which rule produced it, whilst a line no rule
+claims goes to review unparsed rather than being guessed at. A wrong citation
+looks finished, a flagged one does not, and that asymmetry is worth the lower
+headline number.
+
+The same Python runs whether you use the command line or the browser, compiled
+to WebAssembly for the latter, so both give identical answers.
 
 `ARCHITECTURE.md` has the details, including what the parser gets wrong and why.
 
 ## Publishing
 
-The public site carries schedules, citations, deadlines and bibliographies, and
-that's the lot. A field has to be named on an allowlist to get out, and the
-tests fail if something new shows up. Reading text, briefs, notes and instructor
-contact details stay local. CI builds from `data/public.json`, which you review
-before committing, and never touches your database.
+Nothing reaches the public site unless it is named on an allowlist, and the
+tests fail if something new shows up. What that permits is schedules,
+citations, deadlines and bibliographies. Reading text, briefs, notes and
+instructor contact details stay local. CI builds from `data/public.json`, which
+you review before committing, whilst never touching your database at all.
 
 ## Make it yours
 
@@ -156,9 +163,9 @@ There's no real coursework in this repo; the demo runs on invented courses from
 pytest -q
 ```
 
-Runs offline with no keys. Fixtures are invented PDFs copying the layouts real
-syllabi use: bulleted schedules with odd glyph markers, ruled tables with two
-meetings a week, labelled topic and reading blocks, two-column articles,
-footnote-heavy pages, and one scan with no text layer. They assert exact reading
-counts per week, because a parser that quietly loses one reading in five
-otherwise looks fine.
+Runs offline with no keys. The fixtures are invented PDFs copying the layouts
+real syllabi use: bulleted schedules with odd glyph markers, ruled tables with
+two meetings a week, labelled topic and reading blocks, two-column articles,
+footnote-heavy pages, and one scan with no text layer. They assert exact
+reading counts per week, because a parser that quietly loses one reading in
+five otherwise looks entirely healthy.
