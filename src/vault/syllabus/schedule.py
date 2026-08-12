@@ -214,6 +214,12 @@ PAGE_RANGE_RE = re.compile(
 # "look at this one", not "this is a reading", so it is stepped over before the
 # line is read rather than being allowed to hide a "Due:" behind it.
 DELIVERABLE_HINT_RE = re.compile(
+    # a starred line that ends in the kind of work it is: "*Staff 1 & 2:
+    # Significant Activity Report & Presentation", "*Staff Critical Mineral
+    # Presentations". these are recurring assignments, and one seminar listed
+    # four of them among its readings. the word has to close the line, or a
+    # citation that merely mentions a report would be swallowed with it.
+    r"^\s*\*.{0,60}\b(?:presentations?|reports?|memos?|briefs?|templates?)\b[\s.]*$|"
     r"^\s*\*?\s*(?:due|sign[\s-]?up|presentation|assessment|quiz|exam)\b|"
     r"\b(?:due|submit)\b.{0,40}\b\d{1,2}\s*/\s*\d{1,2}\b|"
     r"\bweekly assessment\b|\bassessment\s+\d+\b",

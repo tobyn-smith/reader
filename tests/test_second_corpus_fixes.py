@@ -181,6 +181,36 @@ class TestNumericDateUnderBareWeek:
         assert (d.month, d.day) == (8, 18)
 
 
+class TestStarredAssignmentRows:
+    """a recurring assignment printed among the readings.
+
+    a seminar that rotates presentations between groups prints the rotation
+    inside the schedule, once per week it comes round. four of those rows were
+    being collected as readings. the word naming the work has to close the
+    line, or a citation that merely mentions a report goes with them.
+    """
+
+    def test_group_rotation_row(self):
+        for text in (
+            "*Staff 1 & 2:  Significant Activity (Field Report) Report & Presentation",
+            "*Staff Critical Mineral Presentations",
+            "*Assign Staffs and Agency Briefs",
+            "*Policy Memo & Assignment Templates",
+        ):
+            assert schedule.DELIVERABLE_HINT_RE.match(text), text
+
+    def test_a_citation_naming_a_report_is_left_alone(self):
+        for text in (
+            "*Smith, John. 2020. A Report on Trade Policy. Foreign Affairs.",
+            "Berg, Kevin. March 2023. Export Controls, CRS Report.",
+        ):
+            assert not schedule.DELIVERABLE_HINT_RE.match(text), text
+
+    def test_the_star_is_required(self):
+        """without it the rule would reach any line ending in a work word."""
+        assert not schedule.DELIVERABLE_HINT_RE.match("Group Critical Mineral Presentations")
+
+
 class TestZoneRepairs:
     def test_month_led_heading_without_punctuation(self):
         """'Jan 13  Introduction' is a schedule line without the colon."""
