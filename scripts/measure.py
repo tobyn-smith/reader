@@ -10,9 +10,15 @@ folder, and it writes its detail to the system temp directory:
 
     python scripts/measure.py ~/Downloads
     python scripts/measure.py ~/Downloads --json out.json --detail
+    python scripts/measure.py ~/Downloads --web
 
 the file list is whatever pdfs the folder holds, so the corpus lives on your
 machine and this stays a tool rather than a record of your coursework.
+
+--web measures through the same path the website takes: pdf.js hands over
+positioned text runs and no ruled-table geometry, where the command line has
+pdfplumber. the two do not score the same, and the figures printed on the site
+have to be the ones a visitor actually gets, so quote --web there.
 """
 
 from __future__ import annotations
@@ -26,18 +32,44 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from vault.classify import SYLLABUS, classify  # noqa: E402
-from vault.syllabus.pipeline import parse_syllabus  # noqa: E402
+from vault.syllabus.pipeline import parse_extracted, parse_syllabus  # noqa: E402
 from vault.text.extract import extract_document  # noqa: E402
 
 
-def measure_one(path: Path) -> dict:
+def _runs_document(path: Path):
+    """what the browser hands the parser: positioned spans, no line geometry."""
+    import pymupdf
+
+    from vault.text.runs import document_from_runs
+
+    doc = pymupdf.open(path)
+    pages = []
+    for index, page in enumerate(doc):
+        runs = []
+        for block in page.get_text("dict")["blocks"]:
+            if block.get("type") != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    x0, y0, x1, y1 = span["bbox"]
+                    runs.append({"text": span["text"], "x": x0, "y": y0,
+                                 "w": x1 - x0, "h": y1 - y0,
+                                 "size": span.get("size", 0)})
+        pages.append({"number": index + 1, "width": page.rect.width,
+                      "height": page.rect.height, "runs": runs,
+                      "hasTextLayer": bool(runs)})
+    return document_from_runs({"filename": path.name, "pages": pages})
+
+
+def measure_one(path: Path, web: bool = False) -> dict:
     row: dict = {"file": path.name}
     try:
-        doc = extract_document(path)
+        doc = _runs_document(path) if web else extract_document(path)
         row["kind"] = classify(doc).kind
         if row["kind"] != SYLLABUS:
             return row
-        parsed = parse_syllabus(path, threshold=0.75)
+        parsed = (parse_extracted(doc, threshold=0.75) if web
+                  else parse_syllabus(path, threshold=0.75))
     except Exception as exc:  # a crash is a result, not a reason to stop
         row["error"] = f"{type(exc).__name__}: {exc}"[:160]
         return row
@@ -63,6 +95,8 @@ def main() -> int:
     ap.add_argument("folder", type=Path, help="folder of syllabus pdfs")
     ap.add_argument("--json", type=Path, help="where to write the detail")
     ap.add_argument("--detail", action="store_true", help="print unparsed lines")
+    ap.add_argument("--web", action="store_true",
+                    help="measure through the browser's path, as the site runs it")
     args = ap.parse_args()
 
     files = sorted(p for p in args.folder.glob("*.pdf"))
@@ -70,7 +104,7 @@ def main() -> int:
         print(f"no pdfs in {args.folder}", file=sys.stderr)
         return 1
 
-    rows = [measure_one(p) for p in files]
+    rows = [measure_one(p, web=args.web) for p in files]
     syllabi = [r for r in rows if r.get("kind") == SYLLABUS and "error" not in r]
 
     print(f"{'file':46s} {'sess':>5s} {'dated':>6s} {'cited':>9s} {'weights':>8s}")
@@ -90,8 +124,13 @@ def main() -> int:
     cited = sum(r["cited"] for r in syllabi)
     scheduled = sum(1 for r in syllabi if r["sessions"])
     near100 = [r for r in syllabi if r["weights"]]
+    coded = sum(1 for r in syllabi if r.get("code"))
+    termed = sum(1 for r in syllabi if r.get("term"))
     print()
+    print(f"path                 {'browser (--web)' if args.web else 'command line'}")
     print(f"syllabi              {len(syllabi)} of {len(files)} files")
+    print(f"course code found    {coded}/{len(syllabi)}")
+    print(f"term found           {termed}/{len(syllabi)}")
     print(f"schedule found       {scheduled}/{len(syllabi)}"
           f" ({scheduled / max(len(syllabi), 1):.0%})")
     print(f"readings extracted   {total}")
