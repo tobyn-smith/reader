@@ -2,6 +2,7 @@
 // only where it says something actionable.
 
 import * as cite from './cite.js'
+import * as grades from './grades.js'
 
 // which reference style citations render in. a course that states its own
 // required style wins, otherwise this is the visitor's choice.
@@ -494,6 +495,161 @@ export function deadlinesView(courses, activeId, editing = false) {
   })
 
   return `<h2>Deadlines</h2>${sections.join('')}`
+}
+
+// what a target grade asks of the work that is left. the three dead ends are
+// spelled out, because "you need 112%" and "you need -4%" are both answers a
+// student has to translate, and the translation is the useful part.
+function targetLine(st, target, letter) {
+  if (!st.remaining) {
+    return `Everything is marked. Nothing left to change it.`
+  }
+  const needed = grades.neededFor(st, target)
+  if (needed <= 0) {
+    return `${letter} is already secured, whatever happens to the rest.`
+  }
+  if (needed > 100) {
+    return `${letter} is out of reach now: it would take ${needed}% on the
+      remaining ${st.remaining}%.`
+  }
+  return `To finish on ${letter} you need <strong>${needed}%</strong> average
+    across the remaining ${st.remaining}% of the course.`
+}
+
+export function gradesView(courses, activeId) {
+  if (!courses.length) return '<h2>Grades</h2><p class="secondary">No courses yet.</p>'
+
+  const ordered = [...courses].sort((a, b) =>
+    (a.id === activeId ? 0 : 1) - (b.id === activeId ? 0 : 1)
+  )
+
+  const sections = ordered.map((course) => {
+    const items = course.parse.deliverables.items
+    const st = grades.standing(items)
+    const target = Number(course.grade_target ?? 93)
+    const targetLetter = grades.letterFor(target)
+
+    const rows = items
+      .map((item, di) => ({ item, di }))
+      .filter(({ item }) => item.weight_percent)
+      .sort((a, b) =>
+        (a.item.due_date || '9999-99-99').localeCompare(b.item.due_date || '9999-99-99')
+      )
+      .map(({ item, di }) => `<tr>
+        <td class="when">${esc(shortDate(item.due_date))}</td>
+        <td>${esc(item.title)}</td>
+        <td class="num">${item.weight_percent}%</td>
+        <td class="num"><input type="number" class="pct" min="0" step="0.1"
+          data-mark="${course.id}|${di}" value="${item.mark_percent ?? ''}"
+          placeholder="&mdash;" aria-label="Your mark on ${esc(item.title)}"></td>
+      </tr>`)
+      .join('')
+
+    if (!rows) {
+      return `<section class="course-grades">
+        <h3>${esc(course.code)}</h3>
+        <p class="secondary">No weighted work found for this course, so there is
+          nothing to calculate. You can add the weights under Deadlines.</p>
+      </section>`
+    }
+
+    const letter = grades.letterFor(st.average)
+    // the average is a weighted average of the work handed back, so it holds
+    // whatever the weights add up to. everything else here is a share of a
+    // hundred, and against a total of 150 it reads as nonsense: "full marks on
+    // the rest finishes you on 145%". those lines wait for a believable total.
+    const off = st.totalWeight && Math.abs(st.totalWeight - 100) > 1
+    const headline = st.average === null
+      ? `<p class="secondary">Type a mark beside anything that has come back and
+          the total works itself out.</p>`
+      : `<p class="standing"><span class="standing-figure">${st.average}%</span>
+          <span class="standing-letter">${esc(letter)}</span></p>
+        <p class="secondary">Your average on marked work, which covers
+          ${st.gradedWeight}% of the ${off ? 'weight listed' : 'course grade'}.</p>
+        ${off ? '' : `<p class="secondary">Scoring zero on everything left would
+          finish you on ${st.banked}%. Full marks on everything left would finish
+          you on ${st.ceiling}%.</p>`}`
+
+    return `<section class="course-grades">
+      <h3>${esc(course.code)}
+        ${off
+          ? `<span class="flagged">weights add up to ${st.totalWeight}%, so these
+              figures are only as good as that</span>`
+          : ''}</h3>
+      ${headline}
+      <table class="marks">
+        <thead><tr><th class="when">Due</th><th>Item</th>
+          <th class="num">Weight</th><th class="num">Your mark</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${off
+        ? `<p class="secondary">Fix the weights under Deadlines and this will
+            work out what you need for a target grade.</p>`
+        : `<p class="targetrow">
+            <label for="target-${esc(course.id)}">Aiming for</label>
+            <select id="target-${esc(course.id)}" data-target="${course.id}">
+              ${grades.SCALE.filter(([, floor]) => floor > 0)
+                .map(([name, floor]) =>
+                  `<option value="${floor}" ${floor === target ? 'selected' : ''}>${name}</option>`)
+                .join('')}
+            </select>
+            <span class="targetsay">${st.average === null
+              ? 'Type a mark or two and this fills in.'
+              : targetLine(st, target, targetLetter)}</span>
+          </p>`}
+    </section>`
+  })
+
+  const gpaRows = ordered.map((course) => {
+    const st = grades.standing(course.parse.deliverables.items)
+    const computed = grades.letterFor(st.average)
+    const chosen = course.grade_letter ?? computed ?? ''
+    return `<tr>
+      <td>${esc(course.code)}</td>
+      <td class="num"><input type="number" class="pct" min="0" max="12" step="0.5"
+        data-credits="${course.id}" value="${course.credits ?? 3}"
+        aria-label="Credit hours for ${esc(course.code)}"></td>
+      <td class="num"><select data-letter="${course.id}"
+        aria-label="Grade for ${esc(course.code)}">
+        <option value="">&mdash;</option>
+        ${grades.LETTERS.map((name) =>
+          `<option value="${name}" ${name === chosen ? 'selected' : ''}>${name}</option>`)
+          .join('')}
+      </select></td>
+      <td class="secondary">${computed && !course.grade_letter
+        ? `from your marks` : course.grade_letter ? 'set by you' : ''}</td>
+    </tr>`
+  }).join('')
+
+  const gpa = grades.termGpa(ordered.map((course) => {
+    const st = grades.standing(course.parse.deliverables.items)
+    return {
+      credits: course.credits ?? 3,
+      letter: course.grade_letter ?? grades.letterFor(st.average),
+    }
+  }))
+
+  return `<h2>Grades</h2>
+    ${sections.join('')}
+    <section class="course-grades">
+      <h3>Term GPA</h3>
+      <table class="marks">
+        <thead><tr><th>Course</th><th class="num">Credits</th>
+          <th class="num">Grade</th><th></th></tr></thead>
+        <tbody>${gpaRows}</tbody>
+      </table>
+      <p class="standing">
+        ${gpa.gpa === null
+          ? '<span class="secondary">Set a grade on at least one course.</span>'
+          : `<span class="standing-figure">${gpa.gpa}</span>
+             <span class="standing-letter">GPA</span>`}
+      </p>
+      ${gpa.gpa === null ? '' : `<p class="secondary">Across ${gpa.counted}
+        ${gpa.counted === 1 ? 'course' : 'courses'} and ${gpa.credits} credit
+        hours. Four point scale, no D plus or D minus, which is how UGA counts
+        it. Your instructor sets their own cutoffs, so check the syllabus before
+        trusting the letter.</p>`}
+    </section>`
 }
 
 

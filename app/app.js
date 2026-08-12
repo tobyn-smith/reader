@@ -271,6 +271,22 @@ async function confirmParse() {
   // a re-read of the same file lands on the same id and replaces in place;
   // if this parse somehow lacks bytes, the copy already stored is kept
   const prior = state.courses.find((c) => c.id === id)
+
+  // a re-read replaces the parse, but the marks a student typed live inside
+  // it. losing a term of grades to a re-upload is the kind of thing that gets
+  // a tool deleted, so marks follow their assignment across by title.
+  if (prior) {
+    const marked = new Map(
+      prior.parse.deliverables.items
+        .filter((item) => item.mark_percent || item.mark_percent === 0)
+        .map((item) => [item.title.trim().toLowerCase(), item.mark_percent])
+    )
+    for (const item of parse.deliverables.items) {
+      const kept = marked.get(item.title.trim().toLowerCase())
+      if (kept !== undefined) item.mark_percent = kept
+    }
+  }
+
   const course = {
     id,
     code,
@@ -278,6 +294,10 @@ async function confirmParse() {
     name: state.pending.name,
     parse,
     pdf: state.pending.bytes || (prior && prior.pdf) || null,
+    // what the visitor set about the course rather than about this parse
+    credits: prior ? prior.credits : null,
+    grade_letter: prior ? prior.grade_letter : null,
+    grade_target: prior ? prior.grade_target : null,
     parserVersion: PARSER_VERSION,
   }
   await store.putCourse(course)
@@ -413,6 +433,36 @@ async function handleEdit(el) {
     course.parse.deliverables.items[index].weight_percent = raw === '' ? null : Number(raw)
     retotal(course)
     await saveCourse(course)
+    return
+  }
+  // these all redraw, which is only safe because the listener is on change
+  // rather than input: the value is committed on the way out of the box, so
+  // rebuilding the view is not taking focus off anything being typed into.
+  if (el.dataset.mark !== undefined) {
+    const { course, index } = dueTarget(el.dataset.mark)
+    const raw = el.value.trim()
+    course.parse.deliverables.items[index].mark_percent = raw === '' ? null : Number(raw)
+    await saveCourse(course)
+    return
+  }
+  if (el.dataset.credits !== undefined) {
+    const course = state.courses.find((c) => c.id === el.dataset.credits)
+    const raw = el.value.trim()
+    course.credits = raw === '' ? null : Number(raw)
+    await saveCourse(course)
+    return
+  }
+  if (el.dataset.letter !== undefined) {
+    const course = state.courses.find((c) => c.id === el.dataset.letter)
+    // clearing the box hands the course back to whatever the marks say
+    course.grade_letter = el.value || null
+    await saveCourse(course)
+    return
+  }
+  if (el.dataset.target !== undefined) {
+    const course = state.courses.find((c) => c.id === el.dataset.target)
+    course.grade_target = Number(el.value)
+    await saveCourse(course)
   }
 }
 
@@ -421,7 +471,29 @@ function focusLast(selector) {
   if (all.length) all[all.length - 1].focus()
 }
 
+// a redraw replaces the inputs, and with them whatever the keyboard had
+// reached. tabbing down a column of marks otherwise dies on the first save.
+// the element is remembered by its data attribute and picked up again after.
+function focusToken(el) {
+  if (!el || !el.dataset) return null
+  for (const key of ['mark', 'credits', 'letter', 'target',
+                     'dueDate', 'dueTitle', 'dueWeight', 'note']) {
+    if (el.dataset[key] !== undefined) return [key, el.dataset[key]]
+  }
+  return null
+}
+
+function restoreFocus(token) {
+  if (!token) return
+  const attr = token[0].replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())
+  const el = document.querySelector(`[data-${attr}="${CSS.escape(token[1])}"]`)
+  if (!el) return
+  el.focus()
+  if (el.select) el.select()
+}
+
 function draw() {
+  const focused = focusToken(document.activeElement)
   drawNav()
   const course = state.courses.find((c) => c.id === state.active) || state.courses[0]
   // the first visit gets the welcome and its big drop target; once a course
@@ -481,6 +553,7 @@ function draw() {
     $('rail').innerHTML = ''
     if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
     else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active, editing)
+    else if (state.currentView === 'grades') target.innerHTML = view.gradesView(state.courses, state.active)
     else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
     else if (state.currentView === 'search') drawSearch(target)
   }
@@ -488,6 +561,8 @@ function draw() {
   for (const button of document.querySelectorAll('.tabs button[data-view]')) {
     button.setAttribute('aria-current', String(button.dataset.view === state.currentView))
   }
+
+  restoreFocus(focused)
 
   // the document line and the sheet number: a record identifies itself
   const stamp = new Date().toISOString().slice(0, 10)

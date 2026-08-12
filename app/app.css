@@ -726,6 +726,57 @@ ol.bibliography li { padding-left: 22px; text-indent: -22px; margin-bottom: 5px;
 .relday { display: block; font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .band-late + table .relday { color: var(--flag); }
 
+/* ---- grades ------------------------------------------------------------ */
+
+.course-grades { margin-bottom: 26px; }
+
+/* the number the page exists to show. it is set at the size of a heading
+   because a student opening this view is looking for one figure. */
+.standing {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 8px 0 3px;
+  padding-top: 7px;
+  border-top: 2px solid var(--rule);
+}
+
+.standing-figure { font-family: var(--mono); font-size: 30px; line-height: 1; }
+
+.standing-letter {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--faint);
+}
+
+table.marks { table-layout: auto; }
+table.marks .pct { width: 5.5em; }
+
+.targetrow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 9px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--hair);
+}
+
+.targetrow label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--faint);
+}
+
+.targetsay { flex: 1 1 16em; color: var(--mid); font-size: 13px; }
+.targetsay strong { color: var(--ink); }
+
 /* ---- review ------------------------------------------------------------ */
 
 .rstats {
