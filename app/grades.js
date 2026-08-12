@@ -4,35 +4,67 @@
 // is the part that has to be right. a syllabus already gives the weights, so
 // the only thing a student has to type is what they scored.
 
-// the scale most uga courses print. an instructor is free to set their own, and
-// plenty do, so the percentage is what the app leads with and the letter is
-// offered beside it rather than instead of it. there is no D+ or D-.
-export const SCALE = [
-  ['A', 93, 4.0],
-  ['A-', 90, 3.7],
-  ['B+', 87, 3.3],
-  ['B', 83, 3.0],
-  ['B-', 80, 2.7],
-  ['C+', 77, 2.3],
-  ['C', 73, 2.0],
-  ['C-', 70, 1.7],
-  ['D', 60, 1.0],
-  ['F', 0, 0.0],
-]
+// grade points are a property of the letter, not of where an instructor draws
+// the line for it. an A- is 3.7 however it was earned, so this table is shared
+// by every scale. there is no A+ or D+/D-, which is how uga counts it.
+export const POINTS = {
+  A: 4.0, 'A-': 3.7,
+  'B+': 3.3, B: 3.0, 'B-': 2.7,
+  'C+': 2.3, C: 2.0, 'C-': 1.7,
+  D: 1.0, F: 0.0,
+}
 
-export const LETTERS = SCALE.map(([letter]) => letter)
+const ORDER = Object.keys(POINTS)
 
-export function letterFor(percent) {
+// where the lines sit is the instructor's choice, and syllabi split roughly
+// into these two families. anything else is entered as custom cutoffs.
+export const SCALES = {
+  plusminus: {
+    name: 'Plus and minus',
+    cutoffs: [
+      ['A', 93], ['A-', 90],
+      ['B+', 87], ['B', 83], ['B-', 80],
+      ['C+', 77], ['C', 73], ['C-', 70],
+      ['D', 60], ['F', 0],
+    ],
+  },
+  straight: {
+    name: 'Straight letters',
+    cutoffs: [['A', 90], ['B', 80], ['C', 70], ['D', 60], ['F', 0]],
+  },
+}
+
+/** the cutoff table a course actually uses.
+ *
+ * accepts the stored form: a preset name, a custom object, or nothing. a
+ * custom scale keeps only real letters with a usable floor, sorts them, and
+ * always ends in F at zero, so a half-typed table still resolves to something
+ * that behaves like a scale rather than throwing.
+ */
+export function resolveScale(spec) {
+  if (spec && spec.kind === 'custom') {
+    const rows = (spec.cutoffs || [])
+      .filter(([letter, floor]) =>
+        POINTS[letter] !== undefined && Number.isFinite(Number(floor)) && Number(floor) > 0)
+      .map(([letter, floor]) => [letter, Number(floor)])
+    rows.sort((a, b) => (b[1] - a[1]) || (ORDER.indexOf(a[0]) - ORDER.indexOf(b[0])))
+    rows.push(['F', 0])
+    if (rows.length > 1) return rows
+  }
+  return (SCALES[spec] || SCALES.plusminus).cutoffs
+}
+
+export function letterFor(percent, cutoffs = SCALES.plusminus.cutoffs) {
   if (percent === null || percent === undefined || Number.isNaN(percent)) return null
-  for (const [letter, floor] of SCALE) {
+  for (const [letter, floor] of cutoffs) {
     if (percent >= floor) return letter
   }
   return 'F'
 }
 
 export function pointsFor(letter) {
-  const row = SCALE.find(([name]) => name === letter)
-  return row ? row[2] : null
+  const value = POINTS[letter]
+  return value === undefined ? null : value
 }
 
 const round = (n, places = 1) => {

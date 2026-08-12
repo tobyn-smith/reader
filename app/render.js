@@ -526,8 +526,14 @@ export function gradesView(courses, activeId) {
   const sections = ordered.map((course) => {
     const items = course.parse.deliverables.items
     const st = grades.standing(items)
-    const target = Number(course.grade_target ?? 93)
-    const targetLetter = grades.letterFor(target)
+    const cutoffs = grades.resolveScale(course.grade_scale)
+    const scaleKind = course.grade_scale && course.grade_scale.kind === 'custom'
+      ? 'custom'
+      : (grades.SCALES[course.grade_scale] ? course.grade_scale : 'plusminus')
+    // the default target is the top letter of whichever scale is in force,
+    // not a hardcoded 93: an A starts at 90 on a straight scale
+    const target = Number(course.grade_target ?? cutoffs[0][1])
+    const targetLetter = grades.letterFor(target, cutoffs)
 
     const rows = items
       .map((item, di) => ({ item, di }))
@@ -553,7 +559,7 @@ export function gradesView(courses, activeId) {
       </section>`
     }
 
-    const letter = grades.letterFor(st.average)
+    const letter = grades.letterFor(st.average, cutoffs)
     // the average is a weighted average of the work handed back, so it holds
     // whatever the weights add up to. everything else here is a share of a
     // hundred, and against a total of 150 it reads as nonsense: "full marks on
@@ -582,13 +588,37 @@ export function gradesView(courses, activeId) {
           <th class="num">Weight</th><th class="num">Your mark</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      <p class="targetrow">
+        <label for="scale-${esc(course.id)}">Scale</label>
+        <select id="scale-${esc(course.id)}" data-scale="${course.id}">
+          ${Object.entries(grades.SCALES).map(([key, s]) =>
+            `<option value="${key}" ${key === scaleKind ? 'selected' : ''}>${s.name}</option>`)
+            .join('')}
+          <option value="custom" ${scaleKind === 'custom' ? 'selected' : ''}>Custom cutoffs</option>
+        </select>
+        ${scaleKind === 'custom'
+          ? `<span class="cuts">${Object.keys(grades.POINTS)
+              .filter((name) => name !== 'F')
+              .map((name) => {
+                const row = (course.grade_scale.cutoffs || []).find(([l]) => l === name)
+                return `<label class="cut">${name}<input type="number" min="0" max="120"
+                  step="0.1" data-cut="${course.id}|${name}" value="${row ? row[1] : ''}"
+                  aria-label="Lowest percent for ${name}"></label>`
+              }).join('')}
+            <span class="cutnote">Lowest percent for each letter. Leave it blank
+              if your course doesn't give that letter.</span></span>`
+          : `<span class="targetsay secondary">${cutoffs
+              .filter(([, floor]) => floor > 0)
+              .map(([name, floor]) => `${name} ${floor}`)
+              .join(' &middot; ')}</span>`}
+      </p>
       ${off
         ? `<p class="secondary">Fix the weights under Deadlines and this will
             work out what you need for a target grade.</p>`
         : `<p class="targetrow">
             <label for="target-${esc(course.id)}">Aiming for</label>
             <select id="target-${esc(course.id)}" data-target="${course.id}">
-              ${grades.SCALE.filter(([, floor]) => floor > 0)
+              ${cutoffs.filter(([, floor]) => floor > 0)
                 .map(([name, floor]) =>
                   `<option value="${floor}" ${floor === target ? 'selected' : ''}>${name}</option>`)
                 .join('')}
@@ -602,7 +632,8 @@ export function gradesView(courses, activeId) {
 
   const gpaRows = ordered.map((course) => {
     const st = grades.standing(course.parse.deliverables.items)
-    const computed = grades.letterFor(st.average)
+    const cutoffs = grades.resolveScale(course.grade_scale)
+    const computed = grades.letterFor(st.average, cutoffs)
     const chosen = course.grade_letter ?? computed ?? ''
     return `<tr>
       <td>${esc(course.code)}</td>
@@ -612,7 +643,7 @@ export function gradesView(courses, activeId) {
       <td class="num"><select data-letter="${course.id}"
         aria-label="Grade for ${esc(course.code)}">
         <option value="">&mdash;</option>
-        ${grades.LETTERS.map((name) =>
+        ${cutoffs.map(([name]) =>
           `<option value="${name}" ${name === chosen ? 'selected' : ''}>${name}</option>`)
           .join('')}
       </select></td>
@@ -625,7 +656,8 @@ export function gradesView(courses, activeId) {
     const st = grades.standing(course.parse.deliverables.items)
     return {
       credits: course.credits ?? 3,
-      letter: course.grade_letter ?? grades.letterFor(st.average),
+      letter: course.grade_letter
+        ?? grades.letterFor(st.average, grades.resolveScale(course.grade_scale)),
     }
   }))
 
@@ -647,8 +679,7 @@ export function gradesView(courses, activeId) {
       ${gpa.gpa === null ? '' : `<p class="secondary">Across ${gpa.counted}
         ${gpa.counted === 1 ? 'course' : 'courses'} and ${gpa.credits} credit
         hours. Four point scale, no D plus or D minus, which is how UGA counts
-        it. Your instructor sets their own cutoffs, so check the syllabus before
-        trusting the letter.</p>`}
+        it. Set each course's scale above to match its syllabus.</p>`}
     </section>`
 }
 

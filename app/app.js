@@ -4,6 +4,7 @@
 import * as store from './store.js'
 import * as view from './render.js'
 import * as cite from './cite.js'
+import * as grades from './grades.js'
 import { PARSER_VERSION } from './version.js'
 
 const $ = (id) => document.getElementById(id)
@@ -463,6 +464,47 @@ async function handleEdit(el) {
     const course = state.courses.find((c) => c.id === el.dataset.target)
     course.grade_target = Number(el.value)
     await saveCourse(course)
+    return
+  }
+  if (el.dataset.scale !== undefined) {
+    const course = state.courses.find((c) => c.id === el.dataset.scale)
+    if (el.value === 'custom') {
+      // custom starts from whatever was in force, so switching to it changes
+      // nothing until a floor is actually edited
+      course.grade_scale = {
+        kind: 'custom',
+        cutoffs: grades.resolveScale(course.grade_scale).filter(([l]) => l !== 'F'),
+      }
+    } else {
+      course.grade_scale = el.value
+    }
+    reletterCourse(course)
+    await saveCourse(course)
+    return
+  }
+  if (el.dataset.cut !== undefined) {
+    const [id, letter] = el.dataset.cut.split('|')
+    const course = state.courses.find((c) => c.id === id)
+    const raw = el.value.trim()
+    const rows = (course.grade_scale.cutoffs || []).filter(([l]) => l !== letter)
+    if (raw !== '') rows.push([letter, Number(raw)])
+    course.grade_scale.cutoffs = rows
+    reletterCourse(course)
+    await saveCourse(course)
+  }
+}
+
+// a stored letter or target only means something on the scale it was chosen
+// from. after a scale change, anything the new scale does not offer is
+// dropped back to the default rather than displayed as a lie.
+function reletterCourse(course) {
+  const cutoffs = grades.resolveScale(course.grade_scale)
+  if (course.grade_letter && !cutoffs.some(([l]) => l === course.grade_letter)) {
+    course.grade_letter = null
+  }
+  if (course.grade_target != null
+      && !cutoffs.some(([, floor]) => floor === Number(course.grade_target))) {
+    course.grade_target = null
   }
 }
 
@@ -476,7 +518,7 @@ function focusLast(selector) {
 // the element is remembered by its data attribute and picked up again after.
 function focusToken(el) {
   if (!el || !el.dataset) return null
-  for (const key of ['mark', 'credits', 'letter', 'target',
+  for (const key of ['mark', 'credits', 'letter', 'target', 'scale', 'cut',
                      'dueDate', 'dueTitle', 'dueWeight', 'note']) {
     if (el.dataset[key] !== undefined) return [key, el.dataset[key]]
   }
