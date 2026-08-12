@@ -585,7 +585,9 @@ export function reviewTable(parse, showAll = false) {
     ['Weeks', sessions, false],
     ['Readings', readings, false],
     ['To check', checkCount, checkCount > 0],
-    weights ? ['Your grade', `${weights}%`, Math.abs(weights - 100) > 1] : null,
+    // this is the sum of the assignment weights, not a mark. "Your grade
+    // 100%" read as a result rather than a check that the grading adds up.
+    weights ? ['Graded work', `${weights}%`, Math.abs(weights - 100) > 1] : null,
   ].filter(Boolean)
 
   const strip = `<dl class="rstats">${stats.map(

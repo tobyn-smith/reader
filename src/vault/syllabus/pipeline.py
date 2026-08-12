@@ -351,16 +351,26 @@ def _sanity_warnings(parsed: ParsedSyllabus) -> list[str]:
             )
 
     dated = [s for s in parsed.sessions if s.meeting_date]
-    seen: dict[dt.date, int] = {}
+    seen: dict[tuple, int | None] = {}
     for session in dated:
         key = (session.meeting_date, session.sub_session_label)
         if key in seen:
-            notes.append(
-                f"Weeks {seen[key]} and {session.week_number} are both dated "
-                f"{session.meeting_date.strftime('%d %B')}. One of them is "
-                "probably wrong."
-            )
-        seen[key] = session.week_number or 0
+            # a session with no week number used to report as "week 0", which
+            # is not a week anyone has. both numbers are needed to name them;
+            # otherwise the date carries the message on its own.
+            when = session.meeting_date.strftime("%d %B")
+            first, second = seen[key], session.week_number
+            if first and second:
+                notes.append(
+                    f"Weeks {first} and {second} are both dated {when}. "
+                    "One of them is probably wrong."
+                )
+            else:
+                notes.append(
+                    f"Two entries are both dated {when}. One of them is "
+                    "probably wrong."
+                )
+        seen[key] = session.week_number
 
     empty = [s.week_number for s in parsed.sessions
              if s.session_type == "reading" and not s.readings and s.week_number]
