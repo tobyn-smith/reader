@@ -2,8 +2,12 @@
 
 **Turn a syllabus PDF into the term you actually have to get through.**
 
-[![CI](https://github.com/tobyn-smith/reader/actions/workflows/ci.yml/badge.svg)](https://github.com/tobyn-smith/reader/actions/workflows/ci.yml)
-[![Pages](https://github.com/tobyn-smith/reader/actions/workflows/pages.yml/badge.svg)](https://github.com/tobyn-smith/reader/actions/workflows/pages.yml)
+[![Release](https://img.shields.io/github/v/release/tobyn-smith/reader?style=flat-square&color=D2704A&labelColor=2B2924)](https://github.com/tobyn-smith/reader/releases)
+[![Tests](https://img.shields.io/github/actions/workflow/status/tobyn-smith/reader/ci.yml?style=flat-square&label=tests&labelColor=2B2924)](https://github.com/tobyn-smith/reader/actions/workflows/ci.yml)
+[![Deploy](https://img.shields.io/github/actions/workflow/status/tobyn-smith/reader/pages.yml?style=flat-square&label=deploy&labelColor=2B2924)](https://github.com/tobyn-smith/reader/actions/workflows/pages.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-EDE8DA?style=flat-square&labelColor=2B2924)](#install)
+[![Citations parsed](https://img.shields.io/badge/citations_parsed-83%25-D2704A?style=flat-square&labelColor=2B2924)](#how-accurate-it-is)
+[![Last commit](https://img.shields.io/github/last-commit/tobyn-smith/reader?style=flat-square&color=6E695E&labelColor=2B2924)](https://github.com/tobyn-smith/reader/commits/main)
 
 ### → [Open it in your browser](https://tobyn-smith.github.io/reader/)
 
