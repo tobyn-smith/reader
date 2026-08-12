@@ -226,6 +226,7 @@ function candidateWorks() {
 function submit(files) {
   const { extractWorker: ew } = workers()
   $('welcome').hidden = true
+  $('tools').hidden = false
   $('tools').open = true
   status('intake-status', `${files.length} file(s) queued`)
 
@@ -415,8 +416,12 @@ function draw() {
   drawNav()
   const course = state.courses.find((c) => c.id === state.active) || state.courses[0]
   // the first visit gets the welcome and its big drop target; once a course
-  // exists, or a parse is waiting on review, the ledger takes over
-  $('welcome').hidden = Boolean(course) || Boolean(state.pending) || state.files.length > 0
+  // exists, or a parse is waiting on review, the ledger takes over. while the
+  // welcome is up, the add-files panel hides: two drop zones on one screen
+  // read as two different features.
+  const welcome = !course && !state.pending && state.files.length === 0
+  $('welcome').hidden = !welcome
+  $('tools').hidden = welcome
   $('tools').open = !course
   if (!course) {
     $('views').hidden = true
@@ -552,8 +557,15 @@ async function boot() {
   wireDropZone('file-drop', 'file-input')
   wireDropZone('welcome-drop', 'file-input')
   $('welcome-choose').onclick = () => $('file-input').click()
-  // a fresh visit shows the welcome, not a folded panel
+  // a fresh visit shows the welcome alone, not a folded panel beside it
   $('welcome').hidden = state.courses.length > 0
+  $('tools').hidden = state.courses.length === 0
+
+  // the asterisk is a footnote: it opens the accuracy panel where the small
+  // print actually lives, rather than only scrolling past a closed fold
+  $('accuracy-star').onclick = () => {
+    $('accuracy').open = true
+  }
 
   $('review-table').addEventListener('click', (e) => {
     if (!e.target.closest('#toggle-all')) return

@@ -377,7 +377,7 @@ tr.rec:hover > td { background: var(--tint); }
 
 /* a source wraps like everything else. "A Very Short Introd..." on four rows
    running is not a source, and the row has the height to spare. */
-.c-src {
+td.c-src {
   font-family: var(--body);
   font-size: 13px;
   font-style: italic;
@@ -893,8 +893,8 @@ input[type="file"]::file-selector-button {
    and collapses the title to a third of its width. every column stays, and
    the ones carrying least give width back by shrinking. */
 @media (max-width: 1240px) {
-  .c-tick { width: 22px; }
-  .c-num  { width: 24px; }
+  .c-tick { width: 28px; }
+  .c-num  { width: 26px; }
   .c-date { width: 42px; }
   .c-src  { width: 96px; }
   .c-pp   { width: 48px; }
