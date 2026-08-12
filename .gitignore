@@ -28,3 +28,4 @@ app/vendor/
 _site/
 build/
 dist/
+corpus*.json

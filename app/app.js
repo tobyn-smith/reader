@@ -512,7 +512,18 @@ function wireDropZone(zoneId, inputId) {
     })
   }
   zone.addEventListener('drop', (e) => {
-    const files = [...(e.dataTransfer?.files || [])].filter((f) => f.type === 'application/pdf')
+    const all = [...(e.dataTransfer?.files || [])]
+    const files = all.filter((f) => f.type === 'application/pdf')
+    // a word document dropped alongside the pdfs used to vanish without a
+    // word, which reads as the tool having lost it. say what happened.
+    for (const skipped of all.filter((f) => f.type !== 'application/pdf')) {
+      state.files.push({
+        name: skipped.name, kind: '',
+        note: 'not a pdf, so it cannot be read. export it as a pdf and drop that.',
+        warn: true,
+      })
+    }
+    if (all.length > files.length) drawQueue()
     if (files.length) submit(files)
   })
 }

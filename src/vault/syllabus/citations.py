@@ -255,6 +255,35 @@ PATTERNS: list[Pattern] = [
         0.75,
     ),
     Pattern(
+        # the same agency-report shape without quotes and often without a day:
+        # "Halvorsen, Brendan W. December 2022. Defense Primer: PPBE Process.
+        # Congressional Research Service." grad policy courses assign these by
+        # the dozen.
+        "dated_unquoted_report",
+        re.compile(
+            r"^(?P<authors>.+?)\.?\s+(?P<date>" + _MONTH + r"\s+(?:\d{1,2},?\s*)?" + _YEAR + r")\.\s*"
+            r"(?P<title>[^\"“]{6,140}?)\.\s*(?P<container>[A-Z][^.]{3,60})[.,]?\s*$",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        REPORT,
+        0.75,
+    ),
+    Pattern(
+        # a federal regulation, cited the way the eCFR site titles itself:
+        # "eCFR :: 15 CFR Part 774 -- The Sample Control List". the part
+        # number is the identity; the name may sit before or after it.
+        "cfr_citation",
+        re.compile(
+            r"^(?:(?P<title>.+?)\s+)?e?CFR\s*::\s*"
+            r"(?P<report>\d{1,2}\s+CFR\s+Part\s+\d{1,4})\s*(?:--|[-–—])?\s*(?P<tail>.*)$",
+            re.IGNORECASE,
+        ),
+        GOVERNMENT_DOCUMENT,
+        0.8,
+        expects_year=False,
+        expects_title=False,
+    ),
+    Pattern(
         "author_date_chapter",
         re.compile(
             r"^(?P<authors>.+?)\.?\s+" + _YEAR + r"\.\s*" + _QUOTED +
@@ -321,7 +350,12 @@ PATTERNS: list[Pattern] = [
         re.compile(
             r"^(?P<authors>.+?)\s*(?:\(eds?\.?\))?[.,]\s*"
             r"(?P<title>[^.]{6,140})\.\s*"
-            r"(?P<city>[A-Z][A-Za-z .'-]{2,30}):\s*(?P<publisher>[^,]{2,60}),\s*"
+            # a multi-place imprint: "New York, etc:", "New Haven; London:".
+            # the comma and semicolon were outside the city class and failed
+            # the whole pattern on two real book readings.
+            r"(?P<city>[A-Z][A-Za-z .'-]{2,30}"
+            r"(?:\s*[;,]\s*(?:etc\.?|[A-Z][A-Za-z .'-]{2,30})){0,2}):\s*"
+            r"(?P<publisher>[^,]{2,60}),\s*"
             + _YEAR
             + r"(?:[,.]\s*(?P<edition>[^,.]{0,24}edition))?"
             r"(?:[,.]\s*(?P<chapters>chapters?\s+[\d\s,and-]+))?",
@@ -342,13 +376,31 @@ PATTERNS: list[Pattern] = [
         0.75,
     ),
     Pattern(
+        # the set text named by chapter number in parens, or bare surname:
+        # "Okonkwo (12) in Comparative Politics." and "Berg in European
+        # Politics." and "Hine in Hale & Osei". one course wrote half its
+        # reading list this way. capitals are load bearing, so no IGNORECASE.
+        "chapter_in_container",
+        re.compile(
+            r"^(?P<authors>[A-Z][\w'’-]+(?:\s*\(\d{1,3}\))?"
+            r"(?:\s*(?:,|and|&)\s*[A-Z][\w'’-]+(?:\s*\(\d{1,3}\))?)*)"
+            r"\s+in\s+(?P<container>[A-Z].{2,60}?)\s*\.?\s*$",
+        ),
+        BOOK_CHAPTER,
+        0.7,
+        expects_year=False,
+        expects_title=False,
+    ),
+    Pattern(
         # a course with one set text refers to it in shorthand all term:
-        # "Okonkwo and Osei, Chapter 1". the surname is the whole citation.
+        # "Okonkwo and Osei, Chapter 1", and terser still "NRC Ch 3 & 4"
+        # where the comma never appears and chapters come in pairs. the
+        # surname or acronym is the whole citation.
         "author_short_chapter",
         re.compile(
             r"^(?P<authors>[A-Z][A-Za-z'’-]+(?:\s+(?:and|&)\s+[A-Z][A-Za-z'’-]+)*)"
-            r"\s*,\s*(?P<pages>(?:chapters?|ch\.?|sections?|pp?\.|pages?)\s*"
-            r"[\d][\d.,\s-]*)\s*\.?\s*$",
+            r"\s*,?\s+(?P<pages>(?:chapters?|ch\.?|sections?|pp?\.|pages?)\s*"
+            r"[\d][\d.,\s&-]*(?:and\s*[\d.]+)?)\s*\.?\s*$",
             re.IGNORECASE,
         ),
         BOOK_CHAPTER,
@@ -465,7 +517,17 @@ def _fill(citation: Citation, m: re.Match[str], pattern: Pattern) -> None:
     citation.work_type = pattern.work_type
 
     if groups.get("authors"):
-        citation.authors = parse_authors(groups["authors"])
+        raw_authors = groups["authors"]
+        # "Lindqvist (15) and Peters (14)" carries one chapter number per author.
+        # the numbers are pages data, and left in place they wreck the name
+        # split, so they are collected and stripped before parsing.
+        if pattern.name == "chapter_in_container":
+            numbers = re.findall(r"\((\d{1,3})\)", raw_authors)
+            if numbers:
+                citation.pages = "chapters " + ", ".join(numbers) if len(numbers) > 1 \
+                    else "chapter " + numbers[0]
+                raw_authors = re.sub(r"\s*\(\d{1,3}\)", "", raw_authors)
+        citation.authors = parse_authors(raw_authors)
     if groups.get("title"):
         citation.title = collapse_whitespace(groups["title"]).strip(" ,.")
     if groups.get("container"):
@@ -493,6 +555,10 @@ def _fill(citation: Citation, m: re.Match[str], pattern: Pattern) -> None:
 
     if pattern.name == "series_entry_open_ended" and not citation.year_end:
         citation.year_is_open = True
+
+    # a cfr line may carry its name only after the part number
+    if pattern.name == "cfr_citation" and not citation.title and groups.get("tail"):
+        citation.title = collapse_whitespace(groups["tail"]).strip(" ,.")
 
     if groups.get("date") and citation.year is None:
         year = re.search(r"(1[89]\d{2}|20\d{2})", groups["date"])

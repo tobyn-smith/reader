@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from ..text.model import ExtractedDoc
 from ..text.normalize import URL_RE, collapse_whitespace
@@ -61,17 +62,34 @@ class CourseMeta:
     raw: str = ""
 
 
+# a term written into a filename: "Spring2026", "Fall_2026", "fa25 " is not
+# attempted, only the full season word with no or thin separation
+_FILENAME_TERM_RE = re.compile(r"(fall|spring|summer|winter)[\s_-]*(20\d{2})", re.IGNORECASE)
+
+
 def find_term_in_document(doc: ExtractedDoc) -> Term | None:
     """look in the untouched page text.
 
     the term is very often printed in the running header, which header stripping
     removes on purpose, so the cleaned text is the wrong place to look for it.
+
+    the filename is the last resort, after every page. two real syllabi carry
+    their term nowhere but the filename ("HIST1234_Ashe_Spring2026_..."), and
+    with no term no year-less date in the document can be resolved at all. a
+    renamed or reused file can lie, which is why nothing in the text ever
+    loses to it.
     """
     for page in doc.pages[:3]:
         found = find_term(page.raw_text) or find_term(page.text)
         if found:
             return found
-    return find_term(doc.text)
+    found = find_term(doc.text)
+    if found:
+        return found
+    m = _FILENAME_TERM_RE.search(Path(str(doc.path)).name)
+    if m:
+        return Term(m.group(1).lower(), int(m.group(2)))
+    return None
 
 
 def parse(doc: ExtractedDoc) -> CourseMeta:

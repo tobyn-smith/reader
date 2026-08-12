@@ -93,9 +93,16 @@ _DATE_LED = re.compile(r"^\s*\d{1,2}\s*/\s*\d{1,2}\b")
 # a schedule headed by month and day rather than by week number. an optional
 # list number in front, as in "1. August 14:", belongs to the list not the date.
 _MONTH_LED = re.compile(
+    # after the day, either punctuation or a capitalised (possibly quote
+    # opened) topic. "Jan 13  Introduction" is a schedule line as surely as
+    # "Jan 13: Introduction", and one syllabus wrote its whole calendar
+    # without the colon. the >=3 matches guard downstream keeps prose that
+    # happens to open with a date from starting the zone.
     r"^\s*(?:\(?\d{1,2}[.)]\s+)?"
     r"(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?,?"
-    r"\s*\d{1,2}\s*(?:st|nd|rd|th)?\s*[:.–—-]",
+    # (?-i:) keeps the topic capital a real capital under the pattern's
+    # IGNORECASE, or "jan 13 we will" style prose would match too
+    r"\s*\d{1,2}\s*(?:st|nd|rd|th)?\s*(?:[:.–—-]|\s+(?-i:[\"“]?[A-Z]))",
     re.IGNORECASE,
 )
 
@@ -144,12 +151,37 @@ def classify_heading(text: str) -> str | None:
 
 
 def flatten(doc: ExtractedDoc) -> list[Line]:
+    """one flat line list, with starts_block marking paragraph heads.
+
+    two repairs to what "starts a block" means, both from real files. a block
+    that opens with a whitespace-only line was giving starts_block to the
+    blank and robbing its first real line of it. and some extractions hand
+    back a whole page as one block, where the only structure left is the
+    blank lines between paragraphs, so there a line following a blank one is
+    a paragraph head. that second repair stays confined to oversized blocks:
+    applied everywhere it split well-segmented schedules into phantom
+    sessions, because a blank line inside a real block is spacing, not
+    structure.
+    """
     lines: list[Line] = []
     for page in doc.pages:
         blocks = page.block_texts or [page.text]
         for block in blocks:
-            for offset, raw in enumerate(block.splitlines()):
-                lines.append(Line(page.number, len(lines), raw, starts_block=offset == 0))
+            rows = block.splitlines()
+            # degenerate means the extractor gave up and handed the whole
+            # page over as one block. a long block on a page that otherwise
+            # segmented fine is a real paragraph, and blank lines inside it
+            # are spacing; treating those as paragraph heads let a mangled
+            # summary grid seed phantom sessions.
+            degenerate = len(blocks) == 1 and len(rows) > 15
+            fresh = True
+            for raw in rows:
+                blank = not raw.strip()
+                lines.append(Line(page.number, len(lines), raw, starts_block=fresh and not blank))
+                # leading blanks keep the head available for the first real
+                # line in any block; after that only a degenerate block lets
+                # a blank re-arm it
+                fresh = blank and (fresh or degenerate)
     return lines
 
 
@@ -223,8 +255,13 @@ def find_schedule_start(lines: list[Line]) -> int | None:
             first_marker = dated[0]
 
     if first_marker is None:
+        # no structural marker anywhere, so a keyword heading is the only hope.
+        # the block gate is opened here: this fallback exists precisely for a
+        # title-case "Course Schedule" heading, and one real syllabus buried
+        # that heading mid-block behind policy prose, which left the whole
+        # document as front matter and the parse with zero sessions.
         for line in lines:
-            if is_heading(line.text) and classify_heading(line.text) == SCHEDULE:
+            if is_heading(line.text, starts_block=True) and classify_heading(line.text) == SCHEDULE:
                 return line.index
         return None
 
@@ -258,7 +295,15 @@ def segment(doc: ExtractedDoc) -> list[Zone]:
             in_schedule = True
             continue
 
-        heading = is_heading(line.text, starts_block=line.starts_block)
+        # a keyword-classified line gets the title-case branch even mid-block.
+        # the starts_block gate exists to keep wrapped prose from reading as a
+        # heading, but a short title-case line that names a known zone is its
+        # own evidence: "Grading" buried mid-block was costing a whole
+        # requirements zone, and with it every weight in the course.
+        heading = is_heading(
+            line.text,
+            starts_block=line.starts_block or classify_heading(line.text) is not None,
+        )
         kind = classify_heading(line.text) if heading else None
 
         # the schedule is the last major zone. once inside it, only an appendix

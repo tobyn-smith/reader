@@ -87,7 +87,10 @@ DATE_HEADING_RE = re.compile(
     r"^\s*(?:(?:mon|tues?|wed(?:nes)?|thur?s?|fri|sat(?:ur)?|sun)[a-z]*\.?,?\s+)?"
     r"(?P<date>(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?,?"
     r"\s*\d{1,2}\s*(?:st|nd|rd|th)?)"
-    r"\s*(?:[:.–—-]\s*(?P<rest>.*)|\s+(?P<rest2>[A-Z].*)|(?P<rest3>)$)",
+    # rest2 admits an opening quote before the capital: a survey course heads
+    # its sessions "Mar 3 “The Victorian Age”...", and the curly quote was
+    # failing the capital test. (?-i:) keeps the capital real under IGNORECASE.
+    r"\s*(?:[:.–—-]\s*(?P<rest>.*)|\s+(?P<rest2>(?-i:[\"“]?[A-Z]).*)|(?P<rest3>)$)",
     re.IGNORECASE,
 )
 
@@ -101,6 +104,12 @@ _MEETING_NUMBER_RE = re.compile(r"^\s*\(?\d{1,2}[.)]\s*(?=[A-Za-z])")
 
 def strip_meeting_number(text: str) -> str:
     return _MEETING_NUMBER_RE.sub("", text, count=1)
+
+
+# a line that opens with a numeric date, "8/18 Topic". used only to stamp an
+# undated session from its own body, never to start a session: is_session_head
+# firing on any line containing a fraction would shred schedules.
+_NUMERIC_DATE_LEAD = re.compile(r"^\s*\d{1,2}\s*/\s*\d{1,2}\b")
 
 
 # a numbered meeting that puts its date at the end instead of the front:
@@ -278,7 +287,7 @@ def _table_looks_like_a_schedule(doc: ExtractedDoc, pages: set[int]) -> bool:
             flat = collapse_whitespace(" ".join(cell for row in grid for cell in row)).lower()
             if _WEEK_ANYWHERE_RE.search(flat):
                 return True
-            if re.search(r"\bdate\b.*\btopic\b", flat):
+            if re.search(r"\bdates?\b.*\btopics?\b", flat):
                 return True
     return False
 
@@ -351,7 +360,9 @@ def _find_important_dates(doc: ExtractedDoc, term: Term | None) -> list[DatedEnt
     for page in doc.pages:
         lines = page.text.splitlines()
         for index, line in enumerate(lines):
-            if re.match(r"^\s*important dates\s*:?\s*$", line, re.IGNORECASE):
+            # "notable dates" and "key dates" are the same block under a
+            # different name, and one real file used each
+            if re.match(r"^\s*(?:important|notable|key)\s+dates\s*:?\s*$", line, re.IGNORECASE):
                 return parse_important_dates(lines[index + 1: index + 24], term)
     return []
 
@@ -535,10 +546,47 @@ def _lift_subheadings(session: SessionEntry, entries: list[str]) -> list[str]:
     return kept
 
 
+# a row that is nothing but requirement-level words is a sub-header from a
+# two-column reading list ("Required   Suggested"), not a reading
+_LEVEL_WORDS_ROW = re.compile(
+    r"^\s*(?:required|suggested|optional|recommended)"
+    r"(?:\s+(?:required|suggested|optional|recommended))*\s*[:.]?\s*$",
+    re.IGNORECASE,
+)
+
+# a required chapter cite fused with the suggested column beside it:
+# "NRC Ch 3 & 4 Greenfire Movie". the chapter list is the split point, and
+# both halves are real entries.
+_CHAPTER_FUSE_RE = re.compile(
+    r"^(?P<cite>[A-Z][\w'’-]*,?\s+(?:chapters?|ch\.?)\s*"
+    r"[\d][\d]*(?:\s*[,&]\s*\d+)*)\s+(?P<rest>[A-Za-z]\S.*)$",
+    re.IGNORECASE,
+)
+
+
+def _split_fused_columns(entries: list[str]) -> list[tuple[str, str | None]]:
+    """undo a required/suggested column merge, keeping the level of each half."""
+    out: list[tuple[str, str | None]] = []
+    for raw in entries:
+        if _LEVEL_WORDS_ROW.match(collapse_whitespace(raw)):
+            continue
+        m = _CHAPTER_FUSE_RE.match(collapse_whitespace(raw))
+        if m:
+            out.append((m.group("cite"), None))
+            out.append((m.group("rest"), "recommended"))
+            continue
+        out.append((raw, None))
+    return out
+
+
 def _finish(session: SessionEntry, entries: list[str]) -> None:
     ordinal = 0
-    for raw in _lift_subheadings(session, _join_url_tails(entries)):
+    for raw, level in _split_fused_columns(
+        _lift_subheadings(session, _join_url_tails(entries))
+    ):
         entry = _build_reading(raw, ordinal)
+        if entry is not None and level:
+            entry.requirement_level = level
         if entry is None:
             continue
         session.readings.append(entry)
@@ -592,6 +640,10 @@ def _build_reading(raw: str, ordinal: int) -> ReadingEntry | None:
     if not text or len(text) < 4:
         return None
     if cit.looks_like_placeholder(text):
+        return None
+    # a sub-header of level words from a two-column list reaches here by more
+    # than one route, so the guard lives at the choke point
+    if _LEVEL_WORDS_ROW.match(text):
         return None
     if _looks_like_prose(text):
         return None
@@ -647,8 +699,11 @@ def _is_fragment(text: str) -> bool:
     if stripped[:1] in {".", "/", "-", "?", "&", "="}:
         return True
 
-    # "Chapter 2" or "pp. 12-30" is terse but it is a real assignment
-    if re.match(r"(?i)^(?:chapters?|ch\.?|pages?|pp?\.?|parts?|sections?|units?)\s*\d", stripped):
+    # "Chapter 2" or "pp. 12-30" is terse but it is a real assignment, and so
+    # is "NRC Ch 3 & 4", where the chapter keyword sits after the set text's
+    # acronym rather than first. anywhere in the text is enough: a url tail
+    # does not carry "ch 3".
+    if re.search(r"(?i)\b(?:chapters?|ch\.?|pages?|pp?\.?|parts?|sections?|units?)\s*\d", stripped):
         return False
 
     # what is left once every url is removed. a real citation keeps words.
@@ -699,7 +754,18 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
         stripped, marker = strip_leading_marker(text)
         heading_candidate = stripped if marker else text
 
-        if is_session_head(heading_candidate, starts_block=line.starts_block):
+        head = is_session_head(heading_candidate, starts_block=line.starts_block)
+        # in a schedule that numbers its weeks, a bare date-led line is that
+        # week's timetable or a stray from a summary grid, not a new session.
+        # one syllabus's mangled summary calendar was donating a dozen
+        # phantom sessions this way, one of them dating thanksgiving to
+        # november 5th. week-numbered and numbered headings stay heads.
+        if (head and not WEEK_RE.match(heading_candidate)
+                and not numbered_dated_heading(heading_candidate)
+                and any(s.week_number for s in result.sessions)):
+            head = False
+
+        if head:
             flush_session()
             session = _new_session(len(result.sessions), line.page, heading_candidate)
             session.section_heading = section_heading
@@ -729,6 +795,15 @@ def _parse_bulleted(lines: list[Line], term: Term | None) -> ScheduleParse:
             if rest and not session.topic:
                 session.topic = rest
             continue
+
+        # the numeric equivalent: "8/18 Topic" on the line under a bare
+        # "Week 1" heading is that week's date. first date wins and only an
+        # undated session takes it, so a citation carrying "12/3" mid-line or
+        # a later assignment deadline cannot restamp the week.
+        if session.meeting_date is None and _NUMERIC_DATE_LEAD.match(text):
+            found = list(iter_dates(text, term))
+            if found:
+                session.meeting_date = found[0]
 
         # a label switches collection on or off for what follows it
         label = LABEL_RE.match(stripped) or BARE_LABEL_RE.match(stripped)
@@ -846,6 +921,14 @@ def _parse_labelled(lines: list[Line], term: Term | None) -> ScheduleParse:
         if session.section_heading is None:
             session.section_heading = section_heading
 
+        # a bare "Week 1" heading carries its date on the next line in some
+        # tables: "T" then "8/18 Topic". first numeric date wins, undated
+        # sessions only, same rule as the bulleted parser.
+        if session.meeting_date is None and _NUMERIC_DATE_LEAD.match(text):
+            found = list(iter_dates(text, term))
+            if found:
+                session.meeting_date = found[0]
+
         m = LABEL_RE.match(text) or BARE_LABEL_RE.match(text)
         if m:
             flush_entry()
@@ -957,22 +1040,50 @@ class TableShape:
     from_header: bool = False
 
 
-_WEEK_HEADERS = re.compile(r"^\s*(?:week|wk|meetings?|class(?:es)?|session)\s*:?\s*$", re.IGNORECASE)
+# "week dates (days m-f)" is one syllabus's combined week-and-date column, so
+# the week header tolerates a date qualifier; the promotion below then makes
+# the same column the date anchor
+_WEEK_HEADERS = re.compile(
+    r"^\s*(?:week|wk|meetings?|class(?:es)?|session)s?\s*(?:dates?)?\s*(?:\([^)]*\))?\s*:?\s*$",
+    re.IGNORECASE,
+)
 _DATE_HEADERS = re.compile(r"^\s*(?:date|dates|day|days)\b[^|]*$", re.IGNORECASE)
 _TOPIC_HEADERS = re.compile(r"^\s*(?:topic|theme|subject)s?\s*:?\s*$", re.IGNORECASE)
 _UNIT_HEADERS = re.compile(r"^\s*(?:unit|module|section|part)s?\s*:?\s*$", re.IGNORECASE)
 _BODY_HEADERS = re.compile(
-    r"^\s*(?:readings?|materials?|notes?|"
+    r"^\s*(?:(?:assigned\s+)?readings?|materials?|notes?|"
     r"assignments?\s+and\s+due\s+dates?)\s*(?:\([^)]*\))?\s*:?\s*$",
     re.IGNORECASE,
 )
 
 # a column of graded work rather than a column of readings
+# the last alternative reads any short header that ends in "due" as a due
+# column: "Exams and Team Assignments due" names graded work however it winds
+# up to the word. _label_kind checks body headers first, so "assignments and
+# due dates" keeps its explicit body classification.
 _DUE_HEADERS = re.compile(
     r"^\s*(?:assignments?|homework|deliverables?|(?:material|other|work)\s*due|"
-    r"due(?:\s+dates?)?|what.?s\s+due|exams?|quizzes)\s*(?:\([^)]*\))?\s*:?\s*$",
+    r"due(?:\s+dates?)?|what.?s\s+due|exams?|quizzes|"
+    r"[\w\s/&@-]{0,36}\bdue)\s*(?:\([^)]*\))?\s*:?\s*$",
     re.IGNORECASE,
 )
+
+
+def _label_kind(label: str) -> str | None:
+    """which column a header label names, if any."""
+    if _WEEK_HEADERS.match(label):
+        return "week"
+    if _DATE_HEADERS.match(label):
+        return "date"
+    if _TOPIC_HEADERS.match(label):
+        return "topic"
+    if _UNIT_HEADERS.match(label):
+        return "unit"
+    if _BODY_HEADERS.match(label):
+        return "body"
+    if _DUE_HEADERS.match(label):
+        return "due"
+    return None
 
 
 def _shape_from_header(grid: list[list[str]]) -> TableShape:
@@ -980,22 +1091,48 @@ def _shape_from_header(grid: list[list[str]]) -> TableShape:
     if not grid:
         return shape
 
-    header = [collapse_whitespace(cell.split("\n")[0]) for cell in grid[0]]
+    kinds: list[str | None] = []
+    for cell in grid[0]:
+        first = collapse_whitespace(cell.split("\n")[0])
+        kind = _label_kind(first)
+        if kind is None:
+            # a tall header cell wraps mid-phrase, so "Exams and\nTeam\n
+            # Assignments due" shows a first line that names nothing. the
+            # collapsed whole cell is the fallback, never the primary, so a
+            # cell whose first line names a column keeps that reading.
+            whole = collapse_whitespace(cell)
+            if whole != first:
+                kind = _label_kind(whole)
+        kinds.append(kind)
+
+    # a header physically split across two grid rows: the first row leaves a
+    # column unnamed and the next row carries only its label ("", "", "Topic",
+    # ""). merge those labels in, or the unnamed-column fallback later sweeps
+    # the topic text into the readings. digits disqualify the row, so a short
+    # data row cannot pass as a header continuation.
+    if len(grid) > 1 and any(k is None for k in kinds):
+        follow = [collapse_whitespace(c) for c in grid[1]]
+        named = [(i, c) for i, c in enumerate(follow) if c]
+        if named and all(_label_kind(c) and not re.search(r"\d", c) for _, c in named):
+            for i, c in named:
+                if i < len(kinds) and kinds[i] is None:
+                    kinds[i] = _label_kind(c)
+
     recognised = 0
-    for index, label in enumerate(header):
-        if _WEEK_HEADERS.match(label) and shape.week_col is None:
+    for index, kind in enumerate(kinds):
+        if kind == "week" and shape.week_col is None:
             shape.week_col, recognised = index, recognised + 1
-        elif _DATE_HEADERS.match(label):
+        elif kind == "date":
             shape.date_cols.append(index)
             recognised += 1
-        elif _TOPIC_HEADERS.match(label) and shape.topic_col is None:
+        elif kind == "topic" and shape.topic_col is None:
             shape.topic_col, recognised = index, recognised + 1
-        elif _UNIT_HEADERS.match(label) and shape.unit_col is None:
+        elif kind == "unit" and shape.unit_col is None:
             shape.unit_col, recognised = index, recognised + 1
-        elif _BODY_HEADERS.match(label):
+        elif kind == "body":
             shape.body_cols.append(index)
             recognised += 1
-        elif _DUE_HEADERS.match(label):
+        elif kind == "due":
             shape.due_cols.append(index)
             recognised += 1
 

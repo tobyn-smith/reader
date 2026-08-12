@@ -287,6 +287,17 @@ def _marker_for(position: int, text: str, markers: list[tuple[int, str]]) -> str
     return current
 
 
+# grading apparatus that carries a percentage without being an assignment:
+# the summary row that adds the table up, and a late-penalty scale whose rows
+# read "Late within two days ... 40%". both were counted as graded work on a
+# real syllabus and pushed the weight total to 500.
+_APPARATUS_RE = re.compile(
+    r"^\s*(?:total|totals?|sum|on[\s-]?time|late\s+(?:within|after|by)\b|"
+    r"(?:\d+\s*)?days?\s+late)\b",
+    re.IGNORECASE,
+)
+
+
 def _select_top_level(candidates: list[_Candidate]) -> list[Deliverable]:
     """drop the sub components of a multi part assignment.
 
@@ -295,6 +306,7 @@ def _select_top_level(candidates: list[_Candidate]) -> list[Deliverable]:
     weight. when one bullet level accounts for the whole grade on its own, that
     level is the real list of deliverables.
     """
+    candidates = [c for c in candidates if not _APPARATUS_RE.match(c.item.title)]
     if not candidates:
         return []
 

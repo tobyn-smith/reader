@@ -4,6 +4,12 @@ Give it your syllabi at the start of term and your reading PDFs as you go. It
 pulls out the schedule, the readings and the deadlines, then tells you each week
 what's assigned and what you haven't got yet.
 
+It's built for reading-heavy courses: international affairs, political science,
+history, English, the humanities generally, where the syllabus is a long list
+of citations and the work is keeping up with it. It parses other kinds of
+syllabus too, but a course whose weekly load is problem sets rather than
+readings gets less out of it.
+
 Two ways to run it.
 
 ## In a browser
@@ -31,12 +37,12 @@ Worth knowing before you lean on it. 24 real syllabi, checked by hand:
 | Course code | 100% |
 | Term | 96% |
 | Found a schedule | 79% |
-| Readings parsed into full citations | 80% |
+| Readings parsed into full citations | 83% |
 | Weights adding up to about 100 | 6 of 10 |
 
 Reading lists are the weak spot. Most of what fails was never a reading in the
 first place: week topics, description paragraphs, columns off a grading table.
-Cleaning that up took it from 66% to 80%.
+Cleaning that up took it from 66% to 80%, and fixes from a second batch of syllabi took it to 83%.
 
 Anything it can't read, it shows you verbatim and marks for checking. It won't
 quietly drop a reading or invent one. No schedule found usually means the PDF
