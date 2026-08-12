@@ -620,8 +620,9 @@ export function gradesView(courses, activeId) {
     const rows = graded
       .map(({ item, di }) => `<tr>
         ${dated ? `<td class="when">${esc(shortDate(item.due_date))}</td>` : ''}
-        <td>${esc(item.title)}</td>
-        <td class="num">${item.weight_percent}%</td>
+        <td>${esc(item.title)}${grades.isBonus(item)
+          ? ' <span class="ontop">on top</span>' : ''}</td>
+        <td class="num">${grades.isBonus(item) ? '+' : ''}${item.weight_percent}%</td>
         <td class="num"><input type="number" class="pct" min="0" step="0.1"
           data-mark="${course.id}|${di}" value="${item.mark_percent ?? ''}"
           placeholder="&mdash;" aria-label="Your mark on ${esc(item.title)}"></td>
@@ -655,6 +656,7 @@ export function gradesView(courses, activeId) {
            <div><dt>Marked so far</dt><dd>${st.gradedWeight}%</dd></div>
            ${off ? '' : `<div><dt>Worst case</dt><dd>${st.banked}%</dd></div>
            <div><dt>Best case</dt><dd>${st.ceiling}%</dd></div>`}
+           ${st.bonus ? `<div><dt>Extra credit</dt><dd>+${st.bonus}%</dd></div>` : ''}
          </dl>`
 
     const aiming = off

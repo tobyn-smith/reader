@@ -299,10 +299,13 @@ async function confirmParse() {
     name: state.pending.name,
     parse,
     pdf: state.pending.bytes || (prior && prior.pdf) || null,
-    // what the visitor set about the course rather than about this parse
+    // what the visitor set about the course rather than about this parse. the
+    // grading scale belongs here too: it is read off the syllabus by eye and
+    // typed in, so losing it to a re-read means typing every cutoff again.
     credits: prior ? prior.credits : null,
     grade_letter: prior ? prior.grade_letter : null,
     grade_target: prior ? prior.grade_target : null,
+    grade_scale: prior ? prior.grade_scale : null,
     parserVersion: PARSER_VERSION,
   }
   await store.putCourse(course)
@@ -990,12 +993,18 @@ async function boot() {
     state.courses = []
     state.documents = []
     state.active = null
-    $('views').hidden = true
-    $('tools').open = true
-    $('data-tools').hidden = true
     state.files = []
+    // the ticks live in memory as well as in the database, and a cleared
+    // browser that still remembers what you had read is not cleared
+    state.progress = new Map()
+    state.pending = null
+    state.queue = []
+    state.cursor = null
+    $('data-tools').hidden = true
     drawQueue()
-    drawNav()
+    // redrawing is what brings the welcome page back. without it the app sat
+    // on a blank screen with the deleted course still naming the tab.
+    draw()
     status('intake-status', 'All data cleared')
   }
 

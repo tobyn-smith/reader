@@ -989,6 +989,16 @@ ol.bibliography li {
 /* the numbers belong beside the thing they describe. left to itself the
    weight sat against the right edge of a wide monitor, a hand's width from
    the assignment it weighs. */
+/* a bonus row is in the list but not in the hundred, and has to say so where
+   it sits, or the weights column looks like it does not add up */
+.ontop {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+
 table.marks { table-layout: fixed; }
 table.marks th.when, table.marks td.when { width: 88px; }
 table.marks th.num, table.marks td.num { width: 92px; }

@@ -79,18 +79,33 @@ const round = (n, places = 1) => {
  * `banked` and `ceiling` are the floor and the roof of the final mark, and they
  * only close on each other as the term is graded.
  */
+// extra credit sits on top of the hundred rather than inside it. counted as
+// part of the total it made a course whose weights were exactly right read as
+// 103, which suppressed every figure that assumes a hundred. the parser leaves
+// it out of its total for the same reason, and these two have to agree.
+export const isBonus = (item) => /\b(?:extra\s+credit|bonus)\b/i.test(item.title || '')
+
 export function standing(items) {
   let totalWeight = 0
   let gradedWeight = 0
   let earned = 0
+  let bonus = 0
+  let bonusEarned = 0
   for (const item of items || []) {
     const weight = Number(item.weight_percent)
     if (!Number.isFinite(weight) || weight <= 0) continue
-    totalWeight += weight
     const mark = Number(item.mark_percent)
-    if (item.mark_percent === null || item.mark_percent === undefined || !Number.isFinite(mark)) {
+    const marked = !(item.mark_percent === null || item.mark_percent === undefined
+      || !Number.isFinite(mark))
+
+    if (isBonus(item)) {
+      bonus += weight
+      if (marked) bonusEarned += (weight * mark) / 100
       continue
     }
+
+    totalWeight += weight
+    if (!marked) continue
     gradedWeight += weight
     earned += (weight * mark) / 100
   }
@@ -100,9 +115,12 @@ export function standing(items) {
     gradedWeight: round(gradedWeight, 2),
     remaining: round(remaining, 2),
     earned: round(earned, 2),
+    // the average is of the graded work proper; bonus marks are not an
+    // average of anything, they are points added at the end
     average: gradedWeight ? round((earned / gradedWeight) * 100) : null,
-    banked: round(earned),
-    ceiling: round(earned + remaining),
+    bonus: round(bonus, 2),
+    banked: round(earned + bonusEarned),
+    ceiling: round(earned + remaining + bonus),
   }
 }
 
