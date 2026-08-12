@@ -228,6 +228,39 @@ def _first_week_of_the_schedule(lines: list[Line]) -> int | None:
     return candidates[best_start][0]
 
 
+# a calendar date anywhere in the line, not just leading it. the month and day
+# ranges are checked so "CAPS 24/7" in a policy paragraph is not a date. the
+# separator has to include the hyphen, since a table that prints "01-07" for
+# january the seventh is common enough, and that costs a little precision
+# against "chapters 2-3". it is spent in the safe direction: this only decides
+# whether to believe a heading that already names the schedule.
+_DATE_ANYWHERE = re.compile(
+    r"\b(?:1[0-2]|0?[1-9])\s*[/.-]\s*(?:3[01]|[12]\d|0?[1-9])\b"
+    r"|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?,?\s*\d{1,2}\b",
+    re.IGNORECASE,
+)
+
+
+def _dates_follow(lines: list[Line], start: int, window: int = 60) -> bool:
+    """does anything dated actually come after this heading.
+
+    "Topical Outline" and "Course Overview" head a paragraph describing the
+    course as often as they head the calendar. taking the first such heading on
+    faith put the schedule zone on a prose blurb and left the real table, six
+    pages later, outside it. two dated lines is enough to believe the heading,
+    and low enough for a schedule that dates its topics in passing rather than
+    leading with the date.
+    """
+    hits = 0
+    for line in lines[start + 1: start + 1 + window]:
+        text = strip_leading_marker(line.stripped)[0]
+        if _DATE_ANYWHERE.search(text) or _WEEK_NUMBER.match(text):
+            hits += 1
+            if hits >= 2:
+                return True
+    return False
+
+
 def find_schedule_start(lines: list[Line]) -> int | None:
     """locate where the week by week schedule begins.
 
@@ -248,8 +281,12 @@ def find_schedule_start(lines: list[Line]) -> int | None:
         #
         # the block gate is opened: one syllabus buried its heading mid-block
         # behind policy prose, which left the whole document as front matter.
+        # a heading only counts if the calendar is under it, so a course
+        # description headed "Topical Outline" does not take the zone.
         for line in lines:
-            if is_heading(line.text, starts_block=True) and classify_heading(line.text) == SCHEDULE:
+            if (is_heading(line.text, starts_block=True)
+                    and classify_heading(line.text) == SCHEDULE
+                    and _dates_follow(lines, line.index)):
                 return line.index
 
     if first_marker is None:

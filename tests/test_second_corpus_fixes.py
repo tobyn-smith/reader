@@ -289,6 +289,50 @@ class TestScheduleZoneStart:
         assert start is not None
         assert "January 13" in lines[start].text
 
+    def test_a_heading_over_prose_does_not_take_the_zone(self):
+        """"Topical Outline" heads a course description as often as a calendar.
+
+        trusting the first schedule-ish heading put the zone on a paragraph and
+        left the real table, pages later, outside it. the whole schedule was
+        reported missing. the distance is the signal: several pages of policy
+        prose sit between the blurb and the calendar.
+        """
+        from vault.syllabus import zones
+        lines = self._lines(
+            "Topical Outline",
+            "This course provides an overview of cost concepts, enterprise",
+            "budgets, financial statements, investment analysis, and other topics.",
+            "Academic Honesty",
+            *[f"Students are expected to adhere to this policy at all times. {n}"
+              for n in range(70)],
+            "8/17 - 8/19  Introduction",
+            "8/24 - 8/26  Budgeting",
+            "8/31 - 9/02  Accounting and Finance",
+        )
+        start = zones.find_schedule_start(lines)
+        assert "8/17" in lines[start].text
+
+    def test_a_heading_over_a_real_calendar_is_kept(self):
+        from vault.syllabus import zones
+        lines = self._lines(
+            "Course Outline",
+            "All readings are required unless otherwise noted.",
+            "01-07  Orientation",
+            "01-09  Syllabus",
+            "01-14  Disaster management and sustainability",
+        )
+        start = zones.find_schedule_start(lines)
+        assert lines[start].text == "Course Outline"
+
+    def test_hyphen_dates_count_as_dates(self):
+        """a table printing january the seventh as 01-07 still reads as dated."""
+        from vault.syllabus import zones
+        assert zones._DATE_ANYWHERE.search("01-07")
+        assert zones._DATE_ANYWHERE.search("Week 2 01/14 Topic")
+        # a month over twelve is not a date
+        assert not zones._DATE_ANYWHERE.search("CAPS 24/7 crisis support")
+        assert not zones._DATE_ANYWHERE.search("call 706-542-8479")
+
     def test_week_markers_still_outrank_everything(self):
         from vault.syllabus import zones
         lines = self._lines(
