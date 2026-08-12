@@ -437,6 +437,7 @@ function draw() {
   if (welcome) $('accuracy').open = true
   if (!course) {
     $('views').hidden = true
+    document.title = 'schedule reader'
     return
   }
   $('views').hidden = false
@@ -492,6 +493,11 @@ function draw() {
   const stamp = new Date().toISOString().slice(0, 10)
   $('print-meta').textContent =
     `${state.courses.indexOf(course) + 1} of ${state.courses.length} · ${stamp}`
+
+  // a saved pdf takes its filename from the document title, and a title that
+  // never changes means every course prints as "schedule reader.pdf" and
+  // overwrites the last one. the active course names the tab and the file.
+  document.title = `${course.code || 'schedule reader'} - schedule reader`
 }
 
 function drawSearch(target) {
@@ -707,6 +713,7 @@ async function boot() {
   }
 
   $('print').onclick = () => window.print()
+  $('print-top').onclick = () => window.print()
 
   $('export').onclick = async () => {
     const data = await store.exportAll()

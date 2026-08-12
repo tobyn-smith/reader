@@ -24,6 +24,9 @@
 
   /* the apparatus of the screen has no job on paper */
   .masthead,
+  #smallgate,
+  .colophon-contrib,
+  .stale-note,
   .coursebar,
   nav.tabs,
   .rail,
@@ -87,6 +90,14 @@
     margin-top: 12pt;
     padding-bottom: 0;
   }
+
+  input[type="checkbox"] {
+    border: 1pt solid #000;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  input[type="checkbox"]:checked { background: #000 !important; }
 
   .page-break { page-break-before: always; }
 }
