@@ -450,8 +450,12 @@ function draw() {
 
   // the document line and the sheet number: a record identifies itself
   const stamp = new Date().toISOString().slice(0, 10)
+  // the term can live on the course row or in the parsed front matter, and
+  // reading only one of them printed a dash next to a course that has a term
+  const term = (course.term || course.parse.course?.term || '')
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase())
   $('docline').textContent =
-    `${course.code || 'Untitled'} · ${course.term || '—'} · ${stamp}`
+    [course.code || 'Untitled', term, stamp].filter(Boolean).join(' · ')
   $('print-meta').textContent =
     `${state.courses.indexOf(course) + 1} of ${state.courses.length} · ${stamp}`
 }

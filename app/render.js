@@ -193,9 +193,11 @@ export function weekView(course, progress, editing = false) {
     index.push({ n: title, topic, count, flagged })
     stamps.push({ row: rows.length, days })
 
+    // the week number sits across the tick and number columns so it starts at
+    // the left margin. sharing the number column with the record numbers put a
+    // big 02 directly above a small 01 and read as two of the same thing.
     const sep = `<tr class="sep" data-week="${index.length - 1}">
-        <td class="c-tick"></td>
-        <td class="c-num sep-n">${esc(title)}</td>
+        <td class="c-tick sep-n" colspan="2">${esc(title)}</td>
         <td class="c-date sep-d">${esc(shortDate(start))}</td>
         <td class="c-title sep-t" colspan="3">
           <span class="sep-topic">${esc(topic || 'No topic listed')}</span>
@@ -286,8 +288,13 @@ export function recordHeader(course) {
     .trim()
   // a fact with nothing behind it is dropped rather than printed as a dash.
   // six columns of em dashes is a grid that says nothing loudly.
+  // a term comes through as "spring" when no year was found beside it, and a
+  // lowercase word beside capitalised labels reads as a glitch
+  const term = String(course.term || p.course?.term || '')
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+
   const facts = [
-    ['Term', course.term || p.course?.term, false],
+    ['Term', term, false],
     ['Instructor', p.course?.instructor, false],
     ['Meets', p.course?.meeting_pattern, false],
     ['Weeks', String(p.sessions.length), false],

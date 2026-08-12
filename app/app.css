@@ -150,13 +150,18 @@ body {
   max-width: 46ch;
 }
 
+/* a fixed three column grid wrapped a fourth fact onto a row of its own and
+   right-aligned it under nothing, which read as broken. flex lets however
+   many facts survive sit on one line and wrap as a unit. */
 .record-facts {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: 2px 26px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 26px;
   margin: 0;
-  text-align: right;
 }
+
+.record-facts > div { text-align: right; }
 
 .record-facts dt {
   font-family: var(--display);
@@ -350,14 +355,15 @@ tr.rec:hover > td { background: var(--tint); }
   color: var(--mid);
 }
 
+/* a source wraps like everything else. "A Very Short Introd..." on four rows
+   running is not a source, and the row has the height to spare. */
 .c-src {
   font-family: var(--body);
   font-size: 12.5px;
   font-style: italic;
   color: var(--mid);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 /* the status column is empty for the ordinary case. before term starts every
@@ -517,17 +523,34 @@ select { font-family: var(--mono); font-size: 11px; }
 
 :focus-visible { outline: 2px solid var(--flag); outline-offset: 1px; }
 
+/* 11px was a smudge rather than a control, and its filled state was hard to
+   tell from its empty one at a glance down a column of thirty */
 input[type="checkbox"] {
   appearance: none;
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
   border: 1px solid var(--mid);
   border-radius: 0;
-  vertical-align: -1px;
+  vertical-align: -2px;
   cursor: pointer;
+  position: relative;
 }
 
-input[type="checkbox"]:checked { background: var(--ink); border-color: var(--ink); }
+input[type="checkbox"]:hover { border-color: var(--ink); }
+
+input[type="checkbox"]:checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* a notch out of the filled square, so held reads at a distance without a
+   tick glyph or a second colour */
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--paper);
+}
 
 /* the note stays out of the way until it holds something */
 input.note {
@@ -834,6 +857,26 @@ input[type="file"]::file-selector-button {
 
 /* ---- narrow ------------------------------------------------------------ */
 
+/* the citation is what the page is for, and the fixed columns were taking
+   more than half the table to hold metadata that is usually empty. at 980px
+   the title had 349px of 741 and two thirds of the citations ran to three
+   lines. the least useful columns give their width back first: the entry
+   number is decoration, then pages and source, which are blank on most rows
+   anyway. */
+/* hiding a column here does not work: the week separator spans three of them
+   with a colspan, and dropping one out of a fixed layout throws that span off
+   and collapses the title to a third of its width. every column stays, and
+   the ones carrying least give width back by shrinking. */
+@media (max-width: 1240px) {
+  .c-tick { width: 22px; }
+  .c-num  { width: 24px; }
+  .c-date { width: 42px; }
+  .c-src  { width: 96px; }
+  .c-pp   { width: 48px; }
+  .c-stat { width: 56px; }
+  table.ledger td { padding-right: 8px; }
+}
+
 @media (max-width: 900px) {
   .sheet { grid-template-columns: minmax(0, 1fr); }
   .rail { position: static; border-right: 0; border-bottom: 1px solid var(--rule);
@@ -844,14 +887,66 @@ input[type="file"]::file-selector-button {
   .record-code { font-size: 34px; }
 }
 
+/* a seven column ledger does not survive 375px. rather than shrink it until
+   every column is unreadable, the table stops being a table: each record
+   becomes a block with the citation first and its details under it, and the
+   week separators stay as the rules between them. the reading is still the
+   thing you came for, and it gets the full width. */
 @media (max-width: 640px) {
   body { padding: 0 12px; }
-  .c-src, .c-pp, thead .c-src, thead .c-pp { display: none; }
-  .c-stat { width: 62px; }
-  input[type="checkbox"] { width: 15px; height: 15px; }
   .record-code { font-size: 27px; }
+  .record { padding: 10px 0 9px; }
+  .record-facts { justify-content: flex-start; gap: 3px 18px; }
+  .record-facts > div { text-align: left; }
   .rail-index { columns: 1; }
   .tabstrip { overflow-x: auto; scrollbar-width: none; }
   .tabstrip::-webkit-scrollbar { display: none; }
   nav.tabs button[data-view] { white-space: nowrap; }
+
+  table.ledger, table.ledger tbody, table.ledger tr, table.ledger td { display: block; }
+  table.ledger thead { display: none; }
+  table.ledger { table-layout: auto; }
+
+  tr.rec {
+    position: relative;
+    padding: 8px 0 8px 26px;
+    border-bottom: 1px solid var(--hair);
+  }
+
+  table.ledger td { border: 0; padding: 0; }
+
+  /* the tick sits in the margin it was given, beside the citation */
+  tr.rec td.c-tick {
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: auto;
+    padding: 0;
+  }
+
+  /* number, date, source, pages and status run together as one meta line
+     under the citation, each labelled by what it is rather than by a column */
+  tr.rec td.c-num, tr.rec td.c-date, tr.rec td.c-src,
+  tr.rec td.c-pp, tr.rec td.c-stat {
+    display: inline;
+    width: auto;
+  }
+
+  tr.rec td.c-title { display: block; margin-bottom: 2px; }
+  tr.rec td.c-num::after { content: " · "; color: var(--faint); }
+  tr.rec td.c-date:not(:empty)::after { content: " · "; color: var(--faint); }
+  tr.rec td.c-pp:not(:empty)::before { content: "pp. "; }
+  tr.rec td.c-pp:not(:empty)::after { content: " · "; color: var(--faint); }
+  tr.rec td.c-src:not(:empty)::after { content: " · "; color: var(--faint); }
+  tr.rec td.c-stat:not(:empty) { font-size: 10.5px; }
+
+  tr.rec.empty { padding-left: 0; }
+  tr.rec.empty td.c-stat { display: none; }
+
+  tr.sep { padding-top: 10px; border-top: 2px solid var(--rule); }
+  tr.sep > td { border: 0; padding: 0; background: none; }
+  tr.sep td.c-tick { position: static; }
+  .sep-n { display: inline-block; margin-right: 8px; }
+  .sep-d { display: inline-block; }
+  tr.sep td.c-stat { display: none; }
 }
