@@ -306,6 +306,40 @@ running the browser code path in python. The app itself was exercised by hand:
 parse, review, confirm, views, matching, reload persistence, and a check that
 no request leaves the origin while a file is processed.
 
+## How far apart the two paths actually are
+
+Measured over 31 real syllabi, comparing session and reading counts from
+extract.py against runs.py fed the same files:
+
+    13   agree exactly
+     7   both pick a line parser, and still disagree
+     6   both pick the table parser, and still disagree
+     3   one picks labelled, the other bulleted
+     2   one picks table, the other bulleted
+
+So the split is roughly even between "the parsers agree on the layout and read
+it differently" and "they do not even agree what the layout is". Anyone
+planning to close this should not expect one fix.
+
+One case is closed and worth reading as the pattern for the rest. A syllabus
+printed its deadline calendar above its schedule, as a column of date-led
+lines. find_schedule_start would accept a single date-led line as the start of
+the schedule zone, so on the runs path that block captured the zone and each
+entry in it became a session: 34 sessions against 27, with four phantom
+duplicate-date warnings. The two extractors split lines slightly differently,
+which is why only one of them tripped it. The fix was precedence, not
+geometry: an explicit schedule heading now outranks a bare dated line, while
+week markers still outrank both. Both paths now return 27 sessions and no
+warnings, confirmed against real pdf.js in a browser rather than against a
+payload built from pymupdf.
+
+The remaining table disagreements are a different animal. On one file the
+runs path infers 2 to 4 columns where the ruled grid has 6, and picks up a
+numbered policies list on the page above instead of the header row. pdfplumber
+reads the ruled lines; runs.py has only where text starts, so it under-
+segments. Closing that needs line and rect geometry out of the pdf.js operator
+list, which is a change to extract-worker.js rather than to any parser.
+
 Know what the parity tests cannot see. They feed runs.py a payload built from
 pymupdf spans, which is the right shape but not the same data pdf.js produces.
 A whole class of bug lives in that difference: pdf.js reports a column gap as
