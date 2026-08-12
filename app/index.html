@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>schedule reader</title>
+<title>Tobyn's Schedule Reader</title>
 <link rel="stylesheet" href="vendor/fonts.css">
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="print.css" media="print">
@@ -13,13 +13,13 @@
 <!-- a seven column ledger has no honest phone form, so small screens get a
      plain statement instead of a broken page -->
 <div id="smallgate" role="status">
-  <p class="smallgate-mark">Schedule Reader</p>
+  <p class="smallgate-mark">Tobyn's Schedule Reader</p>
   <p>Due to the technicality of the website, I've restricted it to bigger
   screens only. :)</p>
 </div>
 
 <header class="masthead">
-  <h1>Schedule Reader</h1>
+  <h1>Tobyn's Schedule Reader</h1>
   <p class="masthead-note"><strong>Note:</strong> This is built for humanities
   classes.</p>
 </header>
@@ -34,10 +34,13 @@
   <div class="welcome-grid">
     <div>
       <h2 class="welcome-head">Your classes, simplified.</h2>
-      <p class="welcome-lead">Drop a syllabus PDF and get
-      almost<a href="#accuracy" id="accuracy-star" title="How accurate is this">*</a>
-      all the information you need. Errors? You can correct them before
-      printing!</p>
+      <dl class="welcome-facts">
+        <div><dt>Tested on</dt><dd>35+ syllabi</dd></div>
+        <div><dt>Finds the schedule</dt><dd>79%</dd></div>
+        <div><dt>Full citations</dt><dd>83%</dd></div>
+      </dl>
+      <p class="welcome-lead secondary"><a href="#accuracy" id="accuracy-link">See
+      the full numbers below.</a></p>
     </div>
     <div id="welcome-drop" class="welcome-drop">
       <p class="welcome-drop-line">Drop your syllabus here</p>
@@ -55,8 +58,7 @@
     <li>
       <span class="step-n">2</span>
       <span class="step-t">Check it</span>
-      <p>Fix anything it misread before saving. It's honest about what it
-      couldn't find.</p>
+      <p>Fix anything it misread before saving.</p>
     </li>
     <li>
       <span class="step-n">3</span>

@@ -551,7 +551,7 @@ function draw() {
   if (welcome) $('accuracy').open = true
   if (!course) {
     $('views').hidden = true
-    document.title = 'schedule reader'
+    document.title = "Tobyn's Schedule Reader"
     return
   }
   $('views').hidden = false
@@ -612,9 +612,9 @@ function draw() {
     `${state.courses.indexOf(course) + 1} of ${state.courses.length} · ${stamp}`
 
   // a saved pdf takes its filename from the document title, and a title that
-  // never changes means every course prints as "schedule reader.pdf" and
-  // overwrites the last one. the active course names the tab and the file.
-  document.title = `${course.code || 'schedule reader'} - schedule reader`
+  // never changes means every course prints under one name and overwrites the
+  // last one. the active course names the tab and the file.
+  document.title = `${course.code || 'Course'} - Tobyn's Schedule Reader`
 }
 
 function drawSearch(target) {
@@ -707,9 +707,9 @@ async function boot() {
   $('welcome').hidden = state.courses.length > 0
   $('tools').hidden = state.courses.length === 0
 
-  // the asterisk is a footnote: it opens the accuracy panel where the small
-  // print actually lives, rather than only scrolling past a closed fold
-  $('accuracy-star').onclick = () => {
+  // the cover figures link here: the panel opens before the jump so the
+  // reader lands on the table, not on a closed fold
+  $('accuracy-link').onclick = () => {
     $('accuracy').open = true
   }
 
