@@ -1,6 +1,6 @@
 [project]
 name = "vault"
-version = "0.2.0"
+version = "1.0.0"
 description = "syllabus intake and reading pipeline for coursework"
 requires-python = ">=3.11"
 dependencies = [
