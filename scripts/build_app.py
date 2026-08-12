@@ -74,11 +74,16 @@ def build_bundle() -> Path:
 
     # the parser's fingerprint, readable without booting pyodide. the app
     # stamps each saved parse with it, and a stored course whose stamp differs
-    # from the running bundle is offered a re-read. content hash, not a hand
-    # bumped number, so it can never be forgotten.
+    # from the running bundle is offered a re-read. hashed over the source
+    # files, not the zip: an archive embeds timestamps, so hashing it marked
+    # every course stale on every deploy even with nothing changed.
     import hashlib
 
-    digest = hashlib.sha256(target.read_bytes()).hexdigest()[:12]
+    hasher = hashlib.sha256()
+    for path in sorted((ROOT / "src" / "vault").rglob("*.py")):
+        hasher.update(str(path.relative_to(ROOT)).encode())
+        hasher.update(path.read_bytes())
+    digest = hasher.hexdigest()[:12]
     (APP / "version.js").write_text(
         "// written by scripts/build_app.py, the hash of the parser bundle\n"
         f"export const PARSER_VERSION = '{digest}'\n",
