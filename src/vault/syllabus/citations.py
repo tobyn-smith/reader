@@ -203,6 +203,7 @@ _QUOTED = r"[\"“‘]\s*(?P<title>.+?)\s*[\"”’]"
 # articles carry an id like "sqad032" where the page range would be.
 _PAGES = r"(?P<pages>[A-Za-z]?\d+\s*[-‐-―]\s*[A-Za-z]?\d+|[A-Za-z]{0,6}\d+)"
 _REPORT_NUMBER = r"(?P<report>(?:[A-Z]{1,3}\d{4,6}|[A-Z]{2,4}-\d{2,6}|Report\s+\d+))"
+_YEAR_ONLY_RE = re.compile(r"(?:1[6-9]|20)\d{2}")
 
 DOI_RE = re.compile(r"\b(10\.\d{4,9}/[^\s,;\"'<>]+)", re.IGNORECASE)
 
@@ -667,7 +668,15 @@ def _fill(citation: Citation, m: re.Match[str], pattern: Pattern) -> None:
     if groups.get("issue"):
         citation.issue = groups["issue"]
     if groups.get("pages"):
-        citation.pages = collapse_whitespace(groups["pages"]).replace(" ", "")
+        # close up the space either side of the dash so "231 - 245" reads as one
+        # range, but leave other spaces alone: stripping them all turned
+        # "Chapter 1" into "Chapter1".
+        pages = re.sub(r"\s*([-‐-―])\s*", r"\1", collapse_whitespace(groups["pages"]))
+        # a lone four figure number where the pages belong is a year that drifted
+        # into the field. journals whose pages run that high exist, but a year
+        # sitting after the volume is far the commoner reading.
+        if not _YEAR_ONLY_RE.fullmatch(pages):
+            citation.pages = pages
     if groups.get("report"):
         citation.report_number = groups["report"].strip()
     if groups.get("url"):

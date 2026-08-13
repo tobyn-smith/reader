@@ -210,6 +210,28 @@ PAGE_RANGE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# what the citation parser leaves in its pages field is only a page range if it
+# reads like one. the same field also carries chapter and section locators, and
+# occasionally a year that drifted in from the volume.
+_CITED_PAGES_RE = re.compile(
+    r"[A-Za-z]?\d+(?:\s*[-‐-―]\s*[A-Za-z]?\d+)?(?:\s*,\s*[A-Za-z]?\d+(?:\s*[-‐-―]\s*[A-Za-z]?\d+)?)*"
+)
+_BARE_YEAR_RE = re.compile(r"(?:1[6-9]|20)\d{2}")
+
+
+def _pages_from_citation(pages: str | None) -> str | None:
+    """the page range a citation already found, when it is one."""
+    if not pages:
+        return None
+    text = collapse_whitespace(pages)
+    if not _CITED_PAGES_RE.fullmatch(text):
+        return None
+    # a single number is a locator, not a range, and a four figure one is very
+    # likely the year over again. neither is worth showing as a page range.
+    if _BARE_YEAR_RE.fullmatch(text):
+        return None
+    return text
+
 # an asterisk in front of a line is a syllabus's own footnote mark. it says
 # "look at this one", not "this is a reading", so it is stepped over before the
 # line is read rather than being allowed to hide a "Due:" behind it.
@@ -825,6 +847,13 @@ def _build_reading(raw: str, ordinal: int) -> ReadingEntry | None:
         return None
 
     citation = cit.parse_citation(working)
+    # a journal citation puts its pages where the style guide says, "12(3):
+    # 231-245", and never writes "pp." at all. the citation parser reads those
+    # perfectly well, so without this the pages column sits empty on most of a
+    # reading list while the range is already in hand.
+    if pages is None:
+        pages = _pages_from_citation(citation.pages)
+
     return ReadingEntry(
         raw=text,
         citation=citation,

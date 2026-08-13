@@ -23,6 +23,20 @@ class PdfReport:
     skipped_reason: str | None = None
 
 
+def _page_note(citation: str, page_range: str | None) -> str | None:
+    """the page range, unless the citation has already said it.
+
+    a shorthand reading like "Okonkwo and Osei, pp. 12-30" keeps its pages in
+    the citation itself, so appending the range again printed it twice on the
+    same line.
+    """
+    if not page_range:
+        return None
+    if page_range.replace(" ", "") in citation.replace(" ", ""):
+        return None
+    return f"pp. {page_range}"
+
+
 def _available() -> tuple[bool, str]:
     try:
         import weasyprint  # noqa: F401
@@ -103,11 +117,13 @@ def semester_plan_html(course: dict, generated: str) -> str:
         parts.append("<ol>")
         for reading in readings:
             work = works.get(reading.get("work_id"), {})
+            line = citation_line(work)
             extras = []
             if reading.get("requirement_level") and reading["requirement_level"] != "required":
                 extras.append(reading["requirement_level"])
-            if reading.get("page_range"):
-                extras.append(f"pp. {reading['page_range']}")
+            note = _page_note(line, reading.get("page_range"))
+            if note:
+                extras.append(note)
             if reading.get("access_note"):
                 extras.append(reading["access_note"])
             tail = f" [{'; '.join(extras)}]" if extras else ""
@@ -117,7 +133,7 @@ def semester_plan_html(course: dict, generated: str) -> str:
                 else ""
             )
             parts.append(
-                f"<li class='reading entry'>{esc(citation_line(work))}{esc(tail)}{warn}</li>"
+                f"<li class='reading entry'>{esc(line)}{esc(tail)}{warn}</li>"
             )
         parts.append("</ol>")
 
@@ -162,11 +178,13 @@ def week_sheet_html(course: dict, number: int, generated: str) -> str:
         for reading in readings:
             work = works.get(reading.get("work_id"), {})
             missing = "" if reading.get("has_document") else " <span class='missing'></span>"
+            line = citation_line(work)
             extras = []
             if reading.get("requirement_level") != "required":
                 extras.append(reading.get("requirement_level") or "")
-            if reading.get("page_range"):
-                extras.append(f"pp. {reading['page_range']}")
+            note = _page_note(line, reading.get("page_range"))
+            if note:
+                extras.append(note)
             if reading.get("access_note"):
                 extras.append(reading["access_note"])
             warn = (
@@ -176,7 +194,7 @@ def week_sheet_html(course: dict, number: int, generated: str) -> str:
             )
             tail = f" [{'; '.join(e for e in extras if e)}]" if any(extras) else ""
             parts.append(
-                f"<li class='reading entry'>{esc(citation_line(work))}{esc(tail)}{missing}{warn}</li>"
+                f"<li class='reading entry'>{esc(line)}{esc(tail)}{missing}{warn}</li>"
             )
         parts.append("</ol>")
 

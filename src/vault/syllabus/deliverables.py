@@ -102,11 +102,25 @@ EXTRA_CREDIT_RE = re.compile(
 )
 
 PAGE_LIMIT_RE = re.compile(
-    r"\b(?:maximum|max\.?|no more than|up to|limit(?:ed)? to|not exceed)\s+"
-    r"(?P<count>\d{1,3}|" + "|".join(NUMBER_WORDS) + r")\s*(?:double[- ]spaced\s+)?pages?\b",
+    r"\b(?:maximum|max\.?|no more than|no longer than|at most|up to"
+    r"|limit(?:ed)? to|not (?:to )?exceed)\s+(?:of\s+|than\s+)?"
+    r"(?P<count>\d{1,3}|" + "|".join(NUMBER_WORDS) + r")"
+    # a brief often restates the figure, "five (5) pages", and describes the
+    # setting before it gets to the noun: "5 typed double spaced pages"
+    r"\s*(?:\(\s*\d{1,3}\s*\)\s*)?(?:[a-z][a-z-]*\s+){0,3}pages?\b",
     re.IGNORECASE,
 )
-PAGE_RANGE_LIMIT_RE = re.compile(r"\b(?P<low>\d{1,3})\s*[-–—]\s*(?P<high>\d{1,3})\s*page\b", re.IGNORECASE)
+# "8-10 pages" is the ordinary way to state a length, so the plural has to be
+# allowed: "page\b" cannot match it, the boundary falls inside the word.
+PAGE_RANGE_LIMIT_RE = re.compile(
+    r"\b(?P<low>\d{1,3})\s*[-‐-―]\s*(?P<high>\d{1,3})\s*(?:[a-z][a-z-]*\s+){0,2}pages?\b",
+    re.IGNORECASE,
+)
+
+# a student assignment is not three hundred pages long. a figure that big came
+# from a sentence about how long a book runs, or how much reading a week holds,
+# and taking it as the cap tells the student to write a monograph.
+MAX_PLAUSIBLE_PAGE_LIMIT = 60
 WORD_LIMIT_RE = re.compile(
     r"\b(?:maximum|max\.?|no more than|up to|about|approximately)\s+"
     r"(?P<count>[\d,]{3,7})\s*words?\b",
@@ -478,6 +492,8 @@ def _build(
         m = PAGE_RANGE_LIMIT_RE.search(window)
         if m:
             item.page_limit = _to_int(m.group("high"))
+    if item.page_limit is not None and not 0 < item.page_limit <= MAX_PLAUSIBLE_PAGE_LIMIT:
+        item.page_limit = None
 
     m = WORD_LIMIT_RE.search(window)
     if m:

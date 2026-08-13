@@ -338,13 +338,81 @@ export function weekView(course, progress, editing = false, filter = {}, documen
   }
 }
 
-// a page range as a number of pages, for the holdings count. an unparseable
-// range contributes nothing rather than a guess.
+// one dash is not enough. a pdf carries whichever the typesetter used, and the
+// page text keeps the original rather than the normalised one, so the display
+// string arriving here can hold any of these.
+const DASHES = '\\u002d\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212'
+const DASH = new RegExp(`\\s*[${DASHES}]\\s*`)
+
+const ROMAN = { i: 1, v: 5, x: 10, l: 50, c: 100, d: 500, m: 1000 }
+
+// roman only where the whole token is roman, so a reading numbered "c" or "l"
+// is not silently read as 100 or 50 pages
+function fromRoman(token) {
+  const t = token.toLowerCase()
+  if (!/^[ivxlcdm]+$/.test(t)) return null
+  let total = 0
+  for (let i = 0; i < t.length; i += 1) {
+    const here = ROMAN[t[i]]
+    const next = ROMAN[t[i + 1]] || 0
+    total += here < next ? -here : here
+  }
+  return total > 0 ? total : null
+}
+
+// chicago and mla write the upper bound short: "231-45" means 231 to 245, and
+// "1064-79" means 1064 to 1079. borrow the missing leading digits back off the
+// lower bound, but only when doing so actually yields a range.
+function upperBound(lo, hi) {
+  const plain = Number(hi)
+  if (hi.length >= lo.length) return plain
+  const borrowed = Number(lo.slice(0, lo.length - hi.length) + hi)
+  return borrowed > Number(lo) ? borrowed : plain
+}
+
+// one segment of a range: "12-25", "231-45", "xi-xxiv", "S1-S8", "7", "231ff."
+function segmentPages(part) {
+  const seg = part.trim().replace(/^(?:pp?\.|pages?)\s*/i, '').replace(/[.,;]+$/, '')
+  if (!seg) return 0
+
+  const halves = seg.split(DASH)
+  if (halves.length === 2) {
+    const [a, b] = halves.map((h) => h.trim())
+
+    const romanLo = fromRoman(a)
+    const romanHi = fromRoman(b)
+    if (romanLo !== null && romanHi !== null) {
+      return Math.max(0, romanHi - romanLo + 1)
+    }
+
+    // an optional matching label on each side, as supplements and appendices
+    // number their pages "S1-S8" or "A4-A9"
+    const lo = a.match(/^([A-Za-z]*)(\d+)$/)
+    const hi = b.match(/^([A-Za-z]*)(\d+)$/)
+    if (lo && hi && (!hi[1] || hi[1].toLowerCase() === lo[1].toLowerCase())) {
+      const top = upperBound(lo[2], hi[2])
+      return Math.max(0, top - Number(lo[2]) + 1)
+    }
+    return 0
+  }
+
+  // "231ff." says the reading starts here and runs on, with no end given. it is
+  // at least a page, and guessing further would be inventing a number.
+  if (/^[A-Za-z]*\d+\s*ff\.?$/i.test(seg)) return 1
+  if (/^[A-Za-z]*\d+$/.test(seg)) return 1
+  if (fromRoman(seg) !== null) return 1
+  return 0
+}
+
+// a page range as a number of pages, for the holdings count. a range that
+// cannot be read contributes nothing rather than a guess, so the meter
+// undercounts rather than inventing pages nobody was set.
 function pageCount(range) {
   if (!range) return 0
-  const m = String(range).match(/(\d+)\s*[-\u2013]\s*(\d+)/)
-  if (m) return Math.max(0, Number(m[2]) - Number(m[1]) + 1)
-  return /^\d+$/.test(String(range).trim()) ? 1 : 0
+  // "1-5, 9-12" is two stretches of the same work, so it is worth both
+  return String(range)
+    .split(/[,;]/)
+    .reduce((n, part) => n + segmentPages(part), 0)
 }
 
 // where the thing lives: the journal, the book, or the note the syllabus gave
@@ -1064,7 +1132,12 @@ export function policiesView(course) {
     </section>`
   }).join('')
 
-  const hidden = all.length - shown.length
+  // only real boilerplate counts as left out. the parser writes an empty
+  // "ai use unstated" record when a syllabus says nothing about it, and
+  // counting that as a suppressed block told the reader something was being
+  // held back when nothing was.
+  const hidden = all.filter(
+    (p) => p.policy_type === 'boilerplate' && (p.body || '').trim()).length
   return `<h2>${esc(course.code)} policies</h2>
     <p class="secondary">Taken from the syllabus as written, not summarised.
       Check the PDF before relying on any of it.</p>
