@@ -888,6 +888,9 @@ ol.bibliography li {
 
 .bandcount { font-family: var(--mono); font-weight: 400; }
 .band.band-late, .band.band-soon { color: var(--flag); }
+/* work already handed in reads quieter, the same way a held reading does */
+.band.band-done { color: var(--faint); }
+table.marks tr.struck td { color: var(--faint); }
 .relday { display: block; font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .band-late + table .relday { color: var(--flag); }
 

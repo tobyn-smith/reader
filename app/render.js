@@ -375,7 +375,7 @@ export function recordHeader(course) {
 }
 
 // the left rail: where you are, what you hold, what falls next.
-export function railView(course, ledger, courses, filter = {}) {
+export function railView(course, ledger, courses, filter = {}, progress = new Map()) {
   const { index, current, holdings } = ledger
   // the count column is dropped. it repeated what the ledger already shows and
   // took a third of the width the topic needed to be legible.
@@ -411,11 +411,12 @@ export function railView(course, ledger, courses, filter = {}) {
 
   const upcoming = []
   for (const c of courses) {
-    for (const d of c.parse.deliverables.items) {
+    c.parse.deliverables.items.forEach((d, index) => {
       const days = daysUntil(d.due_date)
-      if (days === null || days < 0) continue
+      if (days === null || days < 0) return
+      if ((progress.get(dueKey(c, d, index)) || {}).read) return
       upcoming.push({ days, title: d.title, code: c.code, date: d.due_date })
-    }
+    })
   }
   upcoming.sort((a, b) => a.days - b.days)
 
@@ -471,7 +472,15 @@ export function courseTag(course) {
   return [term, meta.year].filter(Boolean).join(' ')
 }
 
-export function deadlinesView(courses, activeId, editing = false) {
+// a deliverable's tick, keyed so it survives a re-read of the syllabus. the
+// title carries it rather than the row number, because a re-parse can shift
+// the order and a handed-in essay must not become an outstanding one.
+export function dueKey(course, item, index) {
+  const stem = (item.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)
+  return `${course.id}::due::${stem || index}`
+}
+
+export function deadlinesView(courses, activeId, editing = false, progress = new Map()) {
   // one section per course. merging every course into one table made the same
   // assignment appear once per parsed edition and detached the weights from
   // the course they belong to, and it also meant switching course changed
@@ -489,6 +498,8 @@ export function deadlinesView(courses, activeId, editing = false) {
     const graded = []
     const events = []
     course.parse.deliverables.items.forEach((item, di) => {
+      const key = dueKey(course, item, di)
+      const done = Boolean((progress.get(key) || {}).read)
       const when = item.due_date
         ? shortDate(item.due_date)
         : item.recurrence === 'see schedule'
@@ -510,15 +521,18 @@ export function deadlinesView(courses, activeId, editing = false) {
               <td class="num"><button type="button" class="rowdel"
                 data-remove-due="${course.id}|${di}">Remove</button></td>
             </tr>`
-          : `<tr>
+          : `<tr class="${done ? 'struck' : ''}">
+              <td class="c-tick"><input type="checkbox" data-progress="${esc(key)}"
+                ${done ? 'checked' : ''} aria-label="Mark ${esc(item.title)} as handed in"></td>
               <td class="when">${esc(when)}
-                ${whenLabel(item.due_date)
+                ${!done && whenLabel(item.due_date)
                   ? `<span class="relday">${esc(whenLabel(item.due_date))}</span>` : ''}</td>
               <td>${esc(item.title)}</td>
               <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
             </tr>`,
       }
       row.days = daysUntil(item.due_date)
+      row.done = done
       // graded work is what the term is assessed on. presentation slots and
       // sign-ups are real dates but not deadlines, and mixing them buries the
       // few items that carry the grade. while editing, everything is listed
@@ -531,7 +545,8 @@ export function deadlinesView(courses, activeId, editing = false) {
     events.sort((a, b) => a.sort.localeCompare(b.sort))
 
     const table = (rows) => `<table class="marks">
-        <thead><tr><th class="when">Due</th><th>Item</th><th class="num">Weight</th>
+        <thead><tr>${editing ? '' : '<th class="c-tick"></th>'}
+          <th class="when">Due</th><th>Item</th><th class="num">Weight</th>
           ${editing ? '<th class="num"></th>' : ''}</tr></thead>
         <tbody>${rows.map((r) => r.html).join('')}</tbody>
       </table>`
@@ -539,11 +554,16 @@ export function deadlinesView(courses, activeId, editing = false) {
     // sorted by date is not the same as sorted by what matters. a term list
     // opens on things that happened in February unless it is banded by how
     // close they are, and the band a student actually needs is "this week".
+    //
+    // handed in comes out of the dated bands entirely: an essay submitted last
+    // week is not overdue, and leaving it in the red band meant the one band
+    // that should mean "do something" filled up with work already done.
     const bands = [
-      ['Overdue', (r) => r.days !== null && r.days < 0, 'band-late'],
-      ['Next 7 days', (r) => r.days !== null && r.days >= 0 && r.days <= 7, 'band-soon'],
-      ['Later', (r) => r.days !== null && r.days > 7, ''],
-      ['No date found', (r) => r.days === null, ''],
+      ['Overdue', (r) => !r.done && r.days !== null && r.days < 0, 'band-late'],
+      ['Next 7 days', (r) => !r.done && r.days !== null && r.days >= 0 && r.days <= 7, 'band-soon'],
+      ['Later', (r) => !r.done && r.days !== null && r.days > 7, ''],
+      ['No date found', (r) => !r.done && r.days === null, ''],
+      ['Handed in', (r) => r.done, 'band-done'],
     ]
 
     const banded = editing
@@ -816,11 +836,13 @@ export function thisWeekView(courses, progress) {
         readings.push({ course, session, reading, id, saved, days })
       }
     }
-    for (const item of course.parse.deliverables.items) {
+    course.parse.deliverables.items.forEach((item, index) => {
       const days = daysUntil(item.due_date)
-      if (!inWindow(days)) continue
+      if (!inWindow(days)) return
+      // something already handed in is not something to do this week
+      if ((progress.get(dueKey(course, item, index)) || {}).read) return
       due.push({ course, item, days })
-    }
+    })
   }
 
   readings.sort((a, b) => a.days - b.days || a.course.code.localeCompare(b.course.code))
