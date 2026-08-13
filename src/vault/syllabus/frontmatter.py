@@ -178,7 +178,7 @@ _NEXT_LABEL_RE = re.compile(
 def _value_up_to_next_label(value: str, key: str) -> str:
     """stop a value where the next field's label begins.
 
-    "Instructor: Dana Okafor Time: Thurs 3:55-6:45" on one line gave the
+    "Instructor: Dana Okafor Time: Tues 2:00-4:45" on one line gave the
     instructor a name with the meeting time inside it, and left the meeting
     time unfound. the browser hits this and the command line does not, because
     the two split the header block differently.

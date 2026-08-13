@@ -130,7 +130,7 @@ class TestReadingListSubheadings:
         for label in (
             "Human Security",
             "Energy Security",
-            "Nonproliferation / Export Controls",
+            "Trade Policy / Export Controls",
             "Colonial Legacies",
             "Nationalism and the Struggle for Independence",
         ):
@@ -183,10 +183,10 @@ class TestWeekDescriptions:
             "Halvorsen, Gabriel A., Russell J. Dalton and Kaare Strom, Comparative Politics "
             "Today, published in its sixth edition and covering the whole continent, 2016",
             # a quoted title
-            'Berg, Kevin. "The U.S. Wants to Make Sure China Cannot Catch Up on '
+            'Berg, Tomas. "The U.S. Wants to Make Sure China Cannot Catch Up on '
             'Quantum Computing," in Foreign Policy, an essay about export controls',
             # opens with a surname, which is the one structural signal
-            "Halvorsen, Arend. Patterns of Democracy: Government Forms and Performance "
+            "Halvorsen, Ida. Patterns of Governance: Forms and Performance "
             "in Thirty-Six Countries, a study of consensus and majoritarian systems",
         ):
             assert not schedule._looks_like_prose(citation), citation
@@ -210,7 +210,7 @@ class TestWeekDescriptions:
 
     def test_a_real_quoted_title_still_shields_a_citation(self):
         assert not schedule._looks_like_prose(
-            'Berg, Kevin. "The U.S. Wants to Make Sure China Cannot Catch Up on '
+            'Berg, Tomas. "The U.S. Wants to Make Sure China Cannot Catch Up on '
             'Quantum Computing," Foreign Policy, an essay on the export control regime'
         )
 

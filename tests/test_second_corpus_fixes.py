@@ -33,7 +33,7 @@ class TestChapterInContainer:
         assert c.container == "Comparative Politics"
 
     def test_two_authors_two_chapters(self):
-        c = parse_citation("Lindqvist (15) and Peters (14) in Comparative Politics.")
+        c = parse_citation("Lindqvist (15) and Osei (14) in Comparative Politics.")
         assert c.pages == "chapters 15, 14"
         assert len(c.authors) == 2
 
@@ -53,7 +53,7 @@ class TestChapterInContainer:
 class TestDatedReports:
     def test_month_year_unquoted_report(self):
         c = parse_citation(
-            "Halvorsen, Brendan W. December 2022. Defense Primer: Planning, "
+            "Halvorsen, Ida B. December 2022. Defense Primer: Planning, "
             "Programming, Budgeting, and Execution (PPBE) Process. "
             "Congressional Research Service"
         )
@@ -63,13 +63,13 @@ class TestDatedReports:
 
     def test_cfr_name_first(self):
         c = parse_citation(
-            "The Sample Control List eCFR :: 15 CFR Part 774 -- The Sample Control List"
+            "The Sample Control List eCFR :: 15 CFR Part 999 -- The Sample Control List"
         )
         assert c.matched_pattern == "cfr_citation"
-        assert c.report_number == "15 CFR Part 774"
+        assert c.report_number == "15 CFR Part 999"
 
     def test_cfr_name_after(self):
-        c = parse_citation("eCFR :: 22 CFR Part 121 -- The Sample Sample Munitions List")
+        c = parse_citation("eCFR :: 22 CFR Part 888 -- The Sample Sample Munitions List")
         assert c.matched_pattern == "cfr_citation"
         assert c.title == "The Sample Sample Munitions List"
 
@@ -90,7 +90,7 @@ class TestFusedReadingColumns:
 class TestMultiPlaceImprint:
     def test_new_york_etc(self):
         c = parse_citation(
-            "Halvorsen, Gabriel A. and Kaare Strøm (eds.), Comparative Politics Today. "
+            "Halvorsen, Ida A. and Tomas Berg (eds.), Comparative Politics Today. "
             "New York, etc: Longman, 2010, 4th edition, chapter 1."
         )
         assert c.matched_pattern == "book_year_last"
@@ -98,15 +98,15 @@ class TestMultiPlaceImprint:
 
     def test_two_cities_semicolon(self):
         c = parse_citation(
-            "Halvorsen, Arend. Patterns of Democracy: Government Forms and Performance "
-            "in Thirty-Six Countries. New Haven; London: Yale University Press, 2012, "
+            "Halvorsen, Ida. Patterns of Governance: Forms and Performance "
+            "in Thirty Countries. New Haven; London: Yale University Press, 2012, "
             "second edition, chapters 1-3."
         )
         assert c.matched_pattern == "book_year_last"
 
     def test_single_city_unchanged(self):
         c = parse_citation(
-            "Halvorsen, John. The European Union: A Very Short Introduction. "
+            "Halvorsen, Ida. The Northern Union: A Very Short Introduction. "
             "Oxford: Oxford University Press, 2018, chapter 3."
         )
         assert c.matched_pattern == "book_year_last"
@@ -194,11 +194,11 @@ class TestWeightRowsTheBrowserSees:
     def test_heading_sharing_the_first_row(self):
         from vault.syllabus.deliverables import (INLINE_SECTION_LABEL_RE,
                                                  TABLE_WEIGHT_RE)
-        raw = "Grading Scheme:      Participation            50%"
+        raw = "Grading Scheme:      Attendance            40%"
         label = INLINE_SECTION_LABEL_RE.match(raw)
         assert label
         m = TABLE_WEIGHT_RE.match(raw[label.end():])
-        assert m and m.group("title") == "Participation" and m.group("weight") == "50"
+        assert m and m.group("title") == "Attendance" and m.group("weight") == "40"
 
     def test_a_title_ending_in_a_colon_is_not_a_heading(self):
         """"Essay 1: 20%" names the assignment; nothing may be stripped."""
@@ -285,17 +285,17 @@ class TestStarredAssignmentRows:
 
     def test_group_rotation_row(self):
         for text in (
-            "*Staff 1 & 2:  Significant Activity (Field Report) Report & Presentation",
-            "*Staff Critical Mineral Presentations",
-            "*Assign Staffs and Agency Briefs",
-            "*Policy Memo & Assignment Templates",
+            "*Team 1 & 2:  Weekly Field Report & Presentation",
+            "*Team Resource Presentations",
+            "*Assign Teams and Agency Briefs",
+            "*Policy Memo & Task Templates",
         ):
             assert schedule.DELIVERABLE_HINT_RE.match(text), text
 
     def test_a_citation_naming_a_report_is_left_alone(self):
         for text in (
             "*Smith, John. 2020. A Report on Trade Policy. Foreign Affairs.",
-            "Berg, Kevin. March 2023. Export Controls, CRS Report.",
+            "Berg, Tomas. March 2023. Export Controls, CRS Report.",
         ):
             assert not schedule.DELIVERABLE_HINT_RE.match(text), text
 
@@ -519,7 +519,7 @@ class TestShortFormCitations:
         assert parse_citation("Book: Hazard Analysis: Chapter 2").matched_pattern == "named_book_chapter"
 
     def test_a_page_title_carrying_its_site(self):
-        c = parse_citation("Countries and Areas | The Arms Data Project")
+        c = parse_citation("Country Profiles | The Arms Data Project")
         assert c.matched_pattern == "page_title_with_site"
         assert c.container == "The Arms Data Project"
 
@@ -559,7 +559,7 @@ class TestStatedTotals:
 class TestHeaderFieldsRunTogether:
     """a two column header block arrives as one joined line in the browser.
 
-    "Instructor: Dana Okafor Time: Thurs 3:55-6:45" gave the instructor a name
+    "Instructor: Dana Okafor Time: Tues 2:00-4:45" gave the instructor a name
     with the meeting time inside it and left the time unfound. the command
     line splits the same header differently and never saw it.
     """
@@ -567,7 +567,7 @@ class TestHeaderFieldsRunTogether:
     def test_a_value_stops_at_the_next_label(self):
         from vault.syllabus.frontmatter import _value_up_to_next_label
         assert _value_up_to_next_label(
-            "Dana Okafor Time: Thurs 3:55-6:45", "instructor") == "Dana Okafor"
+            "Dana Okafor Time: Tues 2:00-4:45", "instructor") == "Dana Okafor"
         assert _value_up_to_next_label(
             "Dana Okafor Office Hours: by appointment", "instructor") == "Dana Okafor"
 

@@ -256,7 +256,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         # the same agency-report shape without quotes and often without a day:
-        # "Halvorsen, Brendan W. December 2022. Defense Primer: PPBE Process.
+        # "Halvorsen, Ida B. December 2022. Defense Primer: PPBE Process.
         # Congressional Research Service." grad policy courses assign these by
         # the dozen.
         "dated_unquoted_report",
@@ -270,7 +270,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         # a federal regulation, cited the way the eCFR site titles itself:
-        # "eCFR :: 15 CFR Part 774 -- The Sample Control List". the part
+        # "eCFR :: 15 CFR Part 999 -- The Sample Control List". the part
         # number is the identity; the name may sit before or after it.
         "cfr_citation",
         re.compile(
@@ -344,7 +344,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         # humanities syllabi put the year at the end rather than after the
-        # author: "Halvorsen, John and Simon Tomas Berg. The European Union: A Very
+        # author: "Halvorsen, Ida and Tomas Berg. The Northern Union: A Very
         # Short Introduction. Oxford: Oxford University Press, 2018, chapter 3."
         "book_year_last",
         re.compile(
@@ -521,7 +521,7 @@ PATTERNS: list[Pattern] = [
     ),
     Pattern(
         # a web page carrying its site in the title, the way a browser writes
-        # it: "Countries and Areas | The Arms Data Project". the pipe
+        # it: "Country Profiles | The Arms Data Project". the pipe
         # is doing real work here, so this stays narrow: nothing else in a
         # reading list uses one.
         "page_title_with_site",

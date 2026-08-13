@@ -80,7 +80,7 @@ GRADE_LETTER_PREFIX_RE = re.compile(
 ORPHAN_WEIGHT_RE = re.compile(r"^\s*=?\s*(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*$")
 
 # the section heading printed in the first column of its own first row, as in
-# "Grading Scheme:      Participation            50%". the row is a normal
+# "Grading Scheme:      Attendance            40%". the row is a normal
 # weights row wearing the heading, and anchored matching threw the whole line
 # away. the gap after the colon is what says this is a column rather than a
 # title that happens to end in one, so "Essay 1: 20%" is left alone.
