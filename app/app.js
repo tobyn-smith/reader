@@ -171,13 +171,21 @@ async function finishReading(job, match) {
   const [courseId, workKey] = (match.id || '::').split('::')
   const extracted = job.extracted
   await store.putDocument({
-    id: job.hash || job.name,
+    // the extractor hands back the file's sha256; using it means re-dropping
+    // the same pdf replaces the record instead of making a second one under
+    // the same name
+    id: (extracted && extracted.sha256) || job.name,
     filename: job.name,
     courseId: courseId || null,
     workKey: workKey || null,
     matchScore: match.score,
     matchMethod: match.method,
     pageCount: (extracted && extracted.page_count) || 0,
+    // the file itself, so a reading matched to a row can be opened from the
+    // ledger. it was thrown away after matching, which meant the app knew a
+    // reading was on file and could not show it to you. it never leaves this
+    // browser, and the json backup drops it the way it drops the syllabus.
+    pdf: job.bytes || null,
     // kept so a reading dropped before its syllabus can be matched later
     // without asking for the file again. it never leaves this browser.
     head: extracted ? extracted.pages.slice(0, 2).map((p) => p.text).join('\n') : '',
@@ -343,10 +351,16 @@ function drawNav() {
   nav.hidden = false
   const codeCounts = new Map()
   for (const c of state.courses) codeCounts.set(c.code, (codeCounts.get(c.code) || 0) + 1)
+  // a course from an earlier term is still reachable, it just says so, since
+  // the term views now leave it out and a silent absence reads as a bug
+  const newest = view.latestTerm(state.courses)
   nav.innerHTML = state.courses
     .map((c) => {
-      const tag = codeCounts.get(c.code) > 1 ? ` ${view.courseTag(c)}` : ''
-      return `<a href="#" data-course="${view.esc(c.id)}" title="${view.esc(courseLabel(c))}"${
+      const key = view.termKey(c)
+      const past = Boolean(newest && key && key !== newest)
+      const tag = past || codeCounts.get(c.code) > 1 ? ` ${view.courseTag(c)}` : ''
+      return `<a href="#" data-course="${view.esc(c.id)}"${past ? ' class="past-term"' : ''}
+        title="${view.esc(courseLabel(c))}${past ? ' (earlier term)' : ''}"${
         c.id === state.active ? ' aria-current="page"' : ''
       }>${view.esc(c.code)}${view.esc(tag)}</a>`
     })
@@ -613,7 +627,8 @@ function cursorRow() {
 
 function drawCalendarButton() {
   const button = $('calendar')
-  const rows = grades.datedDeadlines(state.courses)
+  // a calendar full of last term's deadlines is worse than no calendar
+  const rows = grades.datedDeadlines(view.currentTermCourses(state.courses))
   button.hidden = rows.length === 0
   if (rows.length) {
     button.textContent = `Add ${rows.length} deadline${rows.length === 1 ? '' : 's'} to a calendar`
@@ -728,7 +743,7 @@ function draw() {
   const target = $('view')
   $('sheet').classList.toggle('no-rail', state.currentView !== 'week')
   if (state.currentView === 'week') {
-    const ledger = view.weekView(course, state.progress, editing, state.filter)
+    const ledger = view.weekView(course, state.progress, editing, state.filter, state.documents)
     target.innerHTML = ledger.html
     $('rail').innerHTML = view.railView(course, ledger, state.courses, state.filter, state.progress)
   } else {
@@ -963,6 +978,21 @@ async function boot() {
       setTimeout(() => { copy.textContent = was }, 1400)
       return
     }
+    // open a stored reading in its own tab. the blob url is deliberately not
+    // revoked on the next line: that races the tab still loading it.
+    const open = e.target.closest('[data-open-doc]')
+    if (open) {
+      const doc = state.documents.find((d) => d.id === open.dataset.openDoc)
+      if (!doc || !doc.pdf) {
+        status('intake-status',
+          'That reading was taken in before the file was kept. Drop it in again to open it.')
+        $('tools').open = true
+        return
+      }
+      window.open(URL.createObjectURL(new Blob([doc.pdf], { type: 'application/pdf' })),
+                  '_blank', 'noopener')
+      return
+    }
     const del = e.target.closest('[data-remove-reading]')
     if (del) {
       const [si, ri] = del.dataset.removeReading.split('.').map(Number)
@@ -1103,7 +1133,7 @@ async function boot() {
   }
 
   $('calendar').onclick = () => {
-    const rows = grades.datedDeadlines(state.courses)
+    const rows = grades.datedDeadlines(view.currentTermCourses(state.courses))
     if (!rows.length) return
     const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '')
     const blob = new Blob([grades.toIcs(rows, stamp)], { type: 'text/calendar' })

@@ -138,7 +138,10 @@ export async function exportAll() {
     version: 1,
     exported: new Date().toISOString(),
     courses,
-    documents: await listDocuments(),
+    // same reason the syllabus bytes are dropped above: an arraybuffer turns
+    // into an empty object under json, and a backup should stay small enough
+    // to email
+    documents: (await listDocuments()).map(({ pdf, ...rest }) => rest),
     progress: await listProgress(),
   }
 }

@@ -128,6 +128,8 @@ body {
 }
 
 .coursebar a:hover { color: var(--ink); border-color: var(--rule); }
+/* still there, still openable, just not this term's work */
+.coursebar a.past-term { color: var(--faint); }
 
 .coursebar a[aria-current="page"] {
   background: var(--ink);
@@ -904,6 +906,44 @@ table.marks tr.struck td { color: var(--faint); }
   white-space: nowrap;
   width: 88px;
 }
+
+/* a link off a reading. small and quiet: the citation is the record, this is
+   just the way to the thing itself. */
+.golink {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mid);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hair);
+  white-space: nowrap;
+}
+
+.golink:hover { color: var(--ink); border-color: var(--ink); }
+
+/* the same affordance as a link, for a file already on this machine */
+button.golink.onfile {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  padding: 0;
+  cursor: pointer;
+}
+
+button.golink.onfile:hover { background: none; color: var(--ink); border-color: var(--ink); }
+
+/* what an assignment has to be, under its name */
+.due-spec {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 2px;
+}
+
+/* a week whose readings are all held reads quieter, not louder */
+.sep-count.is-done { color: var(--mid); }
 
 /* ---- this week --------------------------------------------------------- */
 

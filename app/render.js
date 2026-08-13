@@ -58,6 +58,25 @@ export function readingKey(course, session, reading) {
   return `${course.id}::s${session.ordinal}r${reading.ordinal}`
 }
 
+// the link the parser already pulled off a reading. a doi is turned into a
+// resolver url because a bare "10.1093/..." is not something a student can
+// click. trailing punctuation is trimmed: extraction routinely leaves a bullet
+// or a full stop welded to the end of a url, and following that 404s.
+export function readingLink(work) {
+  const doi = (work.doi || '').trim()
+  if (doi) return { href: `https://doi.org/${encodeURI(doi.replace(/[.,;)\]•]+$/, ''))}`, label: 'doi' }
+  const url = (work.url || '').trim().replace(/[.,;)\]•·]+$/, '')
+  if (/^https?:\/\/\S+$/i.test(url)) return { href: url, label: 'link' }
+  return null
+}
+
+function linkTag(work) {
+  const link = readingLink(work)
+  if (!link) return ''
+  return ` <a class="golink" href="${esc(link.href)}" target="_blank"
+    rel="noopener noreferrer">${esc(link.label)}</a>`
+}
+
 export function sortKey(work) {
   const first = (work.authors || [])[0]
   return ((first && (first.surname || first.literal)) || work.title || '').toLowerCase()
@@ -106,7 +125,12 @@ export function scheduleView(course) {
     </table>`
 }
 
-export function weekView(course, progress, editing = false, filter = {}) {
+export function weekView(course, progress, editing = false, filter = {}, documents = []) {
+  // which readings have their pdf on file, keyed the way ingest matched them
+  const onFile = new Map()
+  for (const doc of documents) {
+    if (doc.courseId === course.id && doc.workKey) onFile.set(doc.workKey, doc)
+  }
   // the ledger runs in date order, not parse order. a deadlines list at the
   // top of a syllabus parses into dated week-less rows, and in parse order
   // they all sat above week 1; by date they interleave where they belong.
@@ -174,7 +198,12 @@ export function weekView(course, progress, editing = false, filter = {}) {
         const cited = editing
           ? `<input type="text" class="cite" data-edit-reading="${si}.${ri}"
                value="${esc(citation(reading.work))}" aria-label="Entry">`
-          : `${esc(cite.short(reading.work, 400))}
+          : `${esc(cite.short(reading.work, 400))}${linkTag(reading.work)}${
+              onFile.has(reading.work.signature)
+                ? ` <button type="button" class="golink onfile"
+                     data-open-doc="${esc(onFile.get(reading.work.signature).id)}"
+                     >open pdf</button>`
+                : ''}
              ${reading.content_warning
                ? `<span class="cwarn">Content warning \u00b7 ${esc(reading.content_warning)}</span>`
                : ''}
@@ -230,7 +259,11 @@ export function weekView(course, progress, editing = false, filter = {}) {
         <td class="c-date sep-d">${esc(shortDate(start))}</td>
         <td class="c-title sep-t" colspan="3">
           <span class="sep-topic">${esc(topic || 'No topic listed')}
-            ${count ? `<span class="sep-count">${count} reading${count === 1 ? '' : 's'}</span>` : ''}</span>
+            ${count
+              ? `<span class="sep-count${doneHere === count ? ' is-done' : ''}">${
+                  doneHere ? `${doneHere} of ${count} read` :
+                  `${count} reading${count === 1 ? '' : 's'}`}</span>`
+              : ''}</span>
           ${due.length
             ? `<span class="sep-sub">${due.map((d) => esc(d.title)).join('; ')} due</span>`
             : ''}
@@ -402,7 +435,7 @@ export function railView(course, ledger, courses, filter = {}, progress = new Ma
   const filtering = toggles.some(([key]) => filter[key])
 
   const upcoming = []
-  for (const c of courses) {
+  for (const c of currentTermCourses(courses)) {
     c.parse.deliverables.items.forEach((d, index) => {
       const days = daysUntil(d.due_date)
       if (days === null || days < 0) return
@@ -464,12 +497,57 @@ export function courseTag(course) {
   return [term, meta.year].filter(Boolean).join(' ')
 }
 
+// terms in the order they happen, so "which is the current one" is answerable
+const TERM_ORDER = { spring: 0, summer: 1, fall: 2, autumn: 2, winter: 3 }
+
+export function termKey(course) {
+  const meta = course.parse.course || {}
+  if (!meta.year) return ''
+  return `${meta.year}-${TERM_ORDER[String(meta.term || '').toLowerCase()] ?? 9}`
+}
+
+/** the newest term any stored course belongs to, or '' if none say. */
+export function latestTerm(courses) {
+  const keys = (courses || []).map(termKey).filter(Boolean).sort()
+  return keys.length ? keys[keys.length - 1] : ''
+}
+
+/** the courses of the current term, for the views that answer "right now".
+ *
+ * a student keeps last semester's syllabi in the browser, and every one of
+ * them was still turning up in the deadline bands and, worse, in the term gpa,
+ * which quietly averaged two terms together. a course that never said which
+ * term it belongs to stays in: dropping it would be a guess.
+ */
+export function currentTermCourses(courses) {
+  const newest = latestTerm(courses)
+  if (!newest) return courses
+  return courses.filter((c) => {
+    const key = termKey(c)
+    return !key || key === newest
+  })
+}
+
 // a deliverable's tick, keyed so it survives a re-read of the syllabus. the
 // title carries it rather than the row number, because a re-parse can shift
 // the order and a handed-in essay must not become an outstanding one.
 export function dueKey(course, item, index) {
   const stem = (item.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)
   return `${course.id}::due::${stem || index}`
+}
+
+// what the syllabus said the thing has to be. the parser has pulled the page
+// limit, the word limit and the format sentence off every assignment since it
+// was written, and none of it has ever reached the screen, so a student
+// checking how long an essay may run went back to the pdf every time.
+function spec(item) {
+  const parts = []
+  if (item.page_limit) parts.push(`${item.page_limit} pages max`)
+  if (item.word_limit) parts.push(`${item.word_limit} words max`)
+  const notes = (item.format_notes || '').replace(/\s+/g, ' ').trim()
+  if (notes) parts.push(notes.length > 90 ? `${notes.slice(0, 90)}…` : notes)
+  if (!parts.length) return ''
+  return `<span class="due-spec">${esc(parts.join(' · '))}</span>`
 }
 
 export function deadlinesView(courses, activeId, editing = false, progress = new Map()) {
@@ -519,7 +597,7 @@ export function deadlinesView(courses, activeId, editing = false, progress = new
               <td class="when">${esc(when)}
                 ${!done && whenLabel(item.due_date)
                   ? `<span class="relday">${esc(whenLabel(item.due_date))}</span>` : ''}</td>
-              <td>${esc(item.title)}</td>
+              <td>${esc(item.title)}${spec(item)}</td>
               <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
             </tr>`,
       }
@@ -590,7 +668,35 @@ export function deadlinesView(courses, activeId, editing = false, progress = new
     </section>`
   })
 
-  return `<h2>Deadlines</h2>${sections.join('')}`
+  // dates the term turns on that are nobody's assignment: the drop deadline,
+  // the exam period, reading week. the parser has always found these and the
+  // interface has never shown one, so the day a student could still withdraw
+  // was sitting in the payload and nowhere else.
+  const notable = []
+  for (const course of ordered) {
+    for (const entry of course.parse.important_dates || []) {
+      if (!entry.start) continue
+      notable.push({ course, entry, days: daysUntil(entry.start) })
+    }
+  }
+  notable.sort((a, b) => String(a.entry.start).localeCompare(String(b.entry.start)))
+
+  const dates = notable.length
+    ? `<section class="course-deadlines">
+        <h3>Dates to know</h3>
+        <table class="marks"><tbody>${notable.map(({ course, entry, days }) => `
+          <tr class="${days !== null && days < 0 ? 'struck' : ''}">
+            <td class="w-course">${esc(course.code)}</td>
+            <td class="when">${esc(shortDate(entry.start))}
+              ${entry.end && entry.end !== entry.start
+                ? `&ndash; ${esc(shortDate(entry.end))}` : ''}
+              <span class="relday">${esc(whenLabel(entry.start) || '')}</span></td>
+            <td>${esc(entry.label || entry.raw || '')}</td>
+          </tr>`).join('')}</tbody></table>
+      </section>`
+    : ''
+
+  return `<h2>Deadlines</h2>${sections.join('')}${dates}`
 }
 
 // what a target grade asks of the work that is left. the three dead ends are
@@ -612,7 +718,10 @@ function targetLine(st, target, letter) {
     across the remaining ${st.remaining}% of the course.`
 }
 
-export function gradesView(courses, activeId) {
+export function gradesView(allCourses, activeId) {
+  // a term gpa across two terms is not a term gpa
+  const courses = currentTermCourses(allCourses)
+  const dropped = allCourses.length - courses.length
   if (!courses.length) return '<h2>Grades</h2><p class="secondary">No courses yet.</p>'
 
   const ordered = [...courses].sort((a, b) =>
@@ -798,7 +907,12 @@ export function gradesView(courses, activeId) {
             <div><dt>Credit hours</dt><dd>${gpa.credits}</dd></div>
           </dl>
           <p class="secondary">Four point scale, with no D plus or D minus. Set
-            each course's scale above to match its syllabus.</p>`}
+            each course's scale above to match its syllabus.</p>
+          ${dropped
+            ? `<p class="secondary">${dropped} course${dropped === 1 ? '' : 's'} from
+                an earlier term left out, so this is the term and not the
+                degree.</p>`
+            : ''}`}
         </aside>
       </div>
     </section>`
@@ -808,7 +922,9 @@ export function gradesView(courses, activeId) {
 // every other view answers "what does this course want". a student carrying
 // four of them is asking the other question: what is wanted of me this week,
 // by anybody. the data was already here, gathered one course at a time.
-export function thisWeekView(courses, progress) {
+export function thisWeekView(allCourses, progress) {
+  // last term's syllabus has nothing to say about this week
+  const courses = currentTermCourses(allCourses)
   if (!courses.length) return '<h2>This week</h2><p class="secondary">No courses yet.</p>'
 
   // a window that opens a couple of days back, because work set last Thursday

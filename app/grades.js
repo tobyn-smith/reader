@@ -169,14 +169,26 @@ function nextDay(iso) {
   return `${at.getUTCFullYear()}${String(at.getUTCMonth() + 1).padStart(2, '0')}${String(at.getUTCDate()).padStart(2, '0')}`
 }
 
-/** which deadlines across these courses can honestly be put in a calendar. */
+/** which deadlines across these courses can honestly be put in a calendar.
+ *
+ * the dates a term turns on go in as well, because a drop deadline is exactly
+ * the kind of thing a student wants their phone to remind them of, and it was
+ * being parsed and then dropped on the floor.
+ */
 export function datedDeadlines(courses) {
   const out = []
+  const dated = (value) => value && /^\d{4}-\d{2}-\d{2}/.test(value)
   for (const course of courses || []) {
     for (const item of course.parse?.deliverables?.items || []) {
-      if (!item.due_date || !/^\d{4}-\d{2}-\d{2}/.test(item.due_date)) continue
+      if (!dated(item.due_date)) continue
       out.push({ code: course.code, title: item.title, date: item.due_date,
                  weight: item.weight_percent ?? null })
+    }
+    for (const entry of course.parse?.important_dates || []) {
+      if (!dated(entry.start)) continue
+      const label = (entry.label || entry.raw || '').replace(/\s+/g, ' ').trim()
+      if (!label) continue
+      out.push({ code: course.code, title: label, date: entry.start, weight: null })
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date))
