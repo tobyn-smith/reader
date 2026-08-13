@@ -6,7 +6,7 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/tobyn-smith/reader/ci.yml?style=flat-square&label=tests&labelColor=2B2924)](https://github.com/tobyn-smith/reader/actions/workflows/ci.yml)
 [![Deploy](https://img.shields.io/github/actions/workflow/status/tobyn-smith/reader/pages.yml?style=flat-square&label=deploy&labelColor=2B2924)](https://github.com/tobyn-smith/reader/actions/workflows/pages.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-EDE8DA?style=flat-square&labelColor=2B2924)](#install)
-[![Citations parsed](https://img.shields.io/badge/citations_parsed-83%25-D2704A?style=flat-square&labelColor=2B2924)](#how-accurate-it-is)
+[![Citations parsed](https://img.shields.io/badge/citations_parsed-85%25-D2704A?style=flat-square&labelColor=2B2924)](#how-accurate-it-is)
 [![Last commit](https://img.shields.io/github/last-commit/tobyn-smith/reader?style=flat-square&color=6E695E&labelColor=2B2924)](https://github.com/tobyn-smith/reader/commits/main)
 
 ### → [Open it in your browser](https://tobyn-smith.github.io/reader/)
@@ -61,7 +61,7 @@ it can see the ruled lines a table is drawn with and the browser cannot.
 Reading lists are the weak spot, whilst everything structural is dependable.
 Most of what fails was never a reading in the first place: week topics,
 description paragraphs, columns lifted off a grading table. Keeping those out
-took it from 66% to 83%.
+took it from 66% to 85%.
 
 Anything it cannot read, it shows you verbatim and marks for checking. It will
 not quietly drop a reading or invent one. Where no schedule turns up, the PDF
@@ -143,7 +143,10 @@ looks finished, a flagged one does not, and that asymmetry is worth the lower
 headline number.
 
 The same Python runs whether you use the command line or the browser, compiled
-to WebAssembly for the latter, so both give identical answers.
+to WebAssembly for the latter. They do not get identical answers: on your own
+machine it can see the ruled lines a table is drawn with, and in the browser it
+has to work the columns out from where the text sits, so a handful of files come
+out differently.
 
 `ARCHITECTURE.md` has the details, including what the parser gets wrong and why.
 
