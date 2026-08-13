@@ -79,6 +79,27 @@ GRADE_LETTER_PREFIX_RE = re.compile(
 )
 ORPHAN_WEIGHT_RE = re.compile(r"^\s*=?\s*(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*$")
 
+# the share written before the name, as a bulleted list of them often is:
+# "65% - Practice Sets", "- 30% participation". every pattern above expects the
+# name first, so a syllabus that grades this way had no weights read at all.
+#
+# the grading scale is written the same way round, and that is the danger:
+# "94% or greater" and "60% and below" are boundaries, not work, and reading
+# them as assignments pushed one course's graded total to 160. what separates
+# them is the word straight after the percentage, since no assignment is named
+# "or greater". the name also has to be two characters at least, which keeps
+# "90% - A" out.
+_SCALE_WORDS = (
+    "and|or|to|above|below|under|over|up|down|greater|less|lesser|lower|higher"
+    "|through|plus|minus|but|of|is|are|was|will|would|earns|equals"
+)
+LEADING_WEIGHT_RE = re.compile(
+    r"^\s*[-•*–—]?\s*(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*[-–—:,]?\s+"
+    rf"(?!(?:{_SCALE_WORDS})\b)"
+    r"(?P<title>[A-Za-z][\w&''’/,. ()-]{2,70})",
+    re.IGNORECASE,
+)
+
 # the section heading printed in the first column of its own first row, as in
 # "Grading Scheme:      Attendance            40%". the row is a normal
 # weights row wearing the heading, and anchored matching threw the whole line
@@ -249,7 +270,7 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
         label = INLINE_SECTION_LABEL_RE.match(raw)
         if label and TABLE_WEIGHT_RE.match(raw[label.end():]):
             raw = raw[label.end():]
-        m = TABLE_WEIGHT_RE.match(raw) or LINE_WEIGHT_RE.match(raw)
+        m = TABLE_WEIGHT_RE.match(raw) or LINE_WEIGHT_RE.match(raw) or LEADING_WEIGHT_RE.match(raw)
         if m:
             title = _clean_title(m.group("title"))
             weight = float(m.group("weight"))

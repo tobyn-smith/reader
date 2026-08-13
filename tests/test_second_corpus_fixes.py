@@ -230,6 +230,43 @@ class TestWeightRowsTheBrowserSees:
         assert not LINE_WEIGHT_RE.match("94 – 100% A 76 – 79.99% C+")
 
 
+class TestTheShareWrittenBeforeTheName:
+    """a grading list is often written share first, and none of the patterns
+    above expect that, so those courses had no weights read at all.
+
+    the catch is that a grading scale is written share first too. "94% or
+    greater" is a boundary, not a piece of work, and counting it as one took
+    one course's graded total to 160.
+    """
+
+    def test_a_share_first_row_is_read(self):
+        from vault.syllabus.deliverables import LEADING_WEIGHT_RE
+        for raw, title, weight in (
+            ("65% - Practice Sets", "Practice Sets", "65"),
+            ("  25% - Group and Individual Work", "Group and Individual Work", "25"),
+            ("- 30% participation", "participation", "30"),
+            ("10%: Timeline assignment", "Timeline assignment", "10"),
+        ):
+            m = LEADING_WEIGHT_RE.match(raw)
+            assert m, raw
+            assert m.group("title").strip() == title and m.group("weight") == weight
+
+    def test_a_grade_boundary_is_not_an_assignment(self):
+        from vault.syllabus.deliverables import LEADING_WEIGHT_RE
+        for raw in (
+            "94% or greater",
+            "60% and below",
+            "70% to 79%",
+            "80% is a B",
+        ):
+            assert not LEADING_WEIGHT_RE.match(raw), raw
+
+    def test_a_bare_letter_is_not_an_assignment(self):
+        """the name has to be two characters, so a scale row cannot pass."""
+        from vault.syllabus.deliverables import LEADING_WEIGHT_RE
+        assert not LEADING_WEIGHT_RE.match("90% - A")
+
+
 class TestDistinctAssignmentsStayApart:
     def test_two_titles_whose_only_shared_word_survives_the_stop_list(self):
         """"Policy Memos" and "Policy Report", both worth 30, are two things."""
