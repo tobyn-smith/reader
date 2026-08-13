@@ -5,12 +5,19 @@ the browser hands over json shaped like:
 
     {"pages": [{"number": 1, "width": 612, "height": 792,
                 "runs": [{"text": "Week 1", "x": 72, "y": 96,
-                          "w": 40, "h": 11, "size": 11}, ...]}],
+                          "w": 40, "h": 11, "size": 11}, ...],
+                "rules": [{"x0": 70, "y0": 90, "x1": 540, "y1": 90}, ...]}],
      "filename": "syllabus.pdf", "sha256": "..."}
 
 y grows downward, like pdf.js viewport coordinates and like layout.py expects.
 no pdf library is imported here, which is the point: the same code runs under
 pyodide in a browser tab and in ordinary cpython for the parity tests.
+
+"rules" is optional and carries the ruled line segments a page draws its
+tables with, axis aligned, already in the same top-down space as the runs.
+where they exist the table grid is read straight off them, the way pdfplumber
+reads it on the command line; where they are absent or say nothing, table
+recovery falls back to clustering the text positions alone.
 """
 
 from __future__ import annotations
@@ -426,6 +433,250 @@ def _grid_from_header_gate(
     return [table]
 
 
+def _tables_from_rules(
+    lines: list[Line], rules: list[dict]
+) -> list[list[list[str]]]:
+    """rebuild tables from the ruled lines the page actually drew.
+
+    this is the ground truth the command line has always had through
+    pdfplumber, and the reason it read grading tables the browser could not.
+    horizontal rules are row boundaries, vertical rules are column boundaries,
+    and a cell is whatever text falls inside the rectangle they enclose.
+    nothing is inferred: a grid is claimed only where at least three of each
+    intersect, which a decorative box around a paragraph cannot fake.
+    """
+    horizontals: list[tuple[float, float, float]] = []  # y, x0, x1
+    verticals: list[tuple[float, float, float]] = []  # x, y0, y1
+    for rule in rules:
+        try:
+            x0 = float(rule["x0"])
+            y0 = float(rule["y0"])
+            x1 = float(rule["x1"])
+            y1 = float(rule["y1"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if abs(y1 - y0) <= 0.7 and x1 - x0 >= 6:
+            horizontals.append(((y0 + y1) / 2, x0, x1))
+        elif abs(x1 - x0) <= 0.7 and y1 - y0 >= 6:
+            verticals.append(((x0 + x1) / 2, y0, y1))
+
+    if len(horizontals) < 3 or len(verticals) < 3:
+        return []
+
+    # rules at the same coordinate drawn as several dashes, or once per cell,
+    # merge into one boundary carrying the union of their extents. they have to
+    # touch to merge: two tables printed side by side share their row heights,
+    # and merging on the coordinate alone joined them into one grid whose
+    # columns interleaved two different tables.
+    def merge(
+        segments: list[tuple[float, float, float]], tolerance: float
+    ) -> list[tuple[float, float, float]]:
+        merged: list[tuple[float, float, float]] = []
+        for key, lo, hi in sorted(segments):
+            joined = False
+            for index, (prev_key, prev_lo, prev_hi) in enumerate(merged):
+                if abs(key - prev_key) <= tolerance and lo <= prev_hi + 12 and hi >= prev_lo - 12:
+                    merged[index] = (prev_key, min(prev_lo, lo), max(prev_hi, hi))
+                    joined = True
+                    break
+            if not joined:
+                merged.append((key, lo, hi))
+        return merged
+
+    row_lines = merge(horizontals, 2.5)
+    col_lines = merge(verticals, 2.5)
+
+    tables: list[list[list[str]]] = []
+    used_rows: set[int] = set()
+    while True:
+        # seed a table from the topmost unused row line and gather everything
+        # connected to it, so two separate tables on one page stay separate
+        seed = next(
+            (i for i, _ in enumerate(row_lines) if i not in used_rows), None
+        )
+        if seed is None:
+            break
+        rows = [seed]
+        changed = True
+        while changed:
+            changed = False
+            y_min = min(row_lines[i][0] for i in rows)
+            y_max = max(row_lines[i][0] for i in rows)
+            x_min = min(row_lines[i][1] for i in rows)
+            x_max = max(row_lines[i][2] for i in rows)
+            cols = [
+                (x, lo, hi)
+                for x, lo, hi in col_lines
+                if x_min - 4 <= x <= x_max + 4
+                and lo <= y_max + 4
+                and hi >= y_min - 4
+            ]
+            if cols:
+                span_lo = min(lo for _, lo, _ in cols)
+                span_hi = max(hi for _, _, hi in cols)
+                for i, (y, lo, hi) in enumerate(row_lines):
+                    if i in rows or i in used_rows:
+                        continue
+                    if span_lo - 4 <= y <= span_hi + 4 and hi >= x_min - 4 and lo <= x_max + 4:
+                        rows.append(i)
+                        changed = True
+        used_rows.update(rows)
+
+        # a row boundary runs most of the way across the table. a hyperlink
+        # underline drawn inside one cell is also a horizontal rule, and taking
+        # it as a boundary cut a real row in half and stranded the reading
+        # under it in a row with no week and no topic.
+        width = max(row_lines[i][2] for i in rows) - min(row_lines[i][1] for i in rows)
+        spanning = [
+            i for i in rows
+            if width <= 0 or (row_lines[i][2] - row_lines[i][1]) >= width * 0.6
+        ]
+        row_ys = sorted(row_lines[i][0] for i in spanning)
+        if len(row_ys) < 3 or len(cols) < 3:
+            continue
+
+        # a table is a mesh: its verticals cross its horizontals. hyperlink
+        # underlines fail this completely, and they are everywhere in a
+        # syllabus: a reading list of linked titles draws a horizontal rule
+        # under every link, and one stray vertical was enough to mint a
+        # phantom grid over a page of prose citations.
+        row_set = [row_lines[i] for i in rows]
+        crossings = sum(
+            1
+            for y, rx0, rx1 in row_set
+            for x, cy0, cy1 in cols
+            if rx0 - 3 <= x <= rx1 + 3 and cy0 - 3 <= y <= cy1 + 3
+        )
+        if crossings < 0.45 * len(row_set) * len(cols):
+            continue
+
+        col_xs = sorted(x for x, _, _ in cols)
+
+        # plenty of tables draw only their internal separators: no outer box,
+        # or no rule above the header. the missing outer boundaries are taken
+        # from how far the rules themselves reach, so the first and last
+        # columns and the header row are not dropped for want of a line.
+        left = min(row_lines[i][1] for i in spanning)
+        right = max(row_lines[i][2] for i in spanning)
+        if col_xs[0] - left > 4:
+            col_xs.insert(0, left)
+        if right - col_xs[-1] > 4:
+            col_xs.append(right)
+        top = min(lo for _, lo, _ in cols)
+        bottom = max(hi for _, _, hi in cols)
+        if row_ys[0] - top > 4:
+            row_ys.insert(0, top)
+        if bottom - row_ys[-1] > 4:
+            row_ys.append(bottom)
+
+        grid = _grid_from_boundaries(lines, row_ys, col_xs)
+        if grid is not None and _looks_like_a_table(grid):
+            tables.append(grid)
+
+    return tables
+
+
+def _looks_like_a_table(grid: list[list[str]]) -> bool:
+    """decide whether a ruled region held a table or just ruled decoration.
+
+    letterheads, sidebars and boxed policy statements draw plenty of rules,
+    and reading those boxes as tables swallowed whole pages of prose: one
+    document came back with every paragraph filed into a three column grid
+    and its real schedule drowned among them. the discriminator is the cells:
+    table cells are short, prose poured into a box is not.
+    """
+    filled = [cell for row in grid for cell in row if cell.strip()]
+    if len(filled) < 4:
+        return False
+    lengths = sorted(len(cell) for cell in filled)
+    median = lengths[len(lengths) // 2]
+    if median > 90:
+        return False
+    # one enormous cell is a paragraph in a box, whatever the median says
+    if lengths[-1] > 700:
+        return False
+    return True
+
+
+def _grid_from_boundaries(
+    lines: list[Line], row_ys: list[float], col_xs: list[float]
+) -> list[list[str]] | None:
+    """fill a boundary grid with the text that falls inside each cell."""
+    grid = [
+        [[] for _ in range(len(col_xs) - 1)] for _ in range(len(row_ys) - 1)
+    ]
+
+    def band(value: float, boundaries: list[float]) -> int | None:
+        # half a point of slack: a run drawn exactly on a rule belongs inside
+        if value < boundaries[0] - 0.5 or value > boundaries[-1] + 0.5:
+            return None
+        for index in range(len(boundaries) - 1):
+            if value <= boundaries[index + 1]:
+                return index
+        return len(boundaries) - 2
+
+    filled = 0
+    for line in lines:
+        for run in line.runs:
+            if not run.text.strip():
+                continue
+            row = band(run.y + run.h / 2, row_ys)
+            col = band(run.x + min(run.w, 4.0) / 2, col_xs)
+            if row is None or col is None:
+                continue
+            grid[row][col].append(run)
+
+    # a border drawn twice, or a drop shadow beside it, makes a ghost column
+    # that holds nothing. the shape detector counts columns, so a six column
+    # schedule wearing two empty ghosts stops looking like itself.
+    keep = [
+        index for index in range(len(col_xs) - 1) if any(row[index] for row in grid)
+    ]
+    if len(keep) < 2:
+        return None
+    grid = [[row[index] for index in keep] for row in grid]
+    kept_bounds = [col_xs[index + 1] for index in keep]
+
+    # a title bar drawn inside the table box arrives as a leading row whose one
+    # cell of text runs across the column boundary, sometimes with an empty
+    # spacer row under it. the header the shape detector needs is below them.
+    while grid:
+        populated = [index for index, cell in enumerate(grid[0]) if cell]
+        if not populated:
+            grid.pop(0)
+            continue
+        if len(populated) == 1:
+            index = populated[0]
+            spans = any(
+                run.x1 > kept_bounds[index] + 4 for run in grid[0][index]
+            )
+            if spans or len(grid[0]) >= 3:
+                grid.pop(0)
+                continue
+        break
+    while grid and not any(cell for cell in grid[-1]):
+        grid.pop()
+    if len(grid) < 2:
+        return None
+
+    cells: list[list[str]] = []
+    for row in grid:
+        rendered: list[str] = []
+        for cell_runs in row:
+            if not cell_runs:
+                rendered.append("")
+                continue
+            cell_lines = _lines_from_runs(list(cell_runs))
+            rendered.append("\n".join(l.text.strip() for l in cell_lines).strip())
+            filled += 1
+        cells.append(rendered)
+
+    # a grid of empty cells is a drawing, not a table
+    if filled < 4:
+        return None
+    return cells
+
+
 def _column_edges(lines: list[Line]) -> list[float]:
     """cluster line-start x positions into stable column edges.
 
@@ -461,12 +712,14 @@ def document_from_runs(
 ) -> ExtractedDoc:
     raw_pages: list[Page] = []
     page_lines: dict[int, list[Line]] = {}
+    page_rules: dict[int, list[dict]] = {}
     missing_text: list[int] = []
 
     for entry in payload.get("pages", []):
         number = int(entry.get("number", len(raw_pages) + 1))
         width = float(entry.get("width", 612))
         height = float(entry.get("height", 792))
+        page_rules[number] = list(entry.get("rules") or [])
         runs = [
             Run(
                 text=str(r.get("text", "")),
@@ -505,13 +758,19 @@ def document_from_runs(
 
         tables: list[list[list[str]]] = []
         if detect_tables:
+            # ruled lines are the drawn structure and outrank any guess made
+            # from text positions; the clustering fallback only runs where the
+            # page drew nothing usable
+            grids = _tables_from_rules(page_lines[page.number], page_rules.get(page.number, []))
+            if not grids:
+                grids = _tables_from_lines(page_lines[page.number], page.width)
             tables = [
                 [
                     [normalize.clean_page_text(cell, aggressive_spacing=aggressive_spacing).text
                      for cell in row]
                     for row in grid
                 ]
-                for grid in _tables_from_lines(page_lines[page.number], page.width)
+                for grid in grids
             ]
 
         pages.append(

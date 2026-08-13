@@ -36,8 +36,45 @@ from vault.syllabus.pipeline import parse_extracted, parse_syllabus  # noqa: E40
 from vault.text.extract import extract_document  # noqa: E402
 
 
+def _page_rules(page) -> list[dict]:
+    """the ruled segments the page draws, as the browser worker reports them.
+
+    pymupdf's get_drawings stands in for the pdf.js operator list here: both
+    walk the same content stream, so the segments come out the same and the
+    measurement stays honest about what the site will do.
+    """
+    rules: list[dict] = []
+    for drawing in page.get_drawings():
+        for item in drawing.get("items", []):
+            kind = item[0]
+            if kind == "l":
+                p0, p1 = item[1], item[2]
+                x0, y0, x1, y1 = p0.x, p0.y, p1.x, p1.y
+                if abs(y1 - y0) <= 0.7 and abs(x1 - x0) >= 6:
+                    pass
+                elif abs(x1 - x0) <= 0.7 and abs(y1 - y0) >= 6:
+                    pass
+                else:
+                    continue
+                rules.append({"x0": min(x0, x1), "y0": min(y0, y1),
+                              "x1": max(x0, x1), "y1": max(y0, y1)})
+            elif kind == "re":
+                r = item[1]
+                for x0, y0, x1, y1 in (
+                    (r.x0, r.y0, r.x1, r.y0),
+                    (r.x0, r.y1, r.x1, r.y1),
+                    (r.x0, r.y0, r.x0, r.y1),
+                    (r.x1, r.y0, r.x1, r.y1),
+                ):
+                    if max(abs(x1 - x0), abs(y1 - y0)) >= 6:
+                        rules.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1})
+            if len(rules) >= 4000:
+                return rules
+    return rules
+
+
 def _runs_document(path: Path):
-    """what the browser hands the parser: positioned spans, no line geometry."""
+    """what the browser hands the parser: positioned spans plus ruled lines."""
     import pymupdf
 
     from vault.text.runs import document_from_runs
@@ -57,6 +94,7 @@ def _runs_document(path: Path):
                                  "size": span.get("size", 0)})
         pages.append({"number": index + 1, "width": page.rect.width,
                       "height": page.rect.height, "runs": runs,
+                      "rules": _page_rules(page),
                       "hasTextLayer": bool(runs)})
     return document_from_runs({"filename": path.name, "pages": pages})
 

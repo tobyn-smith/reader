@@ -1008,6 +1008,26 @@ async function boot() {
     status('intake-status', 'All data cleared')
   }
 
+  // the browser decides when installing is on offer; the line only appears
+  // once it says so, and goes away again once the app is installed
+  let installPrompt = null
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    installPrompt = e
+    $('install-line').hidden = false
+  })
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null
+    $('install-line').hidden = true
+  })
+  $('install').onclick = async () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    await installPrompt.userChoice
+    installPrompt = null
+    $('install-line').hidden = true
+  }
+
   draw()
 
   if ('serviceWorker' in navigator) {

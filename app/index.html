@@ -8,6 +8,12 @@
      icon costs no request, and so the browser stops asking for a favicon.ico
      that was never there -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230D0D0B'/><rect x='5' y='6' width='22' height='3' fill='%23EDE8DA'/><rect x='5' y='13' width='22' height='1.5' fill='%23A39D8E'/><rect x='5' y='18' width='22' height='1.5' fill='%23A39D8E'/><rect x='5' y='23' width='14' height='1.5' fill='%23D2704A'/></svg>">
+<!-- the manifest is what lets a browser install this as its own app: an icon
+     in the dock, its own window, offline from the cache the worker already
+     keeps. nothing to download and nothing to sign. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0D0D0B" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFDF8" media="(prefers-color-scheme: light)">
 <link rel="stylesheet" href="vendor/fonts.css">
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="print.css" media="print">
@@ -150,8 +156,8 @@
     <tbody>
       <tr><td>Course code</td><td class="num">100%</td></tr>
       <tr><td>Term</td><td class="num">100%</td></tr>
-      <tr><td>Found the schedule</td><td class="num">77%</td></tr>
-      <tr><td>Readings turned into full citations</td><td class="num">67%</td></tr>
+      <tr><td>Found the schedule</td><td class="num">81%</td></tr>
+      <tr><td>Readings turned into full citations</td><td class="num">68%</td></tr>
       <tr><td>Weights totalling near 100%</td><td class="num">9 of 12</td></tr>
     </tbody>
   </table>
@@ -171,7 +177,9 @@
     <a href="https://tobyn-smith.github.io/me/">my personal page</a> and send
     me an email. :)<br>
     Prefer it on your own machine? <a href="running.html">Running it
-    yourself</a>.</p>
+    yourself</a><span id="install-line" hidden>, or
+    <button type="button" id="install" class="quiet">install this as an
+    app</button></span>.</p>
   <p class="colophon-sheet" id="print-meta"></p>
 </footer>
 

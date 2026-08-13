@@ -2,12 +2,16 @@
 // the first visit. nothing the visitor loads is ever cached, because nothing
 // the visitor loads ever reaches this worker.
 
-const CACHE = 'schedule-reader-v44'
+const CACHE = 'schedule-reader-v45'
 
 const SHELL = [
   './',
   './index.html',
   './running.html',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable.png',
   './app.css',
   './print.css',
   './app.js',

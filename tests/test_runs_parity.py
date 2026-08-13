@@ -21,6 +21,32 @@ EXPECTED = Path(__file__).parent / "expected"
 NAMES = ["structure-a-bulleted", "structure-b-table", "structure-c-labelled"]
 
 
+def _rules(page) -> list[dict]:
+    """the ruled segments the browser worker sends, mirrored from pymupdf."""
+    rules: list[dict] = []
+    for drawing in page.get_drawings():
+        for item in drawing.get("items", []):
+            if item[0] == "l":
+                p0, p1 = item[1], item[2]
+                x0, y0, x1, y1 = p0.x, p0.y, p1.x, p1.y
+                horizontal = abs(y1 - y0) <= 0.7 and abs(x1 - x0) >= 6
+                vertical = abs(x1 - x0) <= 0.7 and abs(y1 - y0) >= 6
+                if horizontal or vertical:
+                    rules.append({"x0": min(x0, x1), "y0": min(y0, y1),
+                                  "x1": max(x0, x1), "y1": max(y0, y1)})
+            elif item[0] == "re":
+                r = item[1]
+                for x0, y0, x1, y1 in (
+                    (r.x0, r.y0, r.x1, r.y0),
+                    (r.x0, r.y1, r.x1, r.y1),
+                    (r.x0, r.y0, r.x0, r.y1),
+                    (r.x1, r.y0, r.x1, r.y1),
+                ):
+                    if max(abs(x1 - x0), abs(y1 - y0)) >= 6:
+                        rules.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1})
+    return rules
+
+
 def runs_payload(path: Path) -> dict:
     """what the javascript extractor would send, built from pymupdf spans."""
     doc = pymupdf.open(path)
@@ -49,6 +75,7 @@ def runs_payload(path: Path) -> dict:
                 "width": page.rect.width,
                 "height": page.rect.height,
                 "runs": runs,
+                "rules": _rules(page),
             }
         )
     doc.close()
