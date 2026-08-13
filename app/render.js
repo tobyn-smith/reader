@@ -267,10 +267,17 @@ export function weekView(course, progress, editing = false, filter = {}) {
   // a filter that matches nothing has to say so, and say how to get back. an
   // empty table reads as a course that lost its readings.
   if (!rows.length) {
+    // two different emptinesses. a filter hiding everything is the visitor's
+    // doing and has a way out; a syllabus with no schedule in it is the
+    // parser's answer, and blaming a filter nobody turned on was nonsense.
+    const filtering = filter.unread || filter.required || filter.soon
+    const message = filtering
+      ? 'Nothing matches what you asked for. Turn a filter off under Show to bring the ledger back.'
+      : 'No weekly schedule came out of this PDF. Often it has none and the '
+        + 'schedule lives on the course site instead. Anything you add by hand under Edit stays here.'
     rows.push(`<tr class="rec empty"><td class="c-tick"></td><td class="c-num"></td>
       <td class="c-date"></td>
-      <td class="c-title" colspan="4"><em>Nothing matches what you asked for.
-        Turn a filter off under Show to bring the ledger back.</em></td></tr>`)
+      <td class="c-title" colspan="4"><em>${esc(message)}</em></td></tr>`)
   }
 
   const upcoming = stamps.filter((s) => s.days !== null && s.days >= -6)
@@ -343,8 +350,13 @@ export function recordHeader(course) {
 
   const facts = [
     ['Term', term, false],
-    ['Instructor', p.course?.instructor, false],
-    ['Meets', p.course?.meeting_pattern, false],
+    // the parser calls these instructor_name and meeting_time. reading the
+    // wrong keys meant both facts came back undefined and the filter below
+    // dropped them, so the record header has never once shown who teaches the
+    // course or when it meets.
+    ['Instructor', p.course?.instructor_name, false],
+    ['Meets', p.course?.meeting_time, false],
+    ['Room', p.course?.location, false],
     ['Weeks', String(p.sessions.length), false],
     ['Readings', String(readings), false],
     ['AI policy', p.ai_stance ? policy : null, restricted],
@@ -447,6 +459,7 @@ export function railView(course, ledger, courses, filter = {}) {
         <div><dt>N</dt><dd>note</dd></div>
         <div><dt>T</dt><dd>this week</dd></div>
         <div><dt>/</dt><dd>search</dd></div>
+        <div><dt>1&ndash;7</dt><dd>switch view</dd></div>
       </dl>
     </section>
   </nav>`
@@ -780,6 +793,73 @@ export function gradesView(courses, activeId) {
 }
 
 
+// the policy kinds a student actually goes looking for, in the order they go
+// looking. boilerplate is the university's standard block, which is the same
+// on every syllabus and helps nobody, so it stays folded away.
+const POLICY_LABELS = {
+  late_work: 'Late work',
+  attendance: 'Attendance',
+  academic_honesty: 'Academic honesty',
+  ai_use: 'AI',
+  accommodations: 'Accommodations',
+  other: 'Also stated',
+}
+
+const POLICY_ORDER = ['late_work', 'attendance', 'ai_use', 'academic_honesty',
+                      'accommodations', 'other']
+
+export function policiesView(course) {
+  const all = course.parse.policies || []
+  const shown = all.filter((p) => p.policy_type !== 'boilerplate' && (p.body || '').trim())
+
+  if (!shown.length) {
+    return `<h2>${esc(course.code)} policies</h2>
+      <p class="secondary">Nothing came out of this syllabus that reads as a
+        policy. They are usually under a heading like "Course policies", so if
+        yours has one this is a gap worth telling me about.</p>`
+  }
+
+  const byKind = new Map()
+  for (const policy of shown) {
+    const kind = POLICY_ORDER.includes(policy.policy_type) ? policy.policy_type : 'other'
+    if (!byKind.has(kind)) byKind.set(kind, [])
+    byKind.get(kind).push(policy)
+  }
+
+  const sections = POLICY_ORDER.filter((k) => byKind.has(k)).map((kind) => {
+    const entries = byKind.get(kind).map((policy) => {
+      const body = collapse(policy.body)
+      // long policies open on demand: the answer is usually the first line,
+      // and four screens of quoted regulation buries it
+      const long = body.length > 320
+      return long
+        ? `<details class="policy">
+             <summary>${esc(body.slice(0, 300))}&hellip;</summary>
+             <p>${esc(body)}</p>
+           </details>`
+        : `<p class="policy-body">${esc(body)}</p>`
+    }).join('')
+    return `<section class="policy-block">
+      <h3>${esc(POLICY_LABELS[kind] || kind)}</h3>
+      ${entries}
+    </section>`
+  }).join('')
+
+  const hidden = all.length - shown.length
+  return `<h2>${esc(course.code)} policies</h2>
+    <p class="secondary">Taken from the syllabus as written, not summarised.
+      Check the PDF before relying on any of it.</p>
+    ${sections}
+    ${hidden
+      ? `<p class="secondary">${hidden} standard university
+         ${hidden === 1 ? 'block' : 'blocks'} left out.</p>`
+      : ''}`
+}
+
+function collapse(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim()
+}
+
 export function bibliographyView(course) {
   const seen = new Map()
   for (const session of course.parse.sessions) {
@@ -788,16 +868,34 @@ export function bibliographyView(course) {
       if (!seen.has(key)) seen.set(key, reading.work)
     }
   }
-  const entries = [...seen.values()]
+  const works = [...seen.values()]
     .map((work) => ({ work, sort: sortKey(work) }))
     .sort((a, b) => a.sort.localeCompare(b.sort))
-    .map(({ work }) => `<li class="entry">${esc(citation(work))}</li>`)
+    .map(({ work }) => work)
+
+  // a bibliography you cannot get out of the page is a bibliography you type
+  // again by hand into whatever you are writing in
+  const entries = works.map((work) => {
+    const text = citation(work)
+    return `<li class="entry">
+      <span class="cite-text">${esc(text)}</span>
+      <button type="button" class="copyone" data-copy="${esc(text)}"
+        aria-label="Copy this citation">copy</button>
+    </li>`
+  })
 
   const required = course.parse.course.citation_style
+  const all = works.map((w) => citation(w)).join('\n')
   return `<h2>${esc(course.code)} bibliography</h2>
     ${required
       ? `<p class="secondary">This course requires ${esc(required.toUpperCase())}.</p>`
       : ''}
+    <p class="bibtools">
+      <button type="button" id="copy-all" data-copy="${esc(all)}">Copy all
+        ${works.length}</button>
+      <span class="secondary">In ${esc(cite.STYLE_NAMES[style] || style)}. Change
+        it with Style, above.</span>
+    </p>
     <ol class="bibliography">${entries.join('')}</ol>`
 }
 

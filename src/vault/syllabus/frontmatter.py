@@ -124,7 +124,9 @@ def parse(doc: ExtractedDoc) -> CourseMeta:
     if email:
         meta.instructor_email = email.group(0)
     if meta.instructor_name:
-        meta.instructor_name = EMAIL_RE.sub("", meta.instructor_name).strip(" ,;")
+        meta.instructor_name = _plausible_name(
+            EMAIL_RE.sub("", meta.instructor_name).strip(" ,;")
+        )
 
     site = values.get("site") or ""
     url = URL_RE.search(site) or URL_RE.search(head)
@@ -154,12 +156,79 @@ def _labelled_values(lines: list[str]) -> dict[str, str]:
             m = pattern.match(line)
             if not m:
                 continue
-            value = m.group("value").strip(" :-")
+            value = _value_up_to_next_label(m.group("value").strip(" :-"), key)
             if not value and index + 1 < len(lines):
-                value = lines[index + 1].strip(" :-")
+                value = _value_up_to_next_label(lines[index + 1].strip(" :-"), key)
             if value:
                 found[key] = value
     return found
+
+
+# the label words themselves, for finding where the next field starts inside a
+# value. a header block set in two columns can arrive as one joined line, and
+# then every field after the first is buried in the first one's value.
+_NEXT_LABEL_RE = re.compile(
+    r"\s+(?:instructor|professor|lecturer|e-?mail|time|class time|meeting times?|"
+    r"meets|place|location|room|classroom|office hours?|course (?:website|site|page)|"
+    r"website|phone|term|semester)\s*:",
+    re.IGNORECASE,
+)
+
+
+def _value_up_to_next_label(value: str, key: str) -> str:
+    """stop a value where the next field's label begins.
+
+    "Instructor: Dana Okafor Time: Thurs 3:55-6:45" on one line gave the
+    instructor a name with the meeting time inside it, and left the meeting
+    time unfound. the browser hits this and the command line does not, because
+    the two split the header block differently.
+    """
+    m = _NEXT_LABEL_RE.search(value)
+    return (value[: m.start()] if m else value).strip(" ,;:-")
+
+
+# a person's name, roughly. the label patterns match prose that happens to open
+# with one of their words, and the header now shows what they find, so a value
+# that reads as a sentence, a rule of underscores or a bulleted question is
+# dropped rather than printed as the person teaching the course.
+_NOT_A_NAME_RE = re.compile(
+    r"^[^A-Za-z]"          # a bullet or a dash opening it
+    r"|_{3,}"              # a rule of underscores from a fill-in form
+    r"|[?!]"               # a question is never a name
+    r"|\b(?:will|may|must|should|please|failure|policy|policies|schedule|"
+    r"necessary|antibiotics|consequences)\b",
+    re.IGNORECASE,
+)
+
+
+def _plausible_name(value: str | None) -> str | None:
+    """keep a value that could be a person, drop prose that matched the label.
+
+    the label patterns catch any line opening with their word, so a sentence
+    beginning "Instructor" or a bulleted question can arrive here. the record
+    header prints whatever this returns, so a wrong answer is now visible.
+    an honorific keeps its full stop: "Dr. Priya Raman" is a name.
+    """
+    if not value:
+        return None
+    # the brackets an email used to sit in, now empty
+    text = re.sub(r"\(\s*\)", "", value).strip(" ,;")
+    if not 3 <= len(text) <= 60:
+        return None
+    # a label that caught its own section heading rather than a person
+    if re.fullmatch(r"(?:contact\s+)?information|drop-?in hours?|office hours?|"
+                    r"details|staff|faculty", text, re.IGNORECASE):
+        return None
+    if len(text.split()) > 8:
+        return None
+    if _NOT_A_NAME_RE.search(text):
+        return None
+    # a full stop that is not an initial or an honorific ends a sentence
+    if re.search(r"(?<![A-Z])(?<!\bDr)(?<!\bMr)(?<!\bMs)(?<!\bMrs)(?<!\bProf)\.\s+[A-Za-z]", text):
+        return None
+    if not re.search(r"[A-Za-z]{2,}", text):
+        return None
+    return text
 
 
 _CONTINUES = re.compile(r"(?:\b(?:to|of|and|in|on|for|the|a|an)|[:,&-])$", re.IGNORECASE)

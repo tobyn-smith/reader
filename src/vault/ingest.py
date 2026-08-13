@@ -90,8 +90,7 @@ def ingest_file(conn: sqlite3.Connection, path: Path, *, ocr: str = "auto") -> I
 def match_to_reading(
     conn: sqlite3.Connection, doc: ExtractedDoc
 ) -> tuple[int | None, float, str]:
-    head = "
-".join(page.text for page in doc.pages[:2])
+    head = "\n".join(page.text for page in doc.pages[:2])
     candidates = [
         Candidate(
             id=row["id"],

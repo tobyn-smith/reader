@@ -256,13 +256,17 @@ function showReview() {
   $('review').scrollIntoView({ block: 'start' })
 }
 
-async function confirmParse() {
-  const parse = state.pending.parse
-
-  // apply any edits the visitor made to a citation line
+// corrections typed on the review screen live only in the dom until they are
+// harvested. redrawing that table, which the "show every reading" toggle does,
+// used to throw them away without a word, so the harvest happens before any
+// redraw as well as on save.
+function harvestReviewEdits() {
+  const parse = state.pending && state.pending.parse
+  if (!parse) return
   for (const input of $('review-table').querySelectorAll('input[data-session]')) {
     const session = parse.sessions[Number(input.dataset.session)]
-    const reading = session.readings[Number(input.dataset.reading)]
+    const reading = session && session.readings[Number(input.dataset.reading)]
+    if (!reading) continue
     const edited = input.value.trim()
     if (edited && edited !== view.citation(reading.work)) {
       reading.work.rendered_override = edited
@@ -270,6 +274,11 @@ async function confirmParse() {
       reading.confidence = 1
     }
   }
+}
+
+async function confirmParse() {
+  harvestReviewEdits()
+  const parse = state.pending.parse
 
   const code = parse.course.code || state.pending.name.replace(/\.pdf$/i, '')
   const id = parse.file_hash || code
@@ -515,6 +524,32 @@ function reletterCourse(course) {
   }
 }
 
+// the async clipboard is refused in plenty of ordinary situations: an
+// insecure origin, a permission the visitor never granted, an older browser.
+// the old textarea trick still works in all of them, so it is the fallback
+// rather than an apology.
+async function toClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    try {
+      const box = document.createElement('textarea')
+      box.value = text
+      box.setAttribute('readonly', '')
+      box.style.position = 'fixed'
+      box.style.opacity = '0'
+      document.body.appendChild(box)
+      box.select()
+      const ok = document.execCommand('copy')
+      box.remove()
+      return ok
+    } catch {
+      return false
+    }
+  }
+}
+
 function focusLast(selector) {
   const all = document.querySelectorAll(selector)
   if (all.length) all[all.length - 1].focus()
@@ -652,6 +687,7 @@ function draw() {
     else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active, editing)
     else if (state.currentView === 'grades') target.innerHTML = view.gradesView(state.courses, state.active)
     else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
+    else if (state.currentView === 'policies') target.innerHTML = view.policiesView(course)
     else if (state.currentView === 'search') drawSearch(target)
   }
 
@@ -766,12 +802,18 @@ async function boot() {
 
   $('review-table').addEventListener('click', (e) => {
     if (!e.target.closest('#toggle-all')) return
+    // keep whatever has been typed before the table is rebuilt under it
+    harvestReviewEdits()
     state.reviewShowAll = !state.reviewShowAll
     showReview()
   })
 
   $('confirm').onclick = confirmParse
+  // discarding throws away a parse the visitor may have spent minutes
+  // correcting, and there is no way back to it
   $('discard').onclick = () => {
+    const name = state.pending ? state.pending.name : 'this file'
+    if (!confirm(`Discard ${name} without saving? Any corrections you typed go with it.`)) return
     nextReview()
   }
 
@@ -821,6 +863,16 @@ async function boot() {
   // destructive enough to want a confirm step except removing a row, and that
   // is undone by typing it back.
   $('view').addEventListener('click', async (e) => {
+    // copying a citation has to say it worked, or you click it twice and
+    // paste twice
+    const copy = e.target.closest('[data-copy]')
+    if (copy) {
+      const was = copy.dataset.label || copy.textContent
+      copy.dataset.label = was
+      copy.textContent = (await toClipboard(copy.dataset.copy)) ? 'copied' : 'could not copy'
+      setTimeout(() => { copy.textContent = was }, 1400)
+      return
+    }
     const del = e.target.closest('[data-remove-reading]')
     if (del) {
       const [si, ri] = del.dataset.removeReading.split('.').map(Number)
@@ -895,8 +947,9 @@ async function boot() {
     }
     if ($('views').hidden) return
 
-    const views = ['week', 'schedule', 'deadlines', 'grades', 'bibliography', 'search']
-    if (/^[1-6]$/.test(e.key)) {
+    const views = ['week', 'schedule', 'deadlines', 'grades', 'bibliography',
+                   'policies', 'search']
+    if (/^[1-7]$/.test(e.key)) {
       state.currentView = views[Number(e.key) - 1]
       draw()
       return
@@ -977,6 +1030,10 @@ async function boot() {
       await store.importAll(JSON.parse(await file.text()))
       state.courses = await store.listCourses()
       state.documents = await store.listDocuments()
+      // the restored ticks and notes are in the database but not yet in
+      // memory, and without this the ledger draws every reading unread as
+      // though the backup had lost them
+      state.progress = new Map((await store.listProgress()).map((p) => [p.id, p]))
       state.active = state.courses[0]?.id ?? null
       $('views').hidden = !state.courses.length
       $('tools').open = state.courses.length === 0

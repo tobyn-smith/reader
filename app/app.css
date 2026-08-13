@@ -308,7 +308,10 @@ body {
 }
 
 .rail-facts { margin: 0; }
-.rail-facts > div { display: flex; justify-content: space-between; gap: 6px; }
+/* :not(.meter) matters: a bare class loses to this selector's extra element,
+   so the meter below was being laid out as a flex row and its bar, meant to
+   span the full width underneath, sat squeezed beside the label instead */
+.rail-facts > div:not(.meter) { display: flex; justify-content: space-between; gap: 6px; }
 
 /* a ruled bar, squared off, filled in the ink. no rounding, no gradient, no
    second colour: it is a measure printed on a record, not a status light. */
@@ -1184,6 +1187,65 @@ input[type="file"]::file-selector-button {
 }
 
 .controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+
+/* ---- policies ----------------------------------------------------------
+   quoted from the syllabus, so it is set as prose with a measure rather than
+   as a record. the heading weight is the same one the grades cards use. */
+
+.policy-block { margin-bottom: 22px; max-width: 74ch; }
+
+.policy-block h3 {
+  border-top: 2px solid var(--rule);
+  padding-top: 8px;
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.policy-body, details.policy p { font-size: 14px; line-height: 1.55; margin: 0 0 8px; }
+
+details.policy { border: 0; margin: 0 0 8px; padding: 0; }
+
+details.policy > summary {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  padding: 0;
+}
+
+details.policy > summary::after {
+  content: " more";
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+details.policy[open] > summary { display: none; }
+
+/* ---- copying a citation ------------------------------------------------ */
+
+.bibtools { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 12px; }
+
+ol.bibliography li { position: relative; }
+
+.copyone {
+  border: 0;
+  padding: 0 0 0 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  text-indent: 0;
+  opacity: 0;
+}
+
+/* it appears on the entry you are pointing at, so twenty of them do not sit
+   down the page shouting at once */
+ol.bibliography li:hover .copyone,
+ol.bibliography li:focus-within .copyone { opacity: 1; }
+.copyone:hover { background: none; color: var(--ink); text-decoration: underline; }
 
 /* ---- the written pages -------------------------------------------------
    prose rather than a record, so it takes a measure and a little more air

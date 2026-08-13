@@ -554,3 +554,45 @@ class TestStatedTotals:
             _Candidate(Deliverable(title="Midterm", weight_percent=20.0), ""),
         ]
         assert len(_absorb_subdivisions(items)) == 4
+
+
+class TestHeaderFieldsRunTogether:
+    """a two column header block arrives as one joined line in the browser.
+
+    "Instructor: Dana Okafor Time: Thurs 3:55-6:45" gave the instructor a name
+    with the meeting time inside it and left the time unfound. the command
+    line splits the same header differently and never saw it.
+    """
+
+    def test_a_value_stops_at_the_next_label(self):
+        from vault.syllabus.frontmatter import _value_up_to_next_label
+        assert _value_up_to_next_label(
+            "Dana Okafor Time: Thurs 3:55-6:45", "instructor") == "Dana Okafor"
+        assert _value_up_to_next_label(
+            "Dana Okafor Office Hours: by appointment", "instructor") == "Dana Okafor"
+
+    def test_a_plain_value_is_untouched(self):
+        from vault.syllabus.frontmatter import _value_up_to_next_label
+        assert _value_up_to_next_label("Rowan Ashe", "instructor") == "Rowan Ashe"
+
+
+class TestInstructorLooksLikeAPerson:
+    """the record header prints this, so a wrong answer is now visible."""
+
+    def test_real_names_survive(self):
+        from vault.syllabus.frontmatter import _plausible_name
+        for name in ("Rowan Ashe", "Dr. Priya Raman", "Alex Whitfield (she/her)",
+                     "Dana Okafor, Ph.D., Assistant Professor"):
+            assert _plausible_name(name) == name.strip(), name
+
+    def test_prose_that_matched_the_label_is_dropped(self):
+        from vault.syllabus.frontmatter import _plausible_name
+        for junk in ("may be necessary.", "_____________________________",
+                     "• Will antibiotics work 50 years from now?",
+                     ". Failure to follow the academic honesty policy will have serious consequences.",
+                     "Information", "Drop-in hours"):
+            assert _plausible_name(junk) is None, junk
+
+    def test_empty_brackets_from_a_stripped_email_go(self):
+        from vault.syllabus.frontmatter import _plausible_name
+        assert _plausible_name("Dr. Priya Raman ()") == "Dr. Priya Raman"
