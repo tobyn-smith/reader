@@ -176,3 +176,31 @@ class TestNewCitationShapes:
         for text in ("We will meet on Tuesday. Bring your notes. Thanks.",
                      "The course begins in 2018. There is a lot to read."):
             assert cit.parse_citation(text).matched_pattern != "author_date_book", text
+
+
+class TestSetTexts:
+    """the book a course names once and then refers to all term."""
+
+    def test_a_named_book_without_a_chapter(self):
+        assert cit.parse_citation(
+            "Book: Globalization and Proliferation: Networks and Institutions"
+        ).matched_pattern == "named_book"
+
+    def test_a_named_book_with_a_chapter_still_wins(self):
+        assert cit.parse_citation(
+            "Book: Hazard Analysis; Chapter 1"
+        ).matched_pattern == "named_book_chapter"
+
+    def test_a_multi_word_set_text_with_chapters(self):
+        c = cit.parse_citation("Hazard Analysis: Chapters 3 and 7")
+        assert c.matched_pattern == "set_text_chapters"
+        assert "3" in (c.pages or "")
+
+    def test_a_labelled_sentence_is_not_a_set_text(self):
+        for text in (
+            "Introduction: a short note on what we will cover in the first week",
+            "Attendance: students are expected to attend every class meeting",
+            "Week 3: Reading the landscape",
+        ):
+            assert cit.parse_citation(text).matched_pattern not in (
+                "named_book", "set_text_chapters"), text

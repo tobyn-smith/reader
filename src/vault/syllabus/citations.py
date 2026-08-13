@@ -489,11 +489,43 @@ PATTERNS: list[Pattern] = [
         "named_book_chapter",
         re.compile(
             r"^(?:book|text|textbook)\s*:\s*(?P<title>[^;,:]{4,90})"
-            r"\s*[;,:]\s*(?:chapters?|ch\.?)\s*(?P<pages>\d[\d\s,&-]*)\s*$",
+            r"\s*[;,:]\s*(?:chapters?|ch\.?)\s*(?P<pages>\d[\d\s,&-]*"
+            r"(?:and\s*\d+)?)\s*$",
             re.IGNORECASE,
         ),
         BOOK_CHAPTER,
         0.7,
+        expects_author=False,
+        expects_year=False,
+    ),
+    Pattern(
+        # the set text named without a chapter, which is how a course states
+        # the book once and then refers to it all term: "Book: Globalization
+        # and Proliferation: Networks and Institutions"
+        "named_book",
+        re.compile(
+            r"^(?:book|text|textbook)\s*:\s*(?P<title>[A-Z][^:]{6,140}"
+            r"(?::[^:]{2,90})?)\s*\.?\s*$",
+            re.IGNORECASE,
+        ),
+        BOOK,
+        0.6,
+        expects_author=False,
+        expects_year=False,
+    ),
+    Pattern(
+        # a set text referred to by its own name and the chapters wanted, where
+        # the name runs to more than one word so the bare author form above
+        # cannot claim it: "Hazard Analysis: Chapters 3 and 7"
+        "set_text_chapters",
+        re.compile(
+            r"^(?P<title>[A-Z][A-Za-z0-9'’&.-]*(?:\s+[A-Za-z0-9'’&.-]+){0,6})"
+            r"\s*[:;,]\s*(?:chapters?|ch\.?)\s*"
+            r"(?P<pages>\d[\d\s,&–-]*(?:and\s*\d+)?)\s*\.?\s*$",
+            re.IGNORECASE,
+        ),
+        BOOK_CHAPTER,
+        0.6,
         expects_author=False,
         expects_year=False,
     ),
