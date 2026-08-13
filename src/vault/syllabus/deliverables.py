@@ -207,6 +207,9 @@ def extract(
             _merge(seen, item)
     _drop_recurrence_bleed(seen)
 
+    if not any(i.weight_percent for i in seen.values()):
+        _rescue_weights_from_other_zones(seen, zones, term)
+
     for hint, session_date in schedule_hints:
         item = _from_hint(hint, term, session_date)
         if item is not None:
@@ -737,6 +740,43 @@ def _format_notes(zones: list[Zone]) -> list[str]:
 
 
 _BONUS_TITLE_RE = re.compile(r"\b(?:extra\s+credit|bonus)\b", re.IGNORECASE)
+
+
+def _graded_total(items) -> float:
+    """what the weights come to, leaving extra credit out as the check does."""
+    return round(sum(
+        i.weight_percent for i in items
+        if i.weight_percent and not _BONUS_TITLE_RE.search(i.title or "")
+    ), 2)
+
+
+def _rescue_weights_from_other_zones(
+    seen: dict, zones: list[Zone], term: Term | None
+) -> None:
+    """look for the grading table outside the section it is supposed to be in.
+
+    it is not always under a heading anything here recognises. it turns up
+    inside the policies section, or printed partway down the schedule, and
+    those courses came back saying no percentages were found at all.
+
+    reading those zones every time would turn week topics and grade boundaries
+    into assignments, so this only runs when the ordinary pass found no weights
+    whatever, and what comes back is only believed when it adds up to about a
+    whole grade. a run of rows summing to a hundred is a grading table. rows
+    summing to anything else are a coincidence, and are dropped rather than
+    shown to somebody deciding what to work on.
+    """
+    rescued: dict = {}
+    for zone in zones:
+        if zone.kind in {REQUIREMENTS, FRONT_MATTER}:
+            continue
+        for item in _from_prose(zone, term):
+            _merge(rescued, item)
+
+    if not rescued or not 99.0 <= _graded_total(rescued.values()) <= 100.5:
+        return
+    for item in rescued.values():
+        _merge(seen, item)
 
 
 def _check_weights(result: DeliverableSet) -> None:

@@ -267,6 +267,63 @@ class TestTheShareWrittenBeforeTheName:
         assert not LEADING_WEIGHT_RE.match("90% - A")
 
 
+class TestGradingTableOutsideItsSection:
+    """the grading table is not always under a heading this recognises.
+
+    it turns up inside the policies section, or printed partway down the
+    schedule, and those courses reported no percentages at all. reading every
+    zone by default would turn week topics and grade boundaries into
+    assignments, so the rescue only runs when the ordinary pass found nothing,
+    and only stands when the rows add up to about a whole grade.
+    """
+
+    @staticmethod
+    def _zone(kind, *texts):
+        from vault.syllabus import zones
+        lines = [
+            zones.Line(1, i, text, starts_block=(i == 0))
+            for i, text in enumerate(texts)
+        ]
+        return [zones.Zone(kind, None, lines)]
+
+    def test_a_grading_table_in_the_policies_zone_is_found(self):
+        from vault.syllabus import deliverables, zones
+        parsed = deliverables.extract(self._zone(
+            zones.POLICIES,
+            "60% - Written work",
+            "30% - Seminar participation",
+            "10% - Timeline exercise",
+        ), None, [])
+        assert parsed.weight_total == 100.0
+        assert {i.title for i in parsed.items} == {
+            "Written work", "Seminar participation", "Timeline exercise"}
+
+    def test_rows_that_do_not_add_up_are_not_a_grading_table(self):
+        """two percentages in a policy paragraph are a coincidence."""
+        from vault.syllabus import deliverables, zones
+        parsed = deliverables.extract(self._zone(
+            zones.POLICIES,
+            "20% - Late penalty applied per day",
+            "15% - Rounding allowance at the margin",
+        ), None, [])
+        assert parsed.weight_total == 0.0
+
+    def test_the_ordinary_pass_is_not_second_guessed(self):
+        """a requirements zone that found weights is left as it is.
+
+        the rescue exists for courses with nothing at all. a course whose
+        grading was read but comes to less than a hundred has assignments
+        missing, and quietly topping it up from the schedule would hide that.
+        """
+        from vault.syllabus import deliverables, zones
+        parsed = deliverables.extract(self._zone(
+            zones.REQUIREMENTS,
+            "Essay one 40%",
+            "Essay two 20%",
+        ), None, [])
+        assert parsed.weight_total == 60.0
+
+
 class TestDistinctAssignmentsStayApart:
     def test_two_titles_whose_only_shared_word_survives_the_stop_list(self):
         """"Policy Memos" and "Policy Report", both worth 30, are two things."""
