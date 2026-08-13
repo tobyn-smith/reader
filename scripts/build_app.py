@@ -52,13 +52,66 @@ PYODIDE_KEEP = {
 }
 
 
+def browser_modules() -> list[Path]:
+    """the python the browser can actually reach, walked from vault.web.
+
+    the bundle used to be every .py under src/vault, which shipped the command
+    line, the database layer, the site builder and the optional model adapter
+    to every visitor: about a third of the payload, for code no browser path
+    can call. worse, the version stamp was hashed over the same unfiltered
+    list, so editing the cli marked every stored course in every browser as
+    parsed by an older version and offered to re-read them all, for a change
+    that could not have altered a parse.
+
+    the walk is done here rather than written out by hand so a new module
+    imported by the parser is picked up without anyone remembering to add it.
+    """
+    import ast
+
+    source = ROOT / "src"
+    files = {}
+    for path in source.rglob("*.py"):
+        name = path.relative_to(source).with_suffix("").as_posix().replace("/", ".")
+        files[name[:-9] if name.endswith(".__init__") else name] = path
+
+    def imports_of(module: str) -> set[str]:
+        tree = ast.parse(files[module].read_text(encoding="utf-8"))
+        found: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                if node.level:
+                    parts = module.split(".")
+                    parts = parts[: len(parts) - node.level] if node.level <= len(parts) else []
+                    target = ".".join(parts + ([node.module] if node.module else []))
+                else:
+                    target = node.module or ""
+                if target.startswith("vault"):
+                    found.add(target)
+                    found.update(f"{target}.{alias.name}" for alias in node.names)
+            elif isinstance(node, ast.Import):
+                found.update(a.name for a in node.names if a.name.startswith("vault"))
+        return found
+
+    seen: set[str] = set()
+    queue = ["vault.web", "vault"]
+    while queue:
+        module = queue.pop()
+        if module in seen or module not in files:
+            continue
+        seen.add(module)
+        queue.extend(dep for dep in imports_of(module) if dep in files and dep not in seen)
+
+    return sorted(files[m] for m in seen)
+
+
 def build_bundle() -> Path:
     """zip the parser and its one pure python dependency."""
     VENDOR.mkdir(parents=True, exist_ok=True)
     target = VENDOR / "vault.zip"
+    shipped = browser_modules()
 
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted((ROOT / "src" / "vault").rglob("*.py")):
+        for path in shipped:
             archive.write(path, path.relative_to(ROOT / "src"))
 
         import wordninja
@@ -82,8 +135,10 @@ def build_bundle() -> Path:
 
     # windows checkouts carry crlf and ci carries lf, so line endings are
     # normalised or the two platforms stamp the same source differently
+    # hashed over what is shipped, not over the whole package, so a change to
+    # the command line no longer tells every user their courses are stale
     hasher = hashlib.sha256()
-    for path in sorted((ROOT / "src" / "vault").rglob("*.py")):
+    for path in shipped:
         hasher.update(str(path.relative_to(ROOT)).replace("\\", "/").encode())
         hasher.update(path.read_bytes().replace(b"\r\n", b"\n"))
     digest = hasher.hexdigest()[:12]
