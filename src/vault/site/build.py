@@ -145,10 +145,6 @@ def _copy_assets(target: Path) -> None:
         shutil.copy(asset, target / asset.name)
 
 
-def _course_depth(course: dict) -> int:
-    return 2
-
-
 def _index(courses: list[dict]) -> str:
     rows = []
     for course in courses:

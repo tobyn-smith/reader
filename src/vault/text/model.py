@@ -29,11 +29,6 @@ class ExtractedPage:
     # telling a heading from a wrapped line of prose.
     block_texts: list[str] = field(default_factory=list)
 
-    @property
-    def is_tabular(self) -> bool:
-        return bool(self.tables)
-
-
 @dataclass
 class ExtractedDoc:
     path: Path

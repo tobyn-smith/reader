@@ -280,8 +280,6 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.rail-c { text-align: right; color: var(--faint); }
-.rail-c.is-flag { color: var(--flag); }
 
 /* the filters live in the rail rather than in a bar over the ledger: the rail
    is the ledger's control column and already had the room, so nothing new is
@@ -1524,12 +1522,6 @@ p code, td code, li code { background: var(--tint); padding: 0 4px; }
     margin: 0 0 6px;
     font-family: var(--body);
     font-size: 17px;
-  }
-
-  #smallgate .smallgate-sub {
-    font-size: 13px;
-    color: var(--mid);
-    max-width: 40ch;
   }
 
   /* the written pages are prose and read perfectly well on a phone. the gate

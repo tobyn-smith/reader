@@ -254,10 +254,6 @@ def _starts_new_entry(text: str, buffer: list[str]) -> bool:
     return False
 
 
-def count_date_headings(lines: list[str]) -> int:
-    return sum(1 for line in lines if date_heading(line))
-
-
 def detect_structure(doc: ExtractedDoc, zones: list[Zone]) -> str:
     pages = {line.page for z in zones if z.kind == SCHEDULE for line in z.lines}
     if any(doc.page(p).tables for p in pages if 1 <= p <= doc.page_count):

@@ -211,5 +211,3 @@ def _looks_like_a_real_table(grid: list[list[str]]) -> bool:
     return filled >= 4
 
 
-def page_needs_ocr(page: ExtractedPage) -> bool:
-    return not page.had_text_layer

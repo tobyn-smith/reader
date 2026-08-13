@@ -68,14 +68,6 @@ export function citation(work) {
 }
 
 
-function weekLabel(session) {
-  const parts = []
-  if (session.week_number) parts.push(`Week ${session.week_number}`)
-  if (session.meeting_date) parts.push(shortDate(session.meeting_date))
-  if (session.sub_session_label) parts.push(session.sub_session_label)
-  return parts.join(' ') || 'Unscheduled'
-}
-
 export function scheduleView(course) {
   const rows = course.parse.sessions.map((session) => {
     const readings = session.readings.length

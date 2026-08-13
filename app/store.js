@@ -70,14 +70,6 @@ async function transact(names, mode, run) {
   })
 }
 
-function all(store) {
-  return new Promise((resolve, reject) => {
-    const request = store.getAll()
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
 export async function putCourse(course) {
   await transact(['courses'], 'readwrite', (tx) => tx.objectStore('courses').put(course))
 }

@@ -177,8 +177,3 @@ def split_footnotes(page: Page) -> tuple[Page, list[Block]]:
     return Page(page.number, page.width, page.height, body, page.column_count), notes
 
 
-def footnote_marker(block: Block) -> str | None:
-    m = _FOOTNOTE_START.match(block.text)
-    if not m:
-        return None
-    return (m.group(1) or m.group(0)).strip()

@@ -368,14 +368,3 @@ def segment(doc: ExtractedDoc) -> list[Zone]:
     return zones
 
 
-def zone_text(zones: list[Zone], kind: str) -> str:
-    return "\n".join(z.text for z in zones if z.kind == kind)
-
-
-def zones_of(zones: list[Zone], kind: str) -> list[Zone]:
-    return [z for z in zones if z.kind == kind]
-
-
-def schedule_pages(doc: ExtractedDoc, zones: list[Zone]) -> list[int]:
-    pages = {line.page for z in zones if z.kind == SCHEDULE for line in z.lines}
-    return sorted(pages)
