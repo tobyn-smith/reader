@@ -8,6 +8,8 @@ title bar drawn inside the table box.
 
 from __future__ import annotations
 
+import pytest
+
 from vault.text.runs import (
     Run,
     _lines_from_runs,
@@ -197,6 +199,83 @@ class TestDefectsFoundInReview:
         tables = _tables_from_rules(_lines(runs), rules)
         assert len(tables) == 1
         assert tables[0][0] == ["Week", "Topic"]
+
+
+class TestFormXObject:
+    """a table drawn inside a form xobject, as word and ghostscript emit.
+
+    pdf.js inlines form content into the page's operator list between a begin
+    and end op that carry the form's matrix, and treats them as an implicit
+    save, transform, restore. mirroring only the plain transform op put the
+    rules hundreds of points away from their own text, and let a bare
+    transform inside a form corrupt every rule drawn after it.
+
+    the fixture is built here rather than committed: pymupdf's show_pdf_page
+    produces exactly this shape, so the test carries its own evidence.
+    """
+
+    def _embedded_table(self, tmp_path):
+        pymupdf = pytest.importorskip("pymupdf")
+        inner = pymupdf.open()
+        page = inner.new_page(width=400, height=300)
+        cols = [40, 120, 250, 360]
+        rows = [40, 70, 110, 150]
+        for y in rows:
+            page.draw_line(pymupdf.Point(cols[0], y), pymupdf.Point(cols[-1], y), width=0.6)
+        for x in cols:
+            page.draw_line(pymupdf.Point(x, rows[0]), pymupdf.Point(x, rows[-1]), width=0.6)
+        for x, text in ((48, "Week"), (128, "Topic"), (258, "Readings")):
+            page.insert_text((x, 60), text, fontsize=10)
+        for x, text in ((48, "1"), (128, "Introduction"), (258, "Smith ch. 1")):
+            page.insert_text((x, 95), text, fontsize=10)
+        for x, text in ((48, "2"), (128, "Methods"), (258, "Jones ch. 2")):
+            page.insert_text((x, 135), text, fontsize=10)
+
+        outer = pymupdf.open()
+        host = outer.new_page(width=612, height=792)
+        host.insert_text((72, 60), "PSCI 4000 Syllabus", fontsize=14)
+        # placing a page inside another is what makes it a form xobject with
+        # a matrix, and the offset is what a broken decoder loses
+        host.show_pdf_page(pymupdf.Rect(72, 300, 552, 660), inner, 0)
+        path = tmp_path / "form.pdf"
+        outer.save(path)
+        return path
+
+    def test_rules_inside_a_form_land_on_their_own_text(self, tmp_path):
+        pymupdf = pytest.importorskip("pymupdf")
+        path = self._embedded_table(tmp_path)
+        doc = pymupdf.open(path)
+        page = doc[0]
+
+        rules = []
+        for drawing in page.get_drawings():
+            for item in drawing.get("items", []):
+                if item[0] != "l":
+                    continue
+                p0, p1 = item[1], item[2]
+                rules.append({"x0": min(p0.x, p1.x), "y0": min(p0.y, p1.y),
+                              "x1": max(p0.x, p1.x), "y1": max(p0.y, p1.y)})
+
+        words = page.get_text("words")
+        table_words = [w for w in words if w[4] in {
+            "Week", "Topic", "Readings", "Introduction", "Methods", "Smith", "Jones"}]
+        assert table_words, "the embedded table produced no text"
+
+        verticals = [r for r in rules if abs(r["x1"] - r["x0"]) <= 0.7]
+        horizontals = [r for r in rules if abs(r["y1"] - r["y0"]) <= 0.7]
+        assert verticals and horizontals
+
+        left = min(r["x0"] for r in verticals)
+        right = max(r["x0"] for r in verticals)
+        top = min(r["y0"] for r in horizontals)
+        bottom = max(r["y0"] for r in horizontals)
+
+        # the ruling has to enclose the words it belongs to. a lost form matrix
+        # puts one of these hundreds of points from the other.
+        assert left <= min(w[0] for w in table_words) + 2
+        assert right >= max(w[2] for w in table_words) - 2
+        assert top <= min(w[1] for w in table_words) + 2
+        assert bottom >= max(w[3] for w in table_words) - 2
 
 
 class TestDocumentWiring:

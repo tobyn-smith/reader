@@ -15,6 +15,13 @@ Drop a syllabus PDF and get the week-by-week schedule, every reading as a
 proper citation, the deadlines, and a bibliography you can print. No install,
 no account, no upload.
 
+**Want it as an app?** It installs itself, with an icon beside your other
+programmes, its own window and offline launch. In Chrome or Edge, click the
+install icon at the right-hand end of the address bar, or the "install it as an
+app" link at the foot of the page. In Safari, File then Add to Dock. Firefox on
+desktop has no install, and the site works the same in it. Nothing is
+downloaded and your saved courses carry over either way.
+
 I built this for reading-heavy courses: international affairs, political
 science, history, English, the humanities generally, where the syllabus is a
 long list of citations and the entire job is keeping up with it. Every term

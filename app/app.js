@@ -1011,21 +1011,31 @@ async function boot() {
   // the browser decides when installing is on offer; the line only appears
   // once it says so, and goes away again once the app is installed
   let installPrompt = null
+  const showInstall = (canPrompt) => {
+    $('install').hidden = !canPrompt
+    $('install-help').hidden = canPrompt
+  }
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault()
     installPrompt = e
-    $('install-line').hidden = false
+    showInstall(true)
   })
+  // already installed: neither offer applies, and the line goes quiet
   window.addEventListener('appinstalled', () => {
     installPrompt = null
-    $('install-line').hidden = true
+    $('install').hidden = true
+    $('install-help').hidden = true
   })
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    $('install').hidden = true
+    $('install-help').hidden = true
+  }
   $('install').onclick = async () => {
     if (!installPrompt) return
     installPrompt.prompt()
     await installPrompt.userChoice
     installPrompt = null
-    $('install-line').hidden = true
+    showInstall(false)
   }
 
   draw()
