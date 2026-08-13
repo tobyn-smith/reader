@@ -701,13 +701,39 @@ def _looks_like_prose(text: str) -> bool:
     it is told apart by absence. a citation of any length carries a year, or a
     quoted title, or a page range, or a link, or it opens with a surname. a
     paragraph of English carries none of those, and runs long.
+
+    absence alone was too generous in one direction. a year anywhere in the
+    line used to excuse it, so a paragraph about what happened in an election
+    year stayed on the reading list. a citation wears its year as a field; a
+    sentence merely mentions one, and what it has instead is a verb. so a long
+    line built like a sentence is prose whatever year it names.
     """
     flat = collapse_whitespace(text)
-    if len(flat.split()) < 22:
-        return False
+    words = flat.split()
     if CITATION_START_RE.match(flat):
         return False
-    if re.search(r"\b(?:19|20)\d{2}\b|https?://", flat) or _has_quoted_title(flat):
+    if _has_quoted_title(flat):
+        return False
+
+    # a finite verb, which a citation almost never carries loose in the line
+    sentence = re.search(
+        r"\b(?:is|are|was|were|be|been|has|have|had|will|would|can|could|should|"
+        r"must|may|might|led|become|becomes|became|make|makes|made|take|takes|"
+        r"took|show|shows|showed|use|uses|used|see|explore|discuss|consider|"
+        r"we|you|they|this|these|there)\b",
+        flat,
+        re.IGNORECASE,
+    )
+    if len(words) >= 18 and sentence and not re.search(r"https?://", flat):
+        return not re.search(
+            r"\bp(?:p|ages?|g)?\.?\s*\d|\bvol\.|\bno\.\s*\d|\bch(?:apter|\.)?\s*\d",
+            flat,
+            re.IGNORECASE,
+        )
+
+    if len(words) < 22:
+        return False
+    if re.search(r"\b(?:19|20)\d{2}\b|https?://", flat):
         return False
     # a page reference in any of the forms syllabi write it, spelled out
     # included. "Pages 29-37 in ..." is a reading, and only the page marker

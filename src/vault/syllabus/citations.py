@@ -400,7 +400,11 @@ PATTERNS: list[Pattern] = [
         re.compile(
             r"^(?P<authors>[A-Z][A-Za-z'’-]+(?:\s+(?:and|&)\s+[A-Z][A-Za-z'’-]+)*)"
             r"\s*,?\s+(?P<pages>(?:chapters?|ch\.?|sections?|pp?\.|pages?)\s*"
-            r"[\d][\d.,\s&-]*(?:and\s*[\d.]+)?)\s*\.?\s*$",
+            r"[\d][\d.,\s&–-]*(?:and\s*[\d.]+)?)"
+            # a set text is often given with what it covers after a semicolon:
+            # "NRC Ch 12; Fish Meat film". the chapter is the citation and the
+            # tail is the week's subject, so the tail is allowed and ignored
+            r"\s*(?:;\s*(?P<extra>[^;]{2,80}))?\s*\.?\s*$",
             re.IGNORECASE,
         ),
         BOOK_CHAPTER,
@@ -490,6 +494,38 @@ PATTERNS: list[Pattern] = [
         ),
         BOOK_CHAPTER,
         0.7,
+        expects_author=False,
+        expects_year=False,
+    ),
+    Pattern(
+        # the plainest author-date book there is: "Levitsky, Steven, and Daniel
+        # Ziblatt. 2018. How Democracies Die. Crown." the existing book pattern
+        # wants a city before the publisher, so every citation written without
+        # one fell through, which is most of them in a politics reading list.
+        # the year takes brackets or not, and an editor mark rides along in the
+        # author list where one is given.
+        "author_date_book",
+        re.compile(
+            r"^(?P<authors>[A-Z][^.]{2,150}?)[.,]\s*\(?" + _YEAR + r"\)?\.\s*"
+            r"(?P<title>[^.]{4,170}?)\.\s*"
+            r"(?P<publisher>[A-Z][^.]{2,90})?\.?\s*(?P<tail>.{0,80})$",
+            re.DOTALL,
+        ),
+        BOOK,
+        0.7,
+    ),
+    Pattern(
+        # a set text given by chapter and chapter title, with the book itself
+        # named once at the top of the syllabus: "Chapter 3 Earnings and
+        # Income: The building blocks of your financial journey"
+        "chapter_with_title",
+        re.compile(
+            r"^(?:chapters?|ch\.)\s*(?P<pages>\d{1,2})\s+"
+            r"(?P<title>[A-Z][^.]{6,140}?)\s*\.?\s*$",
+            re.IGNORECASE,
+        ),
+        BOOK_CHAPTER,
+        0.6,
         expects_author=False,
         expects_year=False,
     ),
