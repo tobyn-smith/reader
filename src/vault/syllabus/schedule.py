@@ -332,7 +332,35 @@ def parse(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> SchedulePa
 
     result.important_dates = _find_important_dates(doc, term)
     _demote_topic_outline(result)
+    _drop_trailing_tail(result)
     return result
+
+
+def _drop_trailing_tail(parsed: ScheduleParse) -> None:
+    """the last session collects whatever the document says after the calendar.
+
+    the schedule zone runs to the end of the document, so a syllabus that puts
+    its assignment brief after the week by week table hands every line of it to
+    the final week. one course ended with a week holding nine "readings" that
+    were the required contents of a report, while its real weeks held one each.
+
+    two conditions together, because either alone would catch a real course. it
+    has to hold more than every other session put together, which no ordinary
+    final week does, and almost none of it may resolve to a citation, which a
+    genuine end of term reading pack would.
+    """
+    with_readings = [s for s in parsed.sessions if s.readings]
+    if len(with_readings) < 3:
+        return
+    last = with_readings[-1]
+    others = sum(len(s.readings) for s in with_readings[:-1])
+    if len(last.readings) <= others:
+        return
+    resolved = sum(1 for r in last.readings if r.citation.matched_pattern)
+    if resolved > len(last.readings) * 0.3:
+        return
+    parsed.unparsed.extend(collapse_whitespace(r.raw) for r in last.readings)
+    last.readings = []
 
 
 # below this a schedule is too small to judge: two unrecognised lines really
@@ -363,7 +391,12 @@ def _demote_topic_outline(parsed: ScheduleParse) -> None:
     readings = [r for session in parsed.sessions for r in session.readings]
     if len(readings) < _OUTLINE_MIN_ROWS:
         return
-    if any(r.citation.matched_pattern for r in readings):
+    resolved = sum(1 for r in readings if r.citation.matched_pattern)
+    # demanding nothing at all resolve made one stray match disable the whole
+    # test: a sixty line topic outline kept every line because one of them
+    # happened to read as a citation. a long outline is allowed a few, since a
+    # real reading list resolves most of itself, never a twentieth.
+    if resolved and not (len(readings) >= 12 and resolved <= len(readings) * 0.05):
         return
 
     for session in parsed.sessions:

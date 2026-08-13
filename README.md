@@ -51,7 +51,7 @@ real syllabi, through the browser's path, which is what most people use:
 | Course code | **100%** |
 | Term | **97%** |
 | Found a schedule | **81%** |
-| Readings parsed into full citations | **69%** |
+| Readings parsed into full citations | **85%** |
 | Weights adding up to about 100 | **10 of 12** |
 
 Reproduce the lot with `python scripts/measure.py <folder> --web`, or drop
