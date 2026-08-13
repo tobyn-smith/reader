@@ -331,7 +331,52 @@ def parse(doc: ExtractedDoc, zones: list[Zone], term: Term | None) -> SchedulePa
             result = other
 
     result.important_dates = _find_important_dates(doc, term)
+    _demote_topic_outline(result)
     return result
+
+
+# below this a schedule is too small to judge: two unrecognised lines really
+# can be two hard readings, while forty of them are not a reading list.
+_OUTLINE_MIN_ROWS = 4
+
+
+def _demote_topic_outline(parsed: ScheduleParse) -> None:
+    """a course outline is a list of topics, not a list of readings.
+
+    plenty of syllabi head their outline "Module 1:" and bullet the sub topics
+    under it. every bullet then looks exactly like a reading to the bulleted
+    parser, and one course came back with fifty eight of them, none of which
+    was anything to go and read. the same shape catches learning outcomes and
+    the university welfare block where those land in the schedule zone.
+
+    no single row can be judged: "The Australia Group" is a real assigned
+    resource in one syllabus and a topic name in another. what separates them
+    is the document. a real reading list resolves some of its citations; a
+    topic outline resolves none of them, however long it runs. so the test is
+    the whole schedule, not the line.
+
+    the rows are not thrown away. a session with no topic takes its first row
+    as one, which is what the line always was, and the rest are recorded as
+    unparsed so review still shows them rather than the parser quietly
+    deciding a page of the syllabus did not exist.
+    """
+    readings = [r for session in parsed.sessions for r in session.readings]
+    if len(readings) < _OUTLINE_MIN_ROWS:
+        return
+    if any(r.citation.matched_pattern for r in readings):
+        return
+
+    for session in parsed.sessions:
+        if not session.readings:
+            continue
+        if not session.topic:
+            session.topic = collapse_whitespace(session.readings[0].raw)
+            rest = session.readings[1:]
+        else:
+            rest = session.readings
+        parsed.unparsed.extend(collapse_whitespace(r.raw) for r in rest)
+        session.readings = []
+        session.session_type = "topic"
 
 
 def _score(parsed: ScheduleParse) -> tuple[int, int, int, int]:
