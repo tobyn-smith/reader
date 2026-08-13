@@ -891,6 +891,48 @@ ol.bibliography li {
 .relday { display: block; font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .band-late + table .relday { color: var(--flag); }
 
+/* ---- this week --------------------------------------------------------- */
+
+/* the facts across the top: the four numbers that answer "how much is there"
+   before any of the detail is read */
+.weekfacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 34px;
+  margin: 10px 0 4px;
+  padding: 9px 0;
+  border-top: 2px solid var(--rule);
+  border-bottom: 1px solid var(--hair);
+}
+
+.weekfacts > div { display: flex; flex-direction: column; }
+
+.weekfacts dt {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--faint);
+}
+
+.weekfacts dd { margin: 0; font-family: var(--mono); font-size: 17px; }
+
+/* the course code is the column this view exists for: without it the rows are
+   an undifferentiated pile from four different classes */
+.w-course {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mid);
+  white-space: nowrap;
+  width: 92px;
+}
+
+table.ledger th.w-course, table.ledger td.w-course { width: 92px; }
+
 /* ---- grades ------------------------------------------------------------ */
 
 /* one card per course in the term views. the 2px weight marks a section the

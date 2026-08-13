@@ -793,6 +793,95 @@ export function gradesView(courses, activeId) {
 }
 
 
+// every other view answers "what does this course want". a student carrying
+// four of them is asking the other question: what is wanted of me this week,
+// by anybody. the data was already here, gathered one course at a time.
+export function thisWeekView(courses, progress) {
+  if (!courses.length) return '<h2>This week</h2><p class="secondary">No courses yet.</p>'
+
+  // a window that opens a couple of days back, because work set last Thursday
+  // is still this week's work on Monday, and runs a week forward
+  const inWindow = (days) => days !== null && days >= -3 && days <= 7
+
+  const readings = []
+  const due = []
+
+  for (const course of courses) {
+    for (const session of course.parse.sessions) {
+      const days = daysUntil(session.meeting_date)
+      if (!inWindow(days)) continue
+      for (const reading of session.readings) {
+        const id = readingKey(course, session, reading)
+        const saved = progress.get(id) || {}
+        readings.push({ course, session, reading, id, saved, days })
+      }
+    }
+    for (const item of course.parse.deliverables.items) {
+      const days = daysUntil(item.due_date)
+      if (!inWindow(days)) continue
+      due.push({ course, item, days })
+    }
+  }
+
+  readings.sort((a, b) => a.days - b.days || a.course.code.localeCompare(b.course.code))
+  due.sort((a, b) => a.days - b.days)
+
+  if (!readings.length && !due.length) {
+    // nothing this week is a real answer, and a dated course can say so with
+    // confidence. an undated one cannot, and must not pretend to.
+    const dated = courses.some((c) => c.parse.sessions.some((s) => s.meeting_date))
+    return `<h2>This week</h2>
+      <p class="secondary">${dated
+        ? 'Nothing falls in the next seven days across your courses.'
+        : 'None of your courses came out with dates on them, so there is no '
+          + 'way to say what lands this week. The Week view has everything in order.'}</p>`
+  }
+
+  const rows = readings.map(({ course, session, reading, id, saved, days }) => `
+    <tr class="rec${saved.read ? ' struck' : ''}" data-row="${esc(id)}">
+      <td class="c-tick"><input type="checkbox" data-progress="${esc(id)}"
+        ${saved.read ? 'checked' : ''} aria-label="Mark as read"></td>
+      <td class="w-course">${esc(course.code)}</td>
+      <td class="c-date">${esc(shortDate(session.meeting_date))}</td>
+      <td class="c-title">${esc(cite.short(reading.work, 400))}
+        ${reading.content_warning
+          ? `<span class="cwarn">Content warning · ${esc(reading.content_warning)}</span>`
+          : ''}</td>
+      <td class="c-pp">${esc(reading.page_range || '')}</td>
+      <td class="c-stat${days <= 1 ? ' is-due' : ''}">${esc(whenLabel(session.meeting_date) || '')}</td>
+    </tr>`).join('')
+
+  const held = readings.filter((r) => r.saved.read).length
+  const pages = readings.reduce((n, r) => n + pageCount(r.reading.page_range), 0)
+
+  return `<h2>This week</h2>
+    <dl class="weekfacts">
+      <div><dt>Readings</dt><dd>${held} of ${readings.length} read</dd></div>
+      ${pages ? `<div><dt>Pages</dt><dd>${pages}</dd></div>` : ''}
+      <div><dt>Due</dt><dd>${due.length}</dd></div>
+      <div><dt>Courses</dt><dd>${new Set(readings.concat(due).map((r) => r.course.code)).size}</dd></div>
+    </dl>
+
+    ${due.length ? `<h3 class="band${due.some((d) => d.days <= 2) ? ' band-soon' : ''}">Due</h3>
+      <table class="marks"><tbody>${due.map(({ course, item, days }) => `
+        <tr>
+          <td class="w-course">${esc(course.code)}</td>
+          <td class="when">${esc(shortDate(item.due_date))}
+            <span class="relday">${esc(whenLabel(item.due_date) || '')}</span></td>
+          <td>${esc(item.title)}</td>
+          <td class="num">${item.weight_percent ? `${item.weight_percent}%` : ''}</td>
+        </tr>`).join('')}</tbody></table>` : ''}
+
+    ${readings.length ? `<h3 class="band">To read</h3>
+      <table class="ledger">
+        <thead><tr>
+          <th class="c-tick"></th><th class="w-course">Course</th><th class="c-date">Date</th>
+          <th class="c-title">Author / Title</th><th class="c-pp">Pages</th><th class="c-stat">When</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : ''}`
+}
+
 // the policy kinds a student actually goes looking for, in the order they go
 // looking. boilerplate is the university's standard block, which is the same
 // on every syllabus and helps nobody, so it stays folded away.

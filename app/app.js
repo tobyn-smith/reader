@@ -685,6 +685,7 @@ function draw() {
     $('rail').innerHTML = ''
     if (state.currentView === 'schedule') target.innerHTML = view.scheduleView(course)
     else if (state.currentView === 'deadlines') target.innerHTML = view.deadlinesView(state.courses, state.active, editing)
+    else if (state.currentView === 'now') target.innerHTML = view.thisWeekView(state.courses, state.progress)
     else if (state.currentView === 'grades') target.innerHTML = view.gradesView(state.courses, state.active)
     else if (state.currentView === 'bibliography') target.innerHTML = view.bibliographyView(course)
     else if (state.currentView === 'policies') target.innerHTML = view.policiesView(course)
@@ -947,9 +948,11 @@ async function boot() {
     }
     if ($('views').hidden) return
 
-    const views = ['week', 'schedule', 'deadlines', 'grades', 'bibliography',
-                   'policies', 'search']
-    if (/^[1-7]$/.test(e.key)) {
+    // the number keys follow the tab strip left to right, so what you see is
+    // what you press
+    const views = ['now', 'week', 'schedule', 'deadlines', 'grades',
+                   'bibliography', 'policies', 'search']
+    if (/^[1-8]$/.test(e.key)) {
       state.currentView = views[Number(e.key) - 1]
       draw()
       return
