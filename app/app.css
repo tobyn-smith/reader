@@ -894,6 +894,19 @@ table.marks tr.struck td { color: var(--faint); }
 .relday { display: block; font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .band-late + table .relday { color: var(--flag); }
 
+/* what kind of thing a search hit is: a reading, a topic, an assignment, a
+   policy, or something the student wrote themselves */
+.hitkind {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--faint);
+  white-space: nowrap;
+  width: 88px;
+}
+
 /* ---- this week --------------------------------------------------------- */
 
 /* the facts across the top: the four numbers that answer "how much is there"

@@ -618,6 +618,59 @@ function drawCalendarButton() {
   if (rows.length) {
     button.textContent = `Add ${rows.length} deadline${rows.length === 1 ? '' : 's'} to a calendar`
   }
+
+  const notes = $('export-notes')
+  const written = collectNotes()
+  notes.hidden = written.length === 0
+  if (written.length) {
+    notes.textContent = `Save ${written.length} note${written.length === 1 ? '' : 's'} as text`
+  }
+}
+
+// every note the student has written, with the reading it belongs to. notes
+// were reachable only inside a json backup, which is a file you restore rather
+// than one you read, so a term's reading notes could not be taken into an
+// essay without retyping them.
+function collectNotes() {
+  const out = []
+  for (const course of state.courses) {
+    for (const session of course.parse.sessions) {
+      for (const reading of session.readings) {
+        const saved = state.progress.get(view.readingKey(course, session, reading)) || {}
+        if (!saved.note || !saved.note.trim()) continue
+        out.push({
+          code: course.code,
+          week: session.week_number ? `Week ${session.week_number}` : '',
+          date: session.meeting_date || '',
+          citation: view.citation(reading.work),
+          note: saved.note.trim(),
+          read: Boolean(saved.read),
+        })
+      }
+    }
+  }
+  return out
+}
+
+// markdown, because it opens as plain text anywhere and pastes into a document
+// with its structure intact
+function notesAsMarkdown(rows) {
+  const byCourse = new Map()
+  for (const row of rows) {
+    if (!byCourse.has(row.code)) byCourse.set(row.code, [])
+    byCourse.get(row.code).push(row)
+  }
+  const parts = ['# Reading notes', '']
+  for (const [code, entries] of byCourse) {
+    parts.push(`## ${code}`, '')
+    for (const entry of entries) {
+      const where = [entry.week, entry.date].filter(Boolean).join(' · ')
+      parts.push(`### ${entry.citation}`)
+      if (where) parts.push(`*${where}*`)
+      parts.push('', entry.note, '')
+    }
+  }
+  return parts.join('\n')
 }
 
 function draw() {
@@ -713,30 +766,66 @@ function draw() {
 
 function drawSearch(target) {
   target.innerHTML = `<h2>Search</h2>
-    <p><label for="q">Query</label><input type="search" id="q" size="40"></p>
+    <p><label for="q">Query</label><input type="search" id="q" size="40"
+      placeholder="a title, a topic, an assignment, your own notes"></p>
     <div id="results"></div>`
   const input = $('q')
   input.oninput = () => {
     const query = input.value.trim().toLowerCase()
-    if (query.length < 2) {
+    if (!query) {
       $('results').innerHTML = ''
       return
     }
+    if (query.length < 2) {
+      // saying nothing here reads as "no matches", which is a different answer
+      $('results').innerHTML = '<p class="secondary">Keep typing, two letters or more.</p>'
+      return
+    }
+
+    // everything the student put in or the parser pulled out, not just the
+    // citations: a topic, an assignment title and your own note about a
+    // reading are all things you go looking for by name later
     const hits = []
+    const add = (course, where, kind, text) => hits.push({ course, where, kind, text })
+
     for (const course of state.courses) {
       for (const session of course.parse.sessions) {
+        const week = session.week_number ? `Week ${session.week_number}` : ''
+        if ((session.topic || '').toLowerCase().includes(query)) {
+          add(course, week, 'Topic', session.topic)
+        }
         for (const reading of session.readings) {
-          const text = `${view.citation(reading.work)} ${reading.raw_source_text}`.toLowerCase()
-          if (text.includes(query)) {
-            hits.push(`<tr><td>${view.esc(course.code)}</td>
-              <td>${view.esc(session.week_number ? `Week ${session.week_number}` : '')}</td>
-              <td class="entry">${view.esc(view.citation(reading.work))}</td></tr>`)
+          const cited = view.citation(reading.work)
+          if (`${cited} ${reading.raw_source_text}`.toLowerCase().includes(query)) {
+            add(course, week, 'Reading', cited)
+          }
+          const note = (state.progress.get(view.readingKey(course, session, reading)) || {}).note
+          if (note && note.toLowerCase().includes(query)) {
+            add(course, week, 'Your note', `${note} — on ${cited}`)
           }
         }
       }
+      for (const item of course.parse.deliverables.items) {
+        const body = `${item.title} ${item.requirements_text || ''}`
+        if (body.toLowerCase().includes(query)) {
+          add(course, item.due_date ? view.shortDate(item.due_date) : '', 'Assignment', item.title)
+        }
+      }
+      for (const policy of course.parse.policies || []) {
+        if ((policy.body || '').toLowerCase().includes(query)) {
+          const flat = policy.body.replace(/\s+/g, ' ').trim()
+          add(course, '', 'Policy', flat.slice(0, 160) + (flat.length > 160 ? '…' : ''))
+        }
+      }
     }
+
     $('results').innerHTML = hits.length
-      ? `<table><tbody>${hits.join('')}</tbody></table>`
+      ? `<p class="secondary">${hits.length} match${hits.length === 1 ? '' : 'es'}.</p>
+         <table><tbody>${hits.map((h) => `<tr>
+           <td class="w-course">${view.esc(h.course.code)}</td>
+           <td class="when">${view.esc(h.where)}</td>
+           <td class="hitkind">${view.esc(h.kind)}</td>
+           <td class="entry">${view.esc(h.text)}</td></tr>`).join('')}</tbody></table>`
       : '<p class="secondary">No matches.</p>'
   }
 }
@@ -1022,6 +1111,18 @@ async function boot() {
     const a = document.createElement('a')
     a.href = url
     a.download = 'deadlines.ics'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  $('export-notes').onclick = () => {
+    const rows = collectNotes()
+    if (!rows.length) return
+    const blob = new Blob([notesAsMarkdown(rows)], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'reading-notes.md'
     a.click()
     URL.revokeObjectURL(url)
   }
