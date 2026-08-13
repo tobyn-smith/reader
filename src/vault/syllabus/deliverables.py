@@ -53,6 +53,19 @@ class DeliverableSet:
 TITLED_WEIGHT_RE = re.compile(
     r"(?P<title>[A-Z][\w&''’/,. ()-]{2,70}?)\s*\(\s*(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*\)",
 )
+
+# an assignment that states a per-item share and a total, or only a total:
+# "Exams (15% each; 30% total)", "Diplomacy Lab (40% total, as divided below)".
+# neither closes the bracket after the percentage, so the plain form above
+# matched nothing at all and the assignment was dropped: one seminar's weights
+# came to 60 because its exams and its papers both vanished. the total is the
+# figure that belongs in the course, never the per-item share.
+TOTAL_WEIGHT_RE = re.compile(
+    r"(?P<title>[A-Z][\w&''’/,. ()-]{2,70}?)\s*\(\s*"
+    r"(?:\d{1,3}(?:\.\d+)?\s*%\s*(?:each|apiece|per\s+\w+)\s*[;,]?\s*)?"
+    r"(?P<weight>\d{1,3}(?:\.\d+)?)\s*%\s*total",
+    re.IGNORECASE,
+)
 # a grading table row: a name, then a percentage, then maybe a date
 TABLE_WEIGHT_RE = re.compile(
     r"^(?P<title>[A-Za-z][\w&''’/,. ()-]{2,70}?)\s{2,}(?P<weight>\d{1,3}(?:\.\d+)?)\s*%",
@@ -203,6 +216,9 @@ def _link_components_to_schedule(items: list[Deliverable]) -> None:
 class _Candidate:
     item: Deliverable
     marker: str
+    # this row stated a total for itself, as in "(40% total, as divided
+    # below)". only such a row is allowed to absorb the rows under it.
+    declares_total: bool = False
 
 
 def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
@@ -250,7 +266,17 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
         if not text:
             continue
 
-        matches = list(TITLED_WEIGHT_RE.finditer(text))
+        # a stated total wins over the bracketed share it sits beside, so the
+        # totals are taken first and the plain form is only allowed where one
+        # has not already claimed that stretch of the line
+        totals = list(TOTAL_WEIGHT_RE.finditer(text))
+        claimed = [(m.start(), m.end()) for m in totals]
+        matches = totals + [
+            m
+            for m in TITLED_WEIGHT_RE.finditer(text)
+            if not any(start < m.end() and m.start() < end for start, end in claimed)
+        ]
+        matches.sort(key=lambda m: m.start())
         # where each assignment's real name begins. the raw title group can
         # backtrack into the previous assignment's prose, so the boundary for
         # a body is the next tidied title, not the next raw match.
@@ -266,7 +292,11 @@ def _from_prose(zone: Zone, term: Term | None) -> list[Deliverable]:
             stop = starts[index + 1][2] if index + 1 < len(starts) else len(text)
             body = text[m.end(): min(stop, m.end() + 900)]
             item = _build(title, float(m.group("weight")), body, text, zone.kind, page, term)
-            candidates.append(_Candidate(item, _marker_for(m.start(), text, markers)))
+            candidates.append(_Candidate(
+                item,
+                _marker_for(m.start(), text, markers),
+                declares_total=m.re is TOTAL_WEIGHT_RE,
+            ))
 
         extra = EXTRA_CREDIT_RE.search(text)
         if extra:
@@ -325,6 +355,38 @@ _APPARATUS_RE = re.compile(
 )
 
 
+def _absorb_subdivisions(candidates: list[_Candidate]) -> list[_Candidate]:
+    """drop the parts of an assignment that stated its own total.
+
+    "Diplomacy Lab (40% total, as divided below)" is followed by the four
+    pieces it divides into, ten per cent each. counting the parent and its
+    parts both put that course at a hundred and forty.
+
+    only a row that declared a total may absorb anything, which is what keeps
+    three ordinary assignments that happen to add up to a fourth from
+    swallowing each other.
+    """
+    keep = [True] * len(candidates)
+    for index, parent in enumerate(candidates):
+        weight = parent.item.weight_percent
+        if not parent.declares_total or not weight or not keep[index]:
+            continue
+        running = 0.0
+        for end in range(index + 1, len(candidates)):
+            child = candidates[end].item.weight_percent
+            if not keep[end] or not child or candidates[end].declares_total:
+                break
+            running += child
+            if running > weight + 0.5:
+                break
+            # at least two parts, or it is a restatement rather than a division
+            if abs(running - weight) <= 0.5 and end > index + 1:
+                for position in range(index + 1, end + 1):
+                    keep[position] = False
+                break
+    return [c for c, k in zip(candidates, keep) if k]
+
+
 def _select_top_level(candidates: list[_Candidate]) -> list[Deliverable]:
     """drop the sub components of a multi part assignment.
 
@@ -334,6 +396,7 @@ def _select_top_level(candidates: list[_Candidate]) -> list[Deliverable]:
     level is the real list of deliverables.
     """
     candidates = [c for c in candidates if not _APPARATUS_RE.match(c.item.title)]
+    candidates = _absorb_subdivisions(candidates)
     if not candidates:
         return []
 

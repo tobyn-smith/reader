@@ -73,23 +73,28 @@ def find_term_in_document(doc: ExtractedDoc) -> Term | None:
     the term is very often printed in the running header, which header stripping
     removes on purpose, so the cleaned text is the wrong place to look for it.
 
-    the filename is the last resort, after every page. two real syllabi carry
-    their term nowhere but the filename ("HIST1234_Ashe_Spring2026_..."), and
-    with no term no year-less date in the document can be resolved at all. a
-    renamed or reused file can lie, which is why nothing in the text ever
-    loses to it.
+    a term is printed at the front, so the first pages are asked first and a
+    match there is taken over everything else.
+
+    the filename comes next. two real syllabi carry their term nowhere else
+    ("HIST1234_Ashe_Spring2026_..."), and with no term no year-less date in the
+    document can be resolved at all. it used to come last, behind a scan of
+    the whole document, and that scan is the problem: a season and year sit in
+    every other bibliography entry, so a reading published in Summer 2016 made
+    a syllabus taught in 2026 report itself as ten years old. a name the author
+    typed is worth more than a publication date on page thirty.
+
+    the whole-document scan is kept as the last resort, for a file named
+    without a term whose own front matter never states one.
     """
     for page in doc.pages[:3]:
         found = find_term(page.raw_text) or find_term(page.text)
         if found:
             return found
-    found = find_term(doc.text)
-    if found:
-        return found
     m = _FILENAME_TERM_RE.search(Path(str(doc.path)).name)
     if m:
         return Term(m.group(1).lower(), int(m.group(2)))
-    return None
+    return find_term(doc.text)
 
 
 def parse(doc: ExtractedDoc) -> CourseMeta:

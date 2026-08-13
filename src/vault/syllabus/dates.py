@@ -27,7 +27,11 @@ TERM_MONTHS = {
 }
 
 _TERM_RE = re.compile(
-    r"\b(fall|spring|summer|winter)\s+(20\d{2})\b|\b(20\d{2})\s+(fall|spring|summer|winter)\b",
+    # a season joined to another by a slash or dash is a journal issue, not a
+    # course term: "Spring/Summer 2016" in a reading list made a 2026 syllabus
+    # report itself as ten years old. the lookbehind refuses that shape.
+    r"(?<![/–—-])\b(fall|spring|summer|winter)\s+(20\d{2})\b"
+    r"|\b(20\d{2})\s+(fall|spring|summer|winter)\b",
     re.IGNORECASE,
 )
 

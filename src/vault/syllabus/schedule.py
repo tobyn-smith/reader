@@ -555,8 +555,22 @@ def _lift_subheadings(session: SessionEntry, entries: list[str]) -> list[str]:
 # a row that is nothing but requirement-level words is a sub-header from a
 # two-column reading list ("Required   Suggested"), not a reading
 _LEVEL_WORDS_ROW = re.compile(
-    r"^\s*(?:required|suggested|optional|recommended)"
-    r"(?:\s+(?:required|suggested|optional|recommended))*\s*[:.]?\s*$",
+    # the level word on its own, and the same word introducing the list it
+    # heads: "Required Reading:", "Suggested Readings", "Optional Materials".
+    # these are labels on a list, and each one was being checked off as a
+    # thing to go and read.
+    r"^\s*(?:required|suggested|optional|recommended|further|additional|core)"
+    r"(?:\s+(?:required|suggested|optional|recommended))*"
+    r"(?:\s+(?:reading|readings|material|materials|resource|resources|text|texts))?"
+    r"\s*[:.]?\s*$",
+    re.IGNORECASE,
+)
+
+# the same label arriving glued to the end of a real entry, because the next
+# section's heading shared its line: "Text of the CWC: ... Suggested Reading:"
+_TRAILING_LEVEL_LABEL_RE = re.compile(
+    r"\s+(?:required|suggested|optional|recommended|further|additional)\s+"
+    r"(?:reading|readings|material|materials|resource|resources)\s*:?\s*$",
     re.IGNORECASE,
 )
 
@@ -570,13 +584,36 @@ _CHAPTER_FUSE_RE = re.compile(
 )
 
 
+# a bullet in the middle of a line, with text on both sides. a reading list
+# laid out in a narrow column often extracts as one long line carrying its
+# whole week: "• RLMO, Ch. 2 • Seawright & Gerring (2008) • Mahoney (2012)".
+# read as a single row it matches no citation pattern at all, so three real
+# readings became one unparsed line. the marker must be a real bullet glyph;
+# splitting on a hyphen or an asterisk would cut titles in half.
+_INTERIOR_BULLET_RE = re.compile(r"\s+[•▪●◦‣⁃·]\s+")
+
+
+def _split_bulleted_run(text: str) -> list[str]:
+    """one line carrying several bulleted readings becomes several."""
+    body = re.sub(r"^\s*[•▪●◦‣⁃·]\s*", "", text)
+    parts = [p.strip() for p in _INTERIOR_BULLET_RE.split(body)]
+    parts = [p for p in parts if len(p) >= 4]
+    # two or more is a list; one means the line simply started with a bullet
+    return parts if len(parts) >= 2 else []
+
+
 def _split_fused_columns(entries: list[str]) -> list[tuple[str, str | None]]:
     """undo a required/suggested column merge, keeping the level of each half."""
     out: list[tuple[str, str | None]] = []
     for raw in entries:
         if _LEVEL_WORDS_ROW.match(collapse_whitespace(raw)):
             continue
-        m = _CHAPTER_FUSE_RE.match(collapse_whitespace(raw))
+        flat = collapse_whitespace(raw)
+        pieces = _split_bulleted_run(flat)
+        if pieces:
+            out.extend((piece, None) for piece in pieces)
+            continue
+        m = _CHAPTER_FUSE_RE.match(flat)
         if m:
             out.append((m.group("cite"), None))
             out.append((m.group("rest"), "recommended"))
@@ -646,6 +683,11 @@ def _build_reading(raw: str, ordinal: int) -> ReadingEntry | None:
     if not text or len(text) < 4:
         return None
     if cit.looks_like_placeholder(text):
+        return None
+    # the next section's heading can share a line with the last entry of this
+    # one, and it belongs to neither: strip it before anything else reads it
+    text = _TRAILING_LEVEL_LABEL_RE.sub("", text).strip()
+    if len(text) < 4:
         return None
     # a sub-header of level words from a two-column list reaches here by more
     # than one route, so the guard lives at the choke point
@@ -1000,12 +1042,15 @@ def _finish_labelled(session: SessionEntry, tagged: list[tuple[str, str]]) -> No
         # and listing it on a reading checklist makes the checklist useless.
         if _requirement_level(label) == "reference":
             continue
-        entry = _build_reading(raw, ordinal)
-        if entry is None:
-            continue
-        entry.requirement_level = _requirement_level(label)
-        session.readings.append(entry)
-        ordinal += 1
+        # a labelled block gets the same treatment as a bulleted one: a line
+        # carrying a whole week's readings between bullets is several rows
+        for piece in _split_bulleted_run(flat) or [raw]:
+            entry = _build_reading(piece, ordinal)
+            if entry is None:
+                continue
+            entry.requirement_level = _requirement_level(label)
+            session.readings.append(entry)
+            ordinal += 1
     _classify_session(session)
     if session.readings:
         session.confidence = min(r.confidence for r in session.readings)
@@ -1395,11 +1440,13 @@ def _append_to_last(
     session = sessions[-1]
     entries, hints = _split_cell_entries(tail)
     session.deliverable_hints.extend(hints)
-    start = len(session.readings)
-    for offset, raw in enumerate(entries):
-        entry = _build_reading(raw, start + offset)
-        if entry is not None:
-            session.readings.append(entry)
+    ordinal = len(session.readings)
+    for raw in entries:
+        for piece in _split_bulleted_run(collapse_whitespace(raw)) or [raw]:
+            entry = _build_reading(piece, ordinal)
+            if entry is not None:
+                session.readings.append(entry)
+                ordinal += 1
 
 
 def _split_sub_sessions(cell: str) -> list[tuple[str | None, str]]:

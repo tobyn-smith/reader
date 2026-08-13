@@ -477,6 +477,62 @@ PATTERNS: list[Pattern] = [
         expects_author=False,
         expects_year=False,
     ),
+    Pattern(
+        # a book named as one, with the chapter after a semicolon or comma:
+        # "Book: Hazard Analysis; Chapter 1". policy courses assign a set text
+        # this way rather than by author, and every one of them was landing in
+        # review as unrecognised.
+        "named_book_chapter",
+        re.compile(
+            r"^(?:book|text|textbook)\s*:\s*(?P<title>[^;,:]{4,90})"
+            r"\s*[;,:]\s*(?:chapters?|ch\.?)\s*(?P<pages>\d[\d\s,&-]*)\s*$",
+            re.IGNORECASE,
+        ),
+        BOOK_CHAPTER,
+        0.7,
+        expects_author=False,
+        expects_year=False,
+    ),
+    Pattern(
+        # the short form a seminar reading list is written in, where the full
+        # citation lives in a bibliography elsewhere: "Seawright & Gerring
+        # (2008)", "Gibler, Miller, & Little (2016)", "Schenoni et al. (2023),
+        # including Appendix B". it carries no title by nature, so it is scored
+        # as the shorthand it is rather than as a broken article.
+        #
+        # the surnames must be capitalised and the year must close the names,
+        # which is what keeps it off prose that happens to cite a year mid
+        # sentence.
+        # deliberately case sensitive: the capital on each surname is what
+        # separates this from a sentence that cites a year in passing.
+        "author_year_short",
+        re.compile(
+            r"^(?P<authors>[A-Z][A-Za-z'’-]+"
+            r"(?:\s*(?:,\s*&|,\s*and|,|&|and)\s*"
+            r"(?:[A-Z][A-Za-z'’-]+|et\s+al\.?))*"
+            r"(?:\s*,?\s*et\s+al\.?)?)"
+            r"\s*\(\s*" + _YEAR + r"\s*\)"
+            r"(?:\s*[,.:;]?\s*(?P<pages>[Cc]h(?:apters?|s?\.?)\s*[\d\s,&-]+))?"
+            r"\s*[,.]?\s*(?P<extra>[^.]{0,60})?\s*$"
+        ),
+        JOURNAL_ARTICLE,
+        0.5,
+        expects_title=False,
+    ),
+    Pattern(
+        # a web page carrying its site in the title, the way a browser writes
+        # it: "Countries and Areas | The Arms Data Project". the pipe
+        # is doing real work here, so this stays narrow: nothing else in a
+        # reading list uses one.
+        "page_title_with_site",
+        re.compile(
+            r"^(?P<title>[^|]{4,110}?)\s*\|\s*(?P<container>[^|]{2,60})\s*$",
+        ),
+        WEB_PAGE,
+        0.55,
+        expects_author=False,
+        expects_year=False,
+    ),
 ]
 
 # a line that is an instruction rather than a citation. these are recorded so a

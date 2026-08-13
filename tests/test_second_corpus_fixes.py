@@ -437,3 +437,120 @@ class TestScheduleZoneStart:
         start = zones.find_schedule_start(lines)
         # the heading just above the first week is pulled in, not skipped
         assert lines[start].text in ("Course schedule", "Week 1: Introduction")
+
+
+class TestTermIsNotAPublicationDate:
+    """a season and year appear in every other bibliography entry.
+
+    scanning the whole document for a term meant a reading published in
+    "Spring/Summer 2016" set the course term, so a syllabus taught in 2026
+    reported itself as ten years old and dated every session to match.
+    """
+
+    def test_a_compound_season_is_a_journal_issue(self):
+        from vault.syllabus.dates import find_term
+        assert find_term("Spring/Summer 2016; 01 - Drafting") is None
+        assert find_term("Winter/Spring 2019; 02") is None
+
+    def test_a_real_term_still_reads(self):
+        from vault.syllabus.dates import find_term
+        assert str(find_term("Course syllabus, Fall 2026")) == "Fall 2026"
+        assert str(find_term("2026 Spring")) == "Spring 2026"
+
+
+class TestBulletedRunsSplit:
+    """one line carrying a whole week's readings between bullets."""
+
+    def test_three_readings_on_one_line(self):
+        from vault.syllabus.schedule import _split_bulleted_run
+        assert _split_bulleted_run(
+            "• RLMO, Ch. 2 • Seawright & Gerring (2008) • Mahoney (2012)"
+        ) == ["RLMO, Ch. 2", "Seawright & Gerring (2008)", "Mahoney (2012)"]
+
+    def test_a_single_bulleted_reading_is_left_whole(self):
+        from vault.syllabus.schedule import _split_bulleted_run
+        assert _split_bulleted_run("• RLMO, Ch. 15") == []
+
+    def test_a_hyphen_does_not_split_a_title(self):
+        from vault.syllabus.schedule import _split_bulleted_run
+        assert _split_bulleted_run("Smith - A Study of War - Chapter 2") == []
+
+
+class TestReadingListLabels:
+    def test_the_label_on_a_list_is_not_a_reading(self):
+        from vault.syllabus.schedule import _LEVEL_WORDS_ROW
+        for text in ("Required Reading:", "Suggested Readings", "Optional Materials",
+                     "Further Reading:", "Required"):
+            assert _LEVEL_WORDS_ROW.match(text), text
+
+    def test_a_title_that_starts_with_one_survives(self):
+        from vault.syllabus.schedule import _LEVEL_WORDS_ROW
+        for text in ("Reading the Landscape", "Required reading is heavy this week"):
+            assert not _LEVEL_WORDS_ROW.match(text), text
+
+    def test_a_heading_glued_to_the_last_entry_is_stripped(self):
+        from vault.syllabus.schedule import _TRAILING_LEVEL_LABEL_RE
+        assert _TRAILING_LEVEL_LABEL_RE.sub(
+            "", "Text of the CWC: Chemical Weapons Convention Suggested Reading:"
+        ).strip() == "Text of the CWC: Chemical Weapons Convention"
+
+
+class TestShortFormCitations:
+    """the form a seminar list is written in, with the full entry elsewhere."""
+
+    def test_author_year_pairs(self):
+        for text in ("Seawright & Gerring (2008)", "Powers and Renshon (2023)",
+                     "Gibler, Miller, & Little (2016)", "Kertzer (2022)",
+                     "Schenoni et al. (2023), including Appendix B"):
+            assert parse_citation(text).matched_pattern == "author_year_short", text
+
+    def test_a_chapter_tail_is_kept(self):
+        c = parse_citation("Goertz (2020), Ch. 2-3")
+        assert c.matched_pattern == "author_year_short"
+        assert "2-3" in (c.pages or "")
+
+    def test_prose_citing_a_year_is_not_a_reading(self):
+        for text in ("The recent study (2020) showed that trade barriers fell",
+                     "see the appendix (2020)"):
+            assert parse_citation(text).matched_pattern != "author_year_short", text
+
+    def test_a_named_book_with_its_chapter(self):
+        assert parse_citation("Book: Hazard Analysis; Chapter 1").matched_pattern == "named_book_chapter"
+        assert parse_citation("Book: Hazard Analysis: Chapter 2").matched_pattern == "named_book_chapter"
+
+    def test_a_page_title_carrying_its_site(self):
+        c = parse_citation("Countries and Areas | The Arms Data Project")
+        assert c.matched_pattern == "page_title_with_site"
+        assert c.container == "The Arms Data Project"
+
+
+class TestStatedTotals:
+    def test_each_and_total_takes_the_total(self):
+        from vault.syllabus.deliverables import TOTAL_WEIGHT_RE
+        m = TOTAL_WEIGHT_RE.search("2. Exams (15% each; 30% total).")
+        assert m and m.group("weight") == "30"
+
+    def test_a_bare_total_is_read(self):
+        from vault.syllabus.deliverables import TOTAL_WEIGHT_RE
+        m = TOTAL_WEIGHT_RE.search("Diplomacy Lab (40% total, as divided below)")
+        assert m and m.group("weight") == "40"
+
+    def test_a_declared_total_absorbs_its_parts(self):
+        from vault.syllabus.deliverables import Deliverable, _Candidate, _absorb_subdivisions
+        parent = _Candidate(Deliverable(title="Diplomacy Lab", weight_percent=40.0),
+                            "", declares_total=True)
+        parts = [_Candidate(Deliverable(title=name, weight_percent=10.0), "")
+                 for name in ("Literature Review", "Country Report", "Research Tasks", "Reflection")]
+        kept = _absorb_subdivisions([parent] + parts)
+        assert [c.item.title for c in kept] == ["Diplomacy Lab"]
+
+    def test_ordinary_assignments_are_never_absorbed(self):
+        """three that happen to add up to a fourth must all survive."""
+        from vault.syllabus.deliverables import Deliverable, _Candidate, _absorb_subdivisions
+        items = [
+            _Candidate(Deliverable(title="Final essay", weight_percent=40.0), ""),
+            _Candidate(Deliverable(title="Quiz 1", weight_percent=10.0), ""),
+            _Candidate(Deliverable(title="Quiz 2", weight_percent=10.0), ""),
+            _Candidate(Deliverable(title="Midterm", weight_percent=20.0), ""),
+        ]
+        assert len(_absorb_subdivisions(items)) == 4

@@ -43,16 +43,16 @@ something to do it instead.
 
 ## How accurate it is
 
-The numbers matter more than the pitch, so they come first. Measured over 31
+The numbers matter more than the pitch, so they come first. Measured over 32
 real syllabi, through the browser's path, which is what most people use:
 
 | | |
 | --- | --- |
 | Course code | **100%** |
-| Term | **100%** |
+| Term | **97%** |
 | Found a schedule | **81%** |
-| Readings parsed into full citations | **68%** |
-| Weights adding up to about 100 | **9 of 12** |
+| Readings parsed into full citations | **69%** |
+| Weights adding up to about 100 | **10 of 12** |
 
 Reproduce the lot with `python scripts/measure.py <folder> --web`, or drop
 `--web` for the command line's figures, which run a few points better because
