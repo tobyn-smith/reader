@@ -6,7 +6,7 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/tobyn-smith/reader/ci.yml?style=flat-square&label=tests&labelColor=2B2924)](https://github.com/tobyn-smith/reader/actions/workflows/ci.yml)
 [![Deploy](https://img.shields.io/github/actions/workflow/status/tobyn-smith/reader/pages.yml?style=flat-square&label=deploy&labelColor=2B2924)](https://github.com/tobyn-smith/reader/actions/workflows/pages.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-EDE8DA?style=flat-square&labelColor=2B2924)](#install)
-[![Citations parsed](https://img.shields.io/badge/citations_parsed-86%25-D2704A?style=flat-square&labelColor=2B2924)](#how-accurate-it-is)
+[![Citations parsed](https://img.shields.io/badge/citations_parsed-91%25-D2704A?style=flat-square&labelColor=2B2924)](#how-accurate-it-is)
 [![Last commit](https://img.shields.io/github/last-commit/tobyn-smith/reader?style=flat-square&color=6E695E&labelColor=2B2924)](https://github.com/tobyn-smith/reader/commits/main)
 
 ### → [Open it in your browser](https://tobyn-smith.github.io/reader/)
@@ -43,25 +43,31 @@ something to do it instead.
 
 ## How accurate it is
 
-The numbers matter more than the pitch, so they come first. Measured over 32
+The numbers matter more than the pitch, so they come first. Measured over 31
 real syllabi, through the browser's path, which is what most people use:
 
 | | |
 | --- | --- |
 | Course code | **100%** |
-| Term | **97%** |
+| Term | **100%** |
 | Found a schedule | **81%** |
-| Readings parsed into full citations | **86%** |
-| Weights adding up to about 100 | **10 of 12** |
+| Readings parsed into full citations | **91%** |
+| Grading read in full, out of every file tested | **13 of 31** |
 
 Reproduce the lot with `python scripts/measure.py <folder> --web`, or drop
-`--web` for the command line's figures, which run a few points better because
-it can see the ruled lines a table is drawn with and the browser cannot.
+`--web` for the command line's figures. The command line sees the ruled lines
+a table is drawn with and the browser cannot, so it finds more rows; it also
+admits more rows that were never readings, which is why its citation share
+reads lower rather than higher.
 
 Reading lists are the weak spot, whilst everything structural is dependable.
 Most of what fails was never a reading in the first place: week topics,
 description paragraphs, columns lifted off a grading table. Keeping those out
-took it from 66% to 86%.
+took it from 66% to 91%.
+
+Grading is the thinnest column and the last one worth trusting blind. Plenty
+of courses state it in a sentence, or count in points rather than percentages,
+and those come back empty for you to fill in rather than wrong.
 
 Anything it cannot read, it shows you verbatim and marks for checking. It will
 not quietly drop a reading or invent one. Where no schedule turns up, the PDF

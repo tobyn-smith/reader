@@ -150,18 +150,20 @@
 
 <details id="accuracy">
   <summary>How accurate is this</summary>
-  <p class="note">I've tested this on 32 syllabi. Below are the accuracy
-    scores as of 13 August 2026.</p>
+  <p class="note">I've tested this on 31 syllabi. Below are the accuracy
+    scores as of 13 August 2026, measured the same way the page you are on
+    parses a file.</p>
   <table>
     <thead>
       <tr><th>What</th><th class="num">Rate</th></tr>
     </thead>
     <tbody>
       <tr><td>Course code</td><td class="num">100%</td></tr>
-      <tr><td>Term</td><td class="num">97%</td></tr>
+      <tr><td>Term</td><td class="num">100%</td></tr>
       <tr><td>Found the schedule</td><td class="num">81%</td></tr>
-      <tr><td>Readings turned into full citations</td><td class="num">86%</td></tr>
-      <tr><td>Weights totalling near 100%</td><td class="num">10 of 12</td></tr>
+      <tr><td>Readings turned into full citations</td><td class="num">91%</td></tr>
+      <tr><td>Grading read in full, out of every file tested</td>
+          <td class="num">13 of 31</td></tr>
     </tbody>
   </table>
   <p class="note">
@@ -169,7 +171,9 @@
     with an odd layout may throw it off. Anything it cannot read will need you
     to add or correct manually, rather than it quietly dropping a reading or
     inventing one. If there is no schedule, the syllabus may not have one, or
-    there is a bug.
+    there is a bug. Grading is the weakest of these: a lot of courses state it
+    in a sentence, or count in points rather than percentages, and those come
+    back empty for you to fill in rather than wrong.
   </p>
 </details>
 
