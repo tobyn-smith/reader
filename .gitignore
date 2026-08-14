@@ -30,9 +30,3 @@ build/
 dist/
 corpus*.json
 scrub.txt
-
-# local tooling. the launch config says how to serve the app and is worth
-# keeping; everything else in here is scratch, including whole throwaway
-# checkouts of the repo, which must never be committed back into it.
-.claude/*
-!.claude/launch.json
