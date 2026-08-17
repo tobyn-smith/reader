@@ -36,6 +36,15 @@ import vault.web
     return pyodide
   })()
 
+  // a failed download must not be remembered. keeping the rejected promise,
+  // or a pyodide with no parser unpacked into it, meant one network blip
+  // during the big download broke every later file until the tab was closed.
+  loading.catch(() => {
+    loading = null
+    pyodide = null
+    web = null
+  })
+
   return loading
 }
 

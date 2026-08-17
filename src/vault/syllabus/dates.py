@@ -45,9 +45,12 @@ class Term:
         return f"{self.name.title()} {self.year}"
 
     def year_for_month(self, month: int) -> int:
-        """a winter term straddles new year, so january belongs to year + 1."""
-        if self.name == "winter" and month <= 2:
-            return self.year + 1
+        """winter 2026 is january to march of 2026, the way quarter and
+        canadian calendars name it. treating january as year + 1 dated the
+        first week of a winter course a year after its last. a december date
+        on such a syllabus is the tail of the previous calendar year."""
+        if self.name == "winter" and month == 12:
+            return self.year - 1
         return self.year
 
 

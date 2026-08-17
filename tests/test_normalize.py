@@ -48,6 +48,20 @@ class TestDiacritics:
     def test_cedilla_trails_its_letter(self):
         assert n.compose_diacritics("Franc¸ois").text == "François"
 
+    def test_a_backtick_quote_is_not_an_accent(self):
+        # tex-style quoting opens with a backtick at the word's front. the
+        # accent artifact this rule repairs sits inside a word, so a word
+        # start is a quote and must survive as written.
+        assert n.compose_diacritics("the `new terrorism' debate").text == (
+            "the `new terrorism' debate"
+        )
+
+    def test_a_tilde_before_a_word_is_not_an_accent(self):
+        assert n.compose_diacritics("read ~all of chapter 2").text == "read ~all of chapter 2"
+
+    def test_a_grave_artifact_inside_a_word_still_composes(self):
+        assert n.compose_diacritics("citt`a aperta").text == "città aperta"
+
     def test_output_is_nfc(self):
         import unicodedata
 

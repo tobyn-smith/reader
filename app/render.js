@@ -565,8 +565,10 @@ export function courseTag(course) {
   return [term, meta.year].filter(Boolean).join(' ')
 }
 
-// terms in the order they happen, so "which is the current one" is answerable
-const TERM_ORDER = { spring: 0, summer: 1, fall: 2, autumn: 2, winter: 3 }
+// terms in the order they happen, so "which is the current one" is answerable.
+// winter sits first: a winter 2026 course runs january to march of 2026, the
+// way quarter and canadian calendars name it, so it ends before spring begins.
+const TERM_ORDER = { winter: 0, spring: 1, summer: 2, fall: 3, autumn: 3 }
 
 export function termKey(course) {
   const meta = course.parse.course || {}

@@ -267,6 +267,83 @@ class TestTheShareWrittenBeforeTheName:
         assert not LEADING_WEIGHT_RE.match("90% - A")
 
 
+class TestWinterTermYears:
+    """winter 2026 is january to march of 2026, the way quarter and canadian
+    calendars name it. the old rule pushed january to 2027, which dated the
+    first week of a course a year after its last."""
+
+    def test_january_keeps_the_stated_year(self):
+        from vault.syllabus import dates
+        term = dates.find_term("Winter 2026")
+        assert dates.parse_date("January 8", term) == __import__("datetime").date(2026, 1, 8)
+
+    def test_march_keeps_the_stated_year(self):
+        from vault.syllabus import dates
+        term = dates.find_term("Winter 2026")
+        assert dates.parse_date("March 5", term) == __import__("datetime").date(2026, 3, 5)
+
+    def test_december_belongs_to_the_year_before(self):
+        from vault.syllabus import dates
+        term = dates.find_term("Winter 2026")
+        assert dates.parse_date("December 12", term) == __import__("datetime").date(2025, 12, 12)
+
+
+class TestClockColonInADueHint:
+    def test_a_clock_time_does_not_become_the_title(self):
+        """"Quiz due at 11:59 pm" is the assignment "Quiz", not "59 pm"."""
+        import datetime as dt
+        from vault.syllabus import dates
+        from vault.syllabus.deliverables import _from_hint
+        term = dates.find_term("Fall 2026")
+        item = _from_hint("Quiz due at 11:59 pm", term, dt.date(2026, 9, 21))
+        assert item is not None and item.title == "Quiz"
+
+    def test_a_label_ending_in_a_digit_still_splits(self):
+        import datetime as dt
+        from vault.syllabus import dates
+        from vault.syllabus.deliverables import _from_hint
+        term = dates.find_term("Fall 2026")
+        item = _from_hint("Week 3: Response paper due Friday", term, dt.date(2026, 9, 7))
+        assert item is not None and item.title == "Response paper"
+
+    def test_a_label_then_a_due_clause_keeps_the_label(self):
+        """"Final: due 12/10" names the assignment before the colon; the due
+        clause after it is the deadline, not the title."""
+        import datetime as dt
+        from vault.syllabus import dates
+        from vault.syllabus.deliverables import _from_hint
+        term = dates.find_term("Fall 2026")
+        item = _from_hint("Final: due 12/10", term, dt.date(2026, 9, 7))
+        assert item is not None and item.title == "Final"
+
+    def test_due_clause_with_a_clock_time_keeps_the_label(self):
+        import datetime as dt
+        from vault.syllabus import dates
+        from vault.syllabus.deliverables import _from_hint
+        term = dates.find_term("Fall 2026")
+        item = _from_hint("Essay 2: due at 11:59 pm", term, dt.date(2026, 9, 7))
+        assert item is not None and item.title == "Essay 2"
+
+    def test_a_due_prefix_before_the_label_still_splits(self):
+        """"due: Final due 12/10" carries the kind of work in the label, so
+        the rest names the assignment and the label must not replace it."""
+        import datetime as dt
+        from vault.syllabus import dates
+        from vault.syllabus.deliverables import _from_hint
+        term = dates.find_term("Fall 2026")
+        item = _from_hint("due: Final due 12/10", term, dt.date(2026, 9, 7))
+        assert item is not None and item.title == "Final"
+
+
+class TestTermIsNotACourseCode:
+    def test_a_caps_season_line_is_refused(self):
+        """"FALL 2025" above the real code is the term, not the course."""
+        from vault.syllabus.frontmatter import CODE_RE
+        assert CODE_RE.search("FALL 2025") is None
+        m = CODE_RE.search("FALL 2025\nQQRZ 3300: Imaginary Institutions")
+        assert m and m.group(1) == "QQRZ" and m.group(2) == "3300"
+
+
 class TestGradingTableOutsideItsSection:
     """the grading table is not always under a heading this recognises.
 

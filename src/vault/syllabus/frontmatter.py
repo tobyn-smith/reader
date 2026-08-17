@@ -10,8 +10,12 @@ from ..text.model import ExtractedDoc
 from ..text.normalize import URL_RE, collapse_whitespace
 from .dates import Term, find_term
 
-# a course code is letters then digits, usually with a space between
-CODE_RE = re.compile(r"\b([A-Z]{2,5})\s*[- ]?\s*(\d{3,5}[A-Z]?)\b")
+# a course code is letters then digits, usually with a space between. a term
+# printed in capitals is the same shape, and "FALL 2025" on the cover sits
+# above the real code, so the seasons are refused by name.
+CODE_RE = re.compile(
+    r"\b(?!(?:FALL|SPRING|SUMMER|WINTER)\b)([A-Z]{2,5})\s*[- ]?\s*(\d{3,5}[A-Z]?)\b"
+)
 
 # some syllabi never print the subject prefix and label the number instead:
 # "Course Number: 4316", with the department on its own line. the number alone

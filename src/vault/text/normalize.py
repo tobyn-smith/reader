@@ -99,8 +99,20 @@ _TRAILING_ACCENTS = {
     "˛": "̨",  # ogonek
 }
 
+# the ascii three double as ordinary punctuation: a backtick opens a tex-style
+# quote, a tilde is markup, a caret is maths. the accent artifact this rule
+# exists for sits inside a word ("Zolt´an"), so for those characters a letter
+# must come first, or `new terrorism' turns into ǹew terrorism'.
+_AMBIGUOUS_ACCENTS = {"`", "~", "^"}
 _LEAD_ACCENT_RE = re.compile(
-    "([" + "".join(re.escape(c) for c in _SPACING_TO_COMBINING) + "])([A-Za-z])"
+    "(["
+    + "".join(re.escape(c) for c in _SPACING_TO_COMBINING if c not in _AMBIGUOUS_ACCENTS)
+    + "])([A-Za-z])"
+)
+_LEAD_ACCENT_MIDWORD_RE = re.compile(
+    r"(?<=\w)(["
+    + "".join(re.escape(c) for c in _AMBIGUOUS_ACCENTS)
+    + "])([A-Za-z])"
 )
 _TRAIL_ACCENT_RE = re.compile(
     "([A-Za-z])([" + "".join(re.escape(c) for c in _TRAILING_ACCENTS) + "])"
@@ -140,6 +152,7 @@ def compose_diacritics(text: str) -> Cleaned:
         return composed
 
     out = _LEAD_ACCENT_RE.sub(lead, text)
+    out = _LEAD_ACCENT_MIDWORD_RE.sub(lead, out)
     out = _TRAIL_ACCENT_RE.sub(trail, out)
     return Cleaned(out, edits)
 

@@ -153,6 +153,11 @@ function nextReview() {
 }
 
 async function matchReading(job, extracted) {
+  // the extraction rides on the job in every path. it used to be attached
+  // only when a match was attempted, so a reading dropped before any syllabus
+  // was stored with no head text, and the rematch pass that exists for
+  // exactly that reading could never see it again.
+  job.extracted = extracted
   const head = extracted.pages.slice(0, 2).map((p) => p.text).join('\n')
   const candidates = candidateWorks()
 
@@ -162,7 +167,7 @@ async function matchReading(job, extracted) {
   }
 
   const id = nextId++
-  waiting.set(id, Object.assign(job, { extracted }))
+  waiting.set(id, job)
   const { parseWorker: pw } = workers()
   pw.postMessage({ type: 'match', id, head, candidates, filename: job.name })
 }
@@ -170,25 +175,31 @@ async function matchReading(job, extracted) {
 async function finishReading(job, match) {
   const [courseId, workKey] = (match.id || '::').split('::')
   const extracted = job.extracted
+  // a rematch job carries the stored record rather than a fresh extraction,
+  // and rebuilding the row from scratch threw away the kept pdf and the head
+  // text the record already had. whatever this job does not carry, the prior
+  // record keeps.
+  const prior = job.record || null
   await store.putDocument({
-    // the extractor hands back the file's sha256; using it means re-dropping
-    // the same pdf replaces the record instead of making a second one under
-    // the same name
-    id: (extracted && extracted.sha256) || job.name,
+    // the filename as id means re-dropping the same pdf replaces the record
+    // instead of making a second one under the same name
+    id: (prior && prior.id) || job.name,
     filename: job.name,
     courseId: courseId || null,
     workKey: workKey || null,
     matchScore: match.score,
     matchMethod: match.method,
-    pageCount: (extracted && extracted.page_count) || 0,
+    pageCount: (extracted && extracted.page_count) || (prior && prior.pageCount) || 0,
     // the file itself, so a reading matched to a row can be opened from the
     // ledger. it was thrown away after matching, which meant the app knew a
     // reading was on file and could not show it to you. it never leaves this
     // browser, and the json backup drops it the way it drops the syllabus.
-    pdf: job.bytes || null,
+    pdf: job.bytes || (prior && prior.pdf) || null,
     // kept so a reading dropped before its syllabus can be matched later
     // without asking for the file again. it never leaves this browser.
-    head: extracted ? extracted.pages.slice(0, 2).map((p) => p.text).join('\n') : '',
+    head: extracted
+      ? extracted.pages.slice(0, 2).map((p) => p.text).join('\n')
+      : (prior && prior.head) || '',
   })
   state.documents = await store.listDocuments()
   note(job, match.id ? `matched, score ${match.score}` : `not matched: ${match.method}`, !match.id)
@@ -285,10 +296,15 @@ function harvestReviewEdits() {
 }
 
 async function confirmParse() {
+  // a double click ran the whole save twice, and the second pass pulled the
+  // next queued syllabus off the queue and dropped it without a review
+  const pending = state.pending
+  if (!pending || pending.saving) return
+  pending.saving = true
   harvestReviewEdits()
-  const parse = state.pending.parse
+  const parse = pending.parse
 
-  const code = parse.course.code || state.pending.name.replace(/\.pdf$/i, '')
+  const code = parse.course.code || pending.name.replace(/\.pdf$/i, '')
   const id = parse.file_hash || code
   // a re-read of the same file lands on the same id and replaces in place;
   // if this parse somehow lacks bytes, the copy already stored is kept
@@ -313,9 +329,9 @@ async function confirmParse() {
     id,
     code,
     title: parse.course.title || '',
-    name: state.pending.name,
+    name: pending.name,
     parse,
-    pdf: state.pending.bytes || (prior && prior.pdf) || null,
+    pdf: pending.bytes || (prior && prior.pdf) || null,
     // what the visitor set about the course rather than about this parse. the
     // grading scale belongs here too: it is read off the syllabus by eye and
     // typed in, so losing it to a re-read means typing every cutoff again.
@@ -562,11 +578,6 @@ async function toClipboard(text) {
       return false
     }
   }
-}
-
-function focusLast(selector) {
-  const all = document.querySelectorAll(selector)
-  if (all.length) all[all.length - 1].focus()
 }
 
 // a redraw replaces the inputs, and with them whatever the keyboard had
@@ -878,7 +889,15 @@ function wireDropZone(zoneId, inputId) {
         warn: true,
       })
     }
-    if (all.length > files.length) drawQueue()
+    if (all.length > files.length) {
+      // the note lands in the intake panel, which the welcome page keeps
+      // hidden. a drop that was nothing but the wrong kind of file has to
+      // bring the panel out, or the page just sits there saying nothing.
+      $('welcome').hidden = true
+      $('tools').hidden = false
+      $('tools').open = true
+      drawQueue()
+    }
     if (files.length) submit(files)
   })
 }
@@ -1004,10 +1023,16 @@ async function boot() {
     const add = e.target.closest('[data-add-reading]')
     if (add) {
       const course = activeCourse()
-      const session = course.parse.sessions[Number(add.dataset.addReading)]
+      const si = Number(add.dataset.addReading)
+      const session = course.parse.sessions[si]
       session.readings.push(blankReading(session))
       await saveCourse(course)
-      focusLast('input[data-edit-reading]')
+      // the new row, not the last row on the page. the ledger draws every
+      // week, so the page's last citation input belongs to the final week,
+      // and typing there rewrote a real reading in some other week.
+      const fresh = document.querySelector(
+        `input[data-edit-reading="${si}.${session.readings.length - 1}"]`)
+      if (fresh) fresh.focus()
       return
     }
     const dueDel = e.target.closest('[data-remove-due]')
@@ -1026,7 +1051,12 @@ async function boot() {
         recurrence: null, requirements_text: '', confidence: 1,
       })
       await saveCourse(course)
-      focusLast('input[data-due-title]')
+      // the deadlines page lists every course, so the last title input on the
+      // page can belong to a different course than the one that grew a row
+      const want = `${course.id}|${course.parse.deliverables.items.length - 1}`
+      const fresh = [...document.querySelectorAll('input[data-due-title]')]
+        .find((el) => el.dataset.dueTitle === want)
+      if (fresh) fresh.focus()
       return
     }
   })
@@ -1232,15 +1262,20 @@ async function boot() {
   draw()
 
   if ('serviceWorker' in navigator) {
+    // whether a worker already held this page decides what a controllerchange
+    // means later. on a first visit the brand new worker claiming the page
+    // fires the same event, and reloading for that threw away whatever the
+    // visitor had just dropped, seconds after they arrived.
+    const wasControlled = Boolean(navigator.serviceWorker.controller)
     navigator.serviceWorker.register('./sw.js').catch(() => {})
     // when a deploy replaces the worker, the page it is holding open is still
     // built from the old cache. one reload as the new worker takes control
     // brings the fresh assets in, instead of showing a stale page all visit.
     let reloaded = false
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloaded) return
+      if (!wasControlled || reloaded) return
       reloaded = true
-      if (navigator.serviceWorker.controller) location.reload()
+      location.reload()
     })
   }
 }

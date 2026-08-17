@@ -541,11 +541,21 @@ def _from_hint(
 
     # only a label colon splits the line. a colon inside a clock time does not,
     # or "assessment due at 11:59 pm" becomes an assignment called "59 pm".
-    m = re.match(r"^\s*(?P<label>[A-Za-z][\w\s-]{1,24}?)\s*:\s*(?P<rest>\S.*)$", text)
+    # what marks a clock is digits on both sides of the colon, and only that:
+    # "Week 3: Quiz 1" still has to split, so neither side alone can disqualify.
+    m = re.match(
+        r"^\s*(?P<label>[A-Za-z][\w\s-]{1,24}?)(?:(?<![0-9]):|:(?![0-9]))\s*(?P<rest>\S.*)$",
+        text,
+    )
     title = collapse_whitespace(m.group("rest") if m else text).strip(" .,-")
     # the date tail is data, not name: "Assessment 4 due 9/21 at 11:59 pm" is
     # the assignment "Assessment 4"
     title = re.split(r"\s+due\s+", title, maxsplit=1, flags=re.IGNORECASE)[0].strip(" .,-")
+    # "Final: due 12/10" names the assignment before the colon and then says
+    # when; the split above needs whitespace before the word "due", so the
+    # deadline clause it opens became the title. the label is the title here.
+    if m and re.match(r"due\b", title, re.IGNORECASE):
+        title = m.group("label").strip(" .,-")
     if not title:
         return None
 

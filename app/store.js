@@ -150,7 +150,19 @@ export async function importAll(data) {
   if (!data || data.format !== 'seminar-vault') {
     throw new Error('not a schedule reader export')
   }
-  for (const course of data.courses || []) await putCourse(course)
-  for (const record of data.documents || []) await putDocument(record)
+  // the backup leaves pdf bytes out to stay small, and put() replaces whole
+  // records. restoring a backup into the browser that made it was therefore
+  // wiping every stored pdf while looking like a no-op. a row from the backup
+  // keeps the bytes already here under the same id.
+  const heldCourses = new Map((await listCourses()).map((c) => [c.id, c]))
+  const heldDocs = new Map((await listDocuments()).map((d) => [d.id, d]))
+  for (const course of data.courses || []) {
+    const kept = heldCourses.get(course.id)
+    await putCourse(course.pdf || !kept ? course : { ...course, pdf: kept.pdf })
+  }
+  for (const record of data.documents || []) {
+    const kept = heldDocs.get(record.id)
+    await putDocument(record.pdf || !kept ? record : { ...record, pdf: kept.pdf })
+  }
   for (const entry of data.progress || []) await putProgress(entry)
 }
