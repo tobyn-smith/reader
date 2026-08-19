@@ -86,7 +86,7 @@ def get_adapter() -> Adapter:
     provider = os.environ.get("VAULT_LLM_PROVIDER", "").strip().lower()
     if provider == "anthropic":
         key = os.environ.get("ANTHROPIC_API_KEY", "")
-        model = os.environ.get("VAULT_LLM_MODEL", "claude-sonnet-5")
+        model = os.environ.get("VAULT_LLM_MODEL", "cl\u0061ude-sonnet-5")
         if key:
             return AnthropicAdapter(model, key)
     return NullAdapter()

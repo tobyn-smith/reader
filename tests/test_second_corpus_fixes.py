@@ -767,3 +767,79 @@ class TestInstructorLooksLikeAPerson:
     def test_empty_brackets_from_a_stripped_email_go(self):
         from vault.syllabus.frontmatter import _plausible_name
         assert _plausible_name("Dr. Priya Raman ()") == "Dr. Priya Raman"
+
+
+class TestWeekHeadingDateShapes:
+    """the date on a week heading is data, never the topic.
+
+    "Week 2: Aug 28 - Sept 1" spans a month boundary and the second date of the
+    range leaked into the topic column as "Sept 1"; bracketed and pipe dates
+    leaked the same way. the range is the week's span, and the start of it is
+    the meeting date.
+    """
+
+    def split(self, text):
+        session = schedule.SessionEntry(0, 1, text)
+        schedule._split_week_heading(session, text, Term("fall", 2026))
+        return session
+
+    def test_a_range_leaves_no_phantom_topic(self):
+        session = self.split("Week 2: Aug 28 - Sept 1")
+        assert session.week_number == 2
+        assert session.meeting_date.isoformat() == "2026-08-28"
+        assert session.topic is None
+
+    def test_a_numeric_range_is_stripped_whole(self):
+        session = self.split("Week 3: 9/15-9/19")
+        assert session.meeting_date.isoformat() == "2026-09-15"
+        assert session.topic is None
+
+    def test_the_topic_behind_the_range_survives(self):
+        session = self.split("Week 2  Aug 28-Sept 1  Topic: Globalization")
+        assert session.topic == "Topic: Globalization"
+        session = self.split("Week 3: Sept 1 - Introduction to the course")
+        assert session.topic == "Introduction to the course"
+
+    def test_bracketed_and_pipe_dates_are_stripped(self):
+        session = self.split("Week 1 (Jan 13)")
+        assert session.meeting_date.isoformat() == "2026-01-13"
+        assert session.topic is None
+        session = self.split("Week 10 | Nov 12 | Thanksgiving break")
+        assert session.topic == "Thanksgiving break"
+
+    def test_a_plain_heading_is_unchanged(self):
+        session = self.split("Week 5 - Feb 19: Midterm review")
+        assert session.meeting_date.isoformat() == "2026-02-19"
+        assert session.topic == "Midterm review"
+
+
+class TestImportantDatesRangeTail:
+    """a bare day range with the label on the next line.
+
+    "March 7th - 11th" followed by "Spring break" was read as the entry
+    "March 7th" labelled "11th": the dash became the separator and the range
+    tail became the label, while the real label line was swallowed. the range
+    is kept and the next line's text is the label.
+    """
+
+    def test_range_with_label_on_the_next_line(self):
+        from vault.syllabus.dates import parse_important_dates
+        entries = parse_important_dates(
+            ["March 7th - 11th", "Spring break"], Term("fall", 2026)
+        )
+        assert len(entries) == 1
+        assert entries[0].label == "Spring break"
+        assert entries[0].start.isoformat() == "2026-03-07"
+        assert entries[0].end.isoformat() == "2026-03-11"
+
+    def test_a_same_line_label_is_unaffected(self):
+        from vault.syllabus.dates import parse_important_dates
+        entries = parse_important_dates(
+            ["November 26-27: Thanksgiving break", "Dec 10: Final exam"],
+            Term("fall", 2026),
+        )
+        assert [(e.label, e.start.isoformat(), e.end and e.end.isoformat())
+                for e in entries] == [
+            ("Thanksgiving break", "2026-11-26", "2026-11-27"),
+            ("Final exam", "2026-12-10", None),
+        ]

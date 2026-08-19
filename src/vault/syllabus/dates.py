@@ -204,7 +204,18 @@ def parse_important_dates(lines: list[str], term: Term | None) -> list[DatedEntr
         date_part = None
         if m:
             date_part, label = m.group("dates"), m.group("label").strip()
-        elif re.match(r"^[A-Za-z]+\s+\d{1,2}\s*(?:st|nd|rd|th)?\s*[-–—:]?\s*$", line):
+            # "March 7th - 11th" with the label on the next line reads the
+            # dash as a separator and the range tail as a label. a bare day
+            # is never a label, so the line falls through to the date-only
+            # branch, which keeps the range and takes the next line's text.
+            if re.fullmatch(r"\d{1,2}(?:st|nd|rd|th)?[.:]?", label):
+                date_part, label = None, None
+        if not date_part and re.match(
+            r"^[A-Za-z]+\s+\d{1,2}\s*(?:st|nd|rd|th)?"
+            r"(?:\s*[-\u2013\u2014]\s*(?:[A-Za-z]+\s+)?\d{1,2}(?:st|nd|rd|th)?)?"
+            r"\s*[-\u2013\u2014:]?\s*$",
+            line,
+        ):
             date_part = line.rstrip(" :-–—")
             while index < len(lines) and not lines[index].strip():
                 index += 1

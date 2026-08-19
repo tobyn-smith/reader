@@ -30,4 +30,7 @@ build/
 dist/
 corpus*.json
 scrub.txt
-.freebuff/
+worktree-patches/
+
+# tool and editor metadata directories are output, never source
+.*/

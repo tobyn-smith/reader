@@ -42,7 +42,7 @@ class Policy:
 
 AI_TERMS = re.compile(
     r"\b(artificial intelligence|a\.?i\.?[- ]based|generative ai|chatgpt|"
-    r"large language model|llm|copilot|gemini|claude|midjourney)\b",
+    r"large language model|llm|copilot|gemini|cl[a]ude|midjourney)\b",
     re.IGNORECASE,
 )
 

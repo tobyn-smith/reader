@@ -528,9 +528,23 @@ def _split_week_heading(session: SessionEntry, text: str, term: Term | None) -> 
         session.meeting_date = found[0]
 
     topic = rest
-    topic = re.sub(r"^\s*[(\[]?\s*\d{1,2}\s*/\s*\d{1,2}\s*[)\]]?", "", topic)
+    # a heading can carry its date in a range, in brackets, or behind a pipe:
+    # "Aug 28 - Sept 1", "(Jan 13)", "| Nov 12 |". the second date of a range
+    # is the week's span, not its topic, so the whole date is stripped rather
+    # than leaving "Sept 1" or "9/15-9/19" to read as the topic.
     topic = re.sub(
-        r"^[\s,:.-]*(?:[A-Za-z]+\s+\d{1,2}(?:st|nd|rd|th)?)[\s,:.-]*", "", topic
+        r"^[\s,:.|-]*(?:[(\[]\s*)?\d{1,2}\s*/\s*\d{1,2}"
+        r"(?:\s*[-\u2013\u2014]\s*\d{1,2}\s*/\s*\d{1,2})?(?:\s*[)\]]\s*)?"
+        r"[\s,:.|-]*",
+        "",
+        topic,
+    )
+    topic = re.sub(
+        r"^[\s,:.|-]*(?:[(\[]\s*)?(?:[A-Za-z]+\s+\d{1,2}(?:st|nd|rd|th)?)"
+        r"(?:\s*[-\u2013\u2014]\s*(?:[A-Za-z]+\s+)?\d{1,2}(?:st|nd|rd|th)?)?"
+        r"(?:\s*[)\]]\s*)?[\s,:.|-]*",
+        "",
+        topic,
     )
     topic = topic.strip(" :,-–—")
     # a malformed date such as "January 6h" leaves its stray letter behind
