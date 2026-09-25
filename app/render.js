@@ -127,9 +127,16 @@ export function scheduleView(course) {
 
 export function weekView(course, progress, editing = false, filter = {}, documents = []) {
   // which readings have their pdf on file, keyed the way ingest matched them
+  // ingest stores the segment after courseId:: from readingKey, which is the
+  // signature when one exists and s{ordinal}r{ordinal} when it does not.
+  // looking up by signature alone hid "open pdf" on every hand-fixed or
+  // low-confidence row, even when the file was sitting in indexeddb.
   const onFile = new Map()
   for (const doc of documents) {
-    if (doc.courseId === course.id && doc.workKey) onFile.set(doc.workKey, doc)
+    if (doc.courseId === course.id && doc.workKey) {
+      onFile.set(doc.workKey, doc)
+      onFile.set(`${doc.courseId}::${doc.workKey}`, doc)
+    }
   }
   // the ledger runs in date order, not parse order. a deadlines list at the
   // top of a syllabus parses into dated week-less rows, and in parse order
@@ -195,13 +202,14 @@ export function weekView(course, progress, editing = false, filter = {}, documen
         if (filter.required && reading.requirement_level !== 'required') return
         if (filter.soon && !weekSoon) return
 
+        const file = onFile.get(id) || onFile.get(reading.work.signature)
         const cited = editing
           ? `<input type="text" class="cite" data-edit-reading="${si}.${ri}"
                value="${esc(citation(reading.work))}" aria-label="Entry">`
           : `${esc(cite.short(reading.work, 400))}${linkTag(reading.work)}${
-              onFile.has(reading.work.signature)
+              file
                 ? ` <button type="button" class="golink onfile"
-                     data-open-doc="${esc(onFile.get(reading.work.signature).id)}"
+                     data-open-doc="${esc(file.id)}"
                      >open pdf</button>`
                 : ''}
              ${reading.content_warning
@@ -616,6 +624,13 @@ function spec(item) {
   if (item.word_limit) parts.push(`${item.word_limit} words max`)
   const notes = (item.format_notes || '').replace(/\s+/g, ' ').trim()
   if (notes) parts.push(notes.length > 90 ? `${notes.slice(0, 90)}…` : notes)
+  // structured fields are what most syllabi give. when they are empty the
+  // parser still has the prose it pulled, and hiding that sent people back
+  // to the pdf for the one sentence that said how long the essay may run.
+  if (!parts.length) {
+    const req = (item.requirements_text || '').replace(/\s+/g, ' ').trim()
+    if (req) parts.push(req.length > 110 ? `${req.slice(0, 110)}…` : req)
+  }
   if (!parts.length) return ''
   return `<span class="due-spec">${esc(parts.join(' · '))}</span>`
 }
@@ -1285,12 +1300,76 @@ export function reviewTable(parse, showAll = false) {
         <button type="button" id="toggle-all" class="quiet">${
           showAll ? 'hide' : 'show every reading'}</button></p>`
 
+  // readings were the only review rows drawn. the parser also flags a
+  // missing course code, an assignment it could not finish, and a thin
+  // policy, and those used to be saved as they stood.
+  const extras = reviewExtras(parse)
+
   return `${strip}
     ${lead}
     ${warnings.length
       ? `<ul class="rwarn">${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>`
       : ''}
+    ${extras}
     ${blocks.join('')}`
+}
+
+function reviewExtras(parse) {
+  const items = parse.review || []
+  const courseFlags = items.filter((r) => r.entity_type === 'course')
+  const dueFlags = items.filter((r) => r.entity_type === 'deliverable')
+  if (!courseFlags.length && !dueFlags.length) return ''
+
+  const rows = []
+  if (courseFlags.length) {
+    const flag = courseFlags[0]
+    const course = parse.course || {}
+    rows.push(`<li class="rrow needs-check">
+      <span class="rnum"></span>
+      <div class="rbody">
+        <p class="rwhy">${esc(flag.reason || 'course details incomplete')}</p>
+        <p class="rfields">
+          <label>Code <input type="text" data-review-course="code"
+            value="${esc(course.code || '')}" aria-label="Course code"></label>
+          <label>Title <input type="text" data-review-course="title"
+            value="${esc(course.title || '')}" aria-label="Course title"></label>
+          <label>Term <input type="text" data-review-course="term"
+            value="${esc(course.term || '')}" aria-label="Term"></label>
+        </p>
+        ${flag.source_text ? `<p class="rsource">${esc(flag.source_text)}</p>` : ''}
+      </div>
+    </li>`)
+  }
+
+  for (const flag of dueFlags) {
+    const index = Number((flag.entity_ref || '').match(/\[(\d+)\]/)?.[1])
+    const item = parse.deliverables.items[index]
+    if (!item) continue
+    rows.push(`<li class="rrow needs-check">
+      <span class="rnum"></span>
+      <div class="rbody">
+        <p class="rwhy">${esc(flag.reason || 'incomplete deliverable')}</p>
+        <p class="rfields">
+          <label>Item <input type="text" data-review-due="${index}"
+            value="${esc(item.title || '')}" aria-label="Assignment title"></label>
+          <label>Due <input type="date" data-review-due-date="${index}"
+            value="${esc(item.due_date || '')}" aria-label="Due date"></label>
+          <label>Weight <input type="number" class="pct" min="0" max="100"
+            data-review-due-weight="${index}"
+            value="${item.weight_percent ?? ''}" aria-label="Weight"></label>
+        </p>
+        ${flag.source_text ? `<p class="rsource">${esc(flag.source_text)}</p>` : ''}
+      </div>
+    </li>`)
+  }
+
+  return `<section class="week">
+    <h3 class="whead">
+      <span class="when">Also check</span>
+      <span class="wtopic">Course details and graded work that did not come out cleanly</span>
+    </h3>
+    <ol class="rlist">${rows.join('')}</ol>
+  </section>`
 }
 
 
