@@ -49,6 +49,11 @@ function workers() {
   return { extractWorker, parseWorker }
 }
 
+function warmParser() {
+  const { parseWorker: pw } = workers()
+  pw.postMessage({ type: 'preload' })
+}
+
 function status(element, text) {
   $(element).textContent = text
 }
@@ -87,6 +92,7 @@ function onExtractMessage(event) {
 function onParseMessage(event) {
   const { type, id, result, stage, message } = event.data
 
+  if (type === 'ready') return
   if (type === 'boot') {
     status('intake-status', `Loading parser: ${stage}`)
     return
@@ -293,6 +299,31 @@ function harvestReviewEdits() {
       reading.confidence = 1
     }
   }
+  for (const input of $('review-table').querySelectorAll('[data-review-course]')) {
+    const field = input.dataset.reviewCourse
+    const value = input.value.trim()
+    if (field && (value || field === 'title')) parse.course[field] = value
+  }
+  for (const input of $('review-table').querySelectorAll('[data-review-due]')) {
+    const item = parse.deliverables.items[Number(input.dataset.reviewDue)]
+    if (!item) continue
+    const title = input.value.trim()
+    if (title) {
+      item.title = title
+      item.confidence = 1
+    }
+  }
+  for (const input of $('review-table').querySelectorAll('[data-review-due-date]')) {
+    const item = parse.deliverables.items[Number(input.dataset.reviewDueDate)]
+    if (item) item.due_date = input.value || null
+  }
+  for (const input of $('review-table').querySelectorAll('[data-review-due-weight]')) {
+    const item = parse.deliverables.items[Number(input.dataset.reviewDueWeight)]
+    if (!item) continue
+    const raw = input.value.trim()
+    item.weight_percent = raw === '' ? null : Number(raw)
+  }
+  if (parse.deliverables) retotal({ parse })
 }
 
 async function confirmParse() {
@@ -385,12 +416,31 @@ function drawNav() {
 
 function drawUnmatched() {
   const orphans = state.documents.filter((d) => !d.workKey)
+  const options = candidateWorks()
   $('unmatched').innerHTML = orphans.length
-    ? `<h3>Not matched</h3><table><tbody>${orphans
+    ? `<h3>Not matched</h3>
+       <p class="note">A reading dropped before its syllabus, or one the matcher
+         would not claim. Assign it if you know which row it belongs to.</p>
+       <table><tbody>${orphans
         .map((d) => `<tr class="missing"><td>${view.esc(d.filename)}</td>
-          <td class="secondary">${view.esc(d.matchMethod)}</td></tr>`)
+          <td class="secondary">${view.esc(d.matchMethod || '')}</td>
+          <td>${options.length
+            ? `<select data-assign="${view.esc(d.id)}"
+                 aria-label="Assign ${view.esc(d.filename)}">
+                 <option value="">Assign to a reading…</option>
+                 ${options.map((w) =>
+                   `<option value="${view.esc(w.id)}">${view.esc(assignLabel(w))}</option>`
+                 ).join('')}</select>`
+            : '<span class="secondary">Add a syllabus first</span>'}</td></tr>`)
         .join('')}</tbody></table>`
     : ''
+}
+
+function assignLabel(work) {
+  const first = (work.authors && work.authors[0]) || {}
+  const who = first.surname || first.literal || first.given || ''
+  const line = [who, work.year, work.title].filter(Boolean).join(', ')
+  return line.length > 72 ? `${line.slice(0, 69)}...` : (line || work.id)
 }
 
 // a title that just repeats the course code adds nothing to the option
@@ -846,12 +896,19 @@ function drawSearch(target) {
     }
 
     $('results').innerHTML = hits.length
-      ? `<p class="secondary">${hits.length} match${hits.length === 1 ? '' : 'es'}.</p>
-         <table><tbody>${hits.map((h) => `<tr>
+      ? `<p class="secondary">${hits.length} match${hits.length === 1 ? '' : 'es'}.
+           Click a row to open it.</p>
+         <table><tbody>${hits.map((h) => {
+           const dest = h.kind === 'Assignment' ? 'deadlines'
+             : h.kind === 'Policy' ? 'policies' : 'week'
+           return `<tr class="hitrow" tabindex="0"
+             data-jump-course="${view.esc(h.course.id)}"
+             data-jump-view="${dest}">
            <td class="w-course">${view.esc(h.course.code)}</td>
            <td class="when">${view.esc(h.where)}</td>
            <td class="hitkind">${view.esc(h.kind)}</td>
-           <td class="entry">${view.esc(h.text)}</td></tr>`).join('')}</tbody></table>`
+           <td class="entry">${view.esc(h.text)}</td></tr>`
+         }).join('')}</tbody></table>`
       : '<p class="secondary">No matches.</p>'
   }
 }
@@ -869,6 +926,7 @@ function wireDropZone(zoneId, inputId) {
     zone.addEventListener(name, (e) => {
       e.preventDefault()
       zone.dataset.active = 'true'
+      if (name === 'dragenter') warmParser()
     })
   }
   for (const name of ['dragleave', 'drop']) {
@@ -919,10 +977,38 @@ async function boot() {
 
   wireDropZone('file-drop', 'file-input')
   wireDropZone('welcome-drop', 'file-input')
-  $('welcome-choose').onclick = () => $('file-input').click()
+  $('welcome-choose').onclick = () => {
+    warmParser()
+    $('file-input').click()
+  }
   // a fresh visit shows the welcome alone, not a folded panel beside it
   $('welcome').hidden = state.courses.length > 0
   $('tools').hidden = state.courses.length === 0
+
+  // a returning visit already has a reason to parse again. first paint stays
+  // cheap; the download starts once the page is sitting idle.
+  const whenIdle = window.requestIdleCallback || ((fn) => setTimeout(fn, 900))
+  whenIdle(() => {
+    if (state.courses.length) warmParser()
+  })
+
+  $('unmatched').addEventListener('change', async (e) => {
+    const sel = e.target.closest('select[data-assign]')
+    if (!sel || !sel.value) return
+    const doc = state.documents.find((d) => d.id === sel.dataset.assign)
+    if (!doc) return
+    const [courseId, ...rest] = sel.value.split('::')
+    await store.putDocument({
+      ...doc,
+      courseId: courseId || null,
+      workKey: rest.join('::') || null,
+      matchMethod: 'assigned by hand',
+      matchScore: 1,
+    })
+    state.documents = await store.listDocuments()
+    drawUnmatched()
+    draw()
+  })
 
   $('review-table').addEventListener('click', (e) => {
     if (!e.target.closest('#toggle-all')) return
@@ -1043,6 +1129,14 @@ async function boot() {
       await saveCourse(course)
       return
     }
+    const jumpHit = e.target.closest('[data-jump-course]')
+    if (jumpHit) {
+      state.active = jumpHit.dataset.jumpCourse
+      state.currentView = jumpHit.dataset.jumpView || 'week'
+      applyRequiredStyle()
+      draw()
+      return
+    }
     const dueAdd = e.target.closest('[data-add-due]')
     if (dueAdd) {
       const course = state.courses.find((c) => c.id === dueAdd.dataset.addDue)
@@ -1113,6 +1207,14 @@ async function boot() {
       const box = $('q')
       if (box) box.focus()
       return
+    }
+    if (e.key === 'Enter') {
+      const hit = el && el.closest && el.closest('[data-jump-course]')
+      if (hit) {
+        e.preventDefault()
+        hit.click()
+        return
+      }
     }
     if (state.currentView !== 'week') return
 
